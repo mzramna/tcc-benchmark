@@ -1,0 +1,30 @@
+version: "2.1"
+
+services:
+    postgres:
+        build: ./alpine_postgres
+        environment:
+            POSTGRES_DB: sakila
+            POSTGRES_USER: mzramna
+            POSTGRES_PASSWORD: safePassword
+        ports:
+            - "5432:5432"
+        volumes:
+            - $config_folder/postgres:/var/lib/postgresql/data
+        restart: unless-stopped
+        
+    mariadb:
+        build: ./alpine_mariadb
+        environment:
+            MYSQL_ROOT_PASSWORD: SafestRootPassword
+            MYSQL_DATABASE: sakila
+            MYSQL_USER: mzramna
+            MYSQL_PASSWORD: safePassword
+        ports:
+            - "3306:3306"
+        volumes:
+            - $config_folder/mariadb:/var/lib/mysql
+        restart: unless-stopped
+
+networks:
+    benchmarks_db:  
