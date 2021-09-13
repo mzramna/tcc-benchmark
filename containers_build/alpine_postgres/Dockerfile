@@ -2,9 +2,9 @@ FROM alpine:latest
 
 ENV PGDATA /var/lib/postgresql/data
 
-RUN echo "@edge http://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
-    apk update && \
-    apk add su-exec wget tzdata libpq postgresql-client postgresql postgresql-contrib && \
+#RUN echo "@edge http://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+#    apk update && \
+RUN apk add su-exec wget tzdata libpq postgresql-client postgresql postgresql-contrib && \
     mkdir /docker-entrypoint-initdb.d && \
     rm -rf /var/cache/apk/*
 
