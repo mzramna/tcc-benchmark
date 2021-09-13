@@ -103,11 +103,97 @@ class geradorDeSql:
                 tmp+=1
         self.logging.debug(dados)
         return dados
-criado metodo de 
+
     def generateSQLCommandFromData(self,data):
+        '''
+                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
+                bd:string # banco de dados en que será inserido
+                os dados a baixo estão definidos para uma insercao:
+                    associações: #text  IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
+                    }
+
+                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
+                os dados a baixo estão definidos para uma busca:
+                    associações: #text     IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+                os dados a baixo são associados com uma busca fitrada
+                    associações: #text    
+                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+            '''
         command=""
+        try:
+            if data["tipoOpracao"]==1:#insercao
+                command+="INSERT INTO "
+            elif data["tipoOpracao"]==2:#leitura completa
+                command+="SELECT * FROM "
+            elif data["tipoOpracao"]==3:#busca
+                command+="SELECT * FROM"
+            elif data["tipoOpracao"]==4:#busca filtrada
+                command+="SELECT ("
+                for i in data['associacoes']:
+                    command+= str(i["variavelRetornada"])+ ","
+                command+=") FROM "
+            elif data["tipoOpracao"]==5:#edicao
+                command+=" UPDATE "
+            elif data["tipoOpracao"]==6:#delecao
+                command+="DELETE FROM "
+            else:
+                raise Exception(data["tipoOpracao"],"não é um valor valido para essa posição")
+
+            command+=str(data["nomeBD"])
+
+            if data["tipoOpracao"]==1:#insercao
+                command+="("
+                for coluna in data["dados"].keys():
+                    command+=str(coluna)
+                    if coluna != data["dados"].keys()[-1]:
+                        command+=","
+                command+=") VALUES ("
+                for coluna in data["dados"].keys():
+                    command+=str(data["dados"][coluna])
+                    if coluna != data["dados"].keys()[-1]:
+                        command+=","
+                command+=");"
+            elif data["tipoOpracao"]==2:#leitura completa
+                command+="; "
+            elif data["tipoOpracao"] in [3,4,6]:# busca #busca filtrada #remocao
+                command+=" WHERE "
+                for coluna in data["dados"].keys():
+                    command+=str(coluna) + " IS "+str(data["dados"][coluna])
+                    if coluna != data["dados"].keys()[-1]:
+                        command+=" AND "
+                command+=";"
+            elif data["tipoOpracao"]==5:#edicao
+                command+=" SET "
+                for coluna in data["dados"].keys():
+                    command+=str(coluna) + " = "+str(data["dados"][coluna])
+                    if coluna != data["dados"].keys()[-1]:
+                        command+=" , "
+                command+=" WHERE "
+                for coluna in data["associacoes"].keys():
+                    command+=str(coluna) + " IS "+str(data["associacoes"][coluna])
+                    if coluna != data["associacoes"].keys()[-1]:
+                        command+=" AND "
+                command+=";"
+        except sqliteError as e:
+            print("erro no sqlite")
+            self.logging.exception(e)
+        except Exception as e :
+            self.logging.exception(e)
+        except :
+            self.logging.exception("Unexpected error:", sys.exc_info()[0])
 
         return command
 
 gerador=geradorDeSql(sqlitedb="scripts/initial_db.db",sqliFilePattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
-#pprint.pprint(gerador.processDataGenerated("1,'empregado','[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
+pprint.pprint(gerador.processDataGenerated("1,'empregado','[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
