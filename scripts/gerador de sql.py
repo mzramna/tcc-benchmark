@@ -14,6 +14,7 @@ class geradorDeSql:
         self.sqliFilePattern=sqliFilePattern
         if not os.path.isfile(sqlitedb):
             self.createTemporaryDB(local=sqlitedb)
+        self.conn = sqlite3.connect(sqlitedb)
     
     def createTemporaryDB(self,local):
         try:
@@ -41,21 +42,30 @@ class geradorDeSql:
             self.logging.exception(e)
         except :
             self.logging.exception("Unexpected error:", sys.exc_info()[0])
-            
 
     def createData(self,table,pattern):    
         fake = Faker()
 
-    def insertData(self,data,pattern):
+    def insertData(self,data):
         '''
-        INSERT INTO "operacoes" VALUES(
-        1,"empregado","[(pessoas,pessoas_id,1),
-        (lojas,loja_id)
-    	]",
-    	"{salario:1200,
-    	contratado:30/12/20}"
-        )
+        INSERT INTO "operacoes"(	"tipoOperacao",	"nomeBD","associacoes","dados")
+        VALUES(1,"empregado","[(pessoas,pessoas_id,1),(lojas,loja_id)]","{salario:1200,contratado:30/12/20}")
         '''
+        insertCommand="INSERT INTO  'operacoes'('tipoOperacao',	'nomeBD','associacoes','dados') VALUES("
+        insertCommand+=str(data["tipoOperacao"])+","
+        insertCommand+=str(data["nomeBD"])+","
+        insertCommand+=str(data["associacoes"]).replace("\n","")+","
+        insertCommand+=str(data["dados"]).replace("\n","")+","
+        self.logging.debug(insertCommand)
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(insertCommand)
+            self.conn.commit()
+        except sqliteError as e:
+            print("erro no sqlite")
+            self.logging.exception(e)
+        except :
+            self.logging.exception("Unexpected error:", sys.exc_info()[0])
 
     def processDataGenerated(self,text):
         patternGeral=r"([0-9]*),'(.*)','(.*)','(.*)'"
@@ -93,8 +103,11 @@ class geradorDeSql:
                 tmp+=1
         self.logging.debug(dados)
         return dados
+criado metodo de 
+    def generateSQLCommandFromData(self,data):
+        command=""
 
+        return command
 
 gerador=geradorDeSql(sqlitedb="scripts/initial_db.db",sqliFilePattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
-pprint.pprint(gerador.processDataGenerated("1,'empregado','[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
-print("bd gerado")
+#pprint.pprint(gerador.processDataGenerated("1,'empregado','[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
