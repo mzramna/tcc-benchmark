@@ -1,0 +1,20 @@
+{
+    "python.pythonPath": "scripts/meuvenv/bin/python3",
+    "json.schemas": [
+    ],
+    "sqlite.setupDatabase": {
+    
+    },
+    "sqltools.tableTreeItemsExpanded": true,
+    "sqlite.logLevel": "DEBUG",
+    "sqlite.sqlite3": "/media/hd_servidor500gb/codigos/vscode-server/extensions/alexcvzz.vscode-sqlite-0.13.0/bin/sqlite3",
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "db_initial",
+            "database": "Z:\\codigos\\benchmarks banco de dados\\scripts\\initial_db.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true,
+}

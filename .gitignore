@@ -1,2 +1,4 @@
 meuvenv
 pluginAssets
+*.log
+__pycache__
