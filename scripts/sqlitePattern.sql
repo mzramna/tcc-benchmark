@@ -6,3 +6,9 @@ CREATE TABLE "operacoes" (
 	"dados"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE TABLE "operacoes" (
+	"id"	INTEGER UNIQUE,
+	"nomeBD"	TEXT NOT NULL,
+	"numeroDDadosCadastrados" INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
