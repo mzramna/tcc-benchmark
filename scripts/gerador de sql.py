@@ -187,19 +187,26 @@ class GeradorDeSql:
                     dados_gerados[dado]=fake.paragraphs(nb=fake.random_int(min=1,max=2))
                 elif pattern[dado][0] == "nota":
                     dados_gerados[dado]=random.uniform(0.0,10.0)
+                elif pattern[dado][0] == "ano":
+                    dados_gerados[dado]=fake.date(pattern='%Y')
                 elif pattern[dado][0] == "duracaoDias":
                     dados_gerados[dado]=fake.random_int(min=1,max=10)
+                elif pattern[dado][0] =="datetime":
+                    dados_gerados[dado]=fake.date_time()
                 elif pattern[dado][0] == "duracaoHoras":
                     dados_gerados[dado]=random.uniform(0.0,4.0)
-                elif pattern[dado][0] == "classificacao":
-                    dados_gerados[dado]=fake.word(ext_word_list=['G','PG','PG-13','R','NC-17'])
-                elif pattern[dado][0] == "funcaoEspecial":
-                    dados_gerados[dado]=fake.word(ext_word_list=['Trailers','Commentaries','Deleted Scenes','Behind the Scenes'])
+                elif pattern[dado][0] == "naLista":
+                    dados_gerados[dado]=fake.word(ext_word_list=pattern[dado][1:] )
                 elif pattern[dado][0] == "valorPago":
                     dados_gerados[dado]=random.uniform(0.0,50.0)
                 elif pattern[dado][0] == "associacao":
                     ##associação entre as as varias tabelas,precisa de ter 
                     pass
+                elif pattern[dado][0] == "id":
+                    if id!="":
+                        dados_gerados[dado]=id
+                    else:
+                        dados_gerados[dado]=self.buscar_ultimo_id_cadastrado(table)
         except self.TamanhoArrayErrado as e :
             self.logging.exception(e)
         except self.ValorInvalido as e:
