@@ -98,7 +98,7 @@ class GeradorDeSql:
         except :
             self.logging.exception("Unexpected error:", sys.exc_info()[0])
 
-    def create_data(self,table,pattern,select_country="random"): 
+    def create_data(self,table,pattern,select_country="random",id:int=-1): 
         '''
             pattern deve ser dado da seguinte forma:
             {
@@ -125,6 +125,10 @@ class GeradorDeSql:
             else:
                 fake = Faker(select_country)#se for definido então o codigo usado será o do pais inserido
             dados_gerados={"nomeBD":table,"tipoOperacao":1}
+            if id !=-1:
+                dados_gerados["idNoBD"]=id
+            else:
+                dados_gerados["idNoBD"]=self.buscar_ultimo_id_cadastrado(table)
             for dado in pattern.keys():
                 if pattern[dado][0] == "nomeCompleto":
                     '''supoe-se que qualquer pessoa pode ter nascido em qq lugar e morar em qualquer outro lugar,nomes são dados pelo gerador de qualquer idioma,por isso nao foi definido um pais para a geracao'''
@@ -206,6 +210,10 @@ class GeradorDeSql:
             self.logging.exception("Unexpected error:", sys.exc_info()[0])
 
 
+    def buscar_ultimo_id_cadastrado(self,table):
+        retorno=0
+        return retorno
+
     def insert_data(self,data):
         '''
         INSERT INTO "operacoes"(	"tipoOperacao",	"nomeBD","associacoes","dados")
@@ -228,14 +236,15 @@ class GeradorDeSql:
             self.logging.exception("Unexpected error:", sys.exc_info()[0])
 
     def process_data_generated(self,text):
-        pattern_geral=r"([0-9]*),'(.*)','(.*)','(.*)'"
+        pattern_geral=r"([0-9]*),'(.*)',([0-9]*),'(.*)','(.*)'"
         etapa1_operacoes=re.findall(pattern_geral,text)[0]
         self.logging.debug(etapa1_operacoes)
         output={}
         output["tipoOpracao"]=etapa1_operacoes[0]
         output["nomeBD"]=etapa1_operacoes[1]
-        output["associacoes"]=etapa1_operacoes[2]
-        output["dados"]=etapa1_operacoes[3]
+        output["idNoBD"]=etapa1_operacoes[2]
+        output["associacoes"]=etapa1_operacoes[3]
+        output["dados"]=etapa1_operacoes[4]
         self.logging.debug(output)
         pattern_associacoes=r"\[\{(.*)\}\]"
         associacoes=[]
@@ -264,7 +273,7 @@ class GeradorDeSql:
         self.logging.debug(dados)
         return dados
 
-    def generate_SQL_command_from_data(self,data):
+    def generate_SQL_command_from_data(self,data,nome_coluna_id="id"):
         '''
                 tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
                 bd:string # banco de dados en que será inserido
@@ -302,6 +311,8 @@ class GeradorDeSql:
                 command+="SELECT ("
                 for i in data['associacoes']:
                     command+= str(i["variavelRetornada"])+ ","
+                if (data["idNoBD"]!=-1) and ("idNoBD" in data):
+                    command+=nome_coluna_id
                 command+=") FROM "
             elif data["tipoOpracao"]==5:#edicao
                 command+=" UPDATE "
@@ -332,6 +343,10 @@ class GeradorDeSql:
                     command+=str(coluna) + " IS "+str(data["dados"][coluna])
                     if coluna != data["dados"].keys()[-1]:
                         command+=" AND "
+                if (data["idNoBD"]!=-1) and ("idNoBD" in data):
+                    if len(data["dados"].keys())>0:
+                        command+=" AND "
+                    command+=nome_coluna_id+" IS "+data["idNoBD"]
                 command+=";"
             elif data["tipoOpracao"]==5:#edicao
                 command+=" SET "
@@ -344,6 +359,10 @@ class GeradorDeSql:
                     command+=str(coluna) + " IS "+str(data["associacoes"][coluna])
                     if coluna != data["associacoes"].keys()[-1]:
                         command+=" AND "
+                if (data["idNoBD"]!=-1) and ("idNoBD" in data):
+                    if len(data["dados"].keys())>0:
+                        command+=" AND "
+                    command+=nome_coluna_id+" IS "+data["idNoBD"]
                 command+=";"
         except sqliteError as e:
             print("erro no sqlite")
@@ -355,5 +374,5 @@ class GeradorDeSql:
 
         return command
 
-gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sqli_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
-pprint.pprint(gerador.processDataGenerated("1,'empregado','[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
+gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
+pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
