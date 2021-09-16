@@ -62,7 +62,7 @@ class GeradorDeSql:
             if campo!="":
                 self.message=+"no campo "+str(campo)+" "
             self.message+="é invalido\n"
-            if valor_possivel!="":
+            if tipo_possivel!="":
                 self.message+=" o tipo esperado era de "+self.valores_possiveis(valor_inserido)+" programa não pode continuar"
             super().__init__(valor_inserido,mensagem_principal_replace=True,mensage_adicional=self.message,campo=campo)
 
@@ -85,6 +85,9 @@ class GeradorDeSql:
     
     def create_temporary_DB(self,local,pattern):
         try:
+            f = open(local, "a")
+            f.write("")
+            f.close()
             sqlfile=open(pattern).read()
             self.logging.debug(sqlfile)
             conn = sqlite3.connect(local)
@@ -94,10 +97,11 @@ class GeradorDeSql:
             self.logging.debug("bd gerado com sucesso")
         except sqliteError as e:
             print("erro no sqlite")
-            self.logging.exception(e)
+            self.logging.error(e.message)
         except :
-            self.logging.exception("Unexpected error:", sys.exc_info()[0])
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
 
+#relacionado com o processamento/geração de dados
     def create_data(self,table,pattern,select_country="random",id:int=-1): 
         '''
             pattern deve ser dado da seguinte forma:
@@ -208,39 +212,13 @@ class GeradorDeSql:
                     else:
                         dados_gerados[dado]=self.buscar_ultimo_id_cadastrado(table)
         except self.TamanhoArrayErrado as e :
-            self.logging.exception(e)
+            self.logging.error(e)
         except self.ValorInvalido as e:
-            self.logging.exception(e)
+            self.logging.error(e)
         except self.TipoDeDadoIncompativel as e:
-            self.logging.exception(e)
+            self.logging.error(e)
         except :
-            self.logging.exception("Unexpected error:", sys.exc_info()[0])
-
-
-    def buscar_ultimo_id_cadastrado(self,table):
-        retorno=0
-        return retorno
-
-    def insert_data(self,data):
-        '''
-        INSERT INTO "operacoes"(	"tipoOperacao",	"nomeBD","associacoes","dados")
-        VALUES(1,"empregado","[(pessoas,pessoas_id,1),(lojas,loja_id)]","{salario:1200,contratado:30/12/20}")
-        '''
-        insert_command="INSERT INTO  'operacoes'('tipoOperacao',	'nomeBD','associacoes','dados') VALUES("
-        insert_command+=str(data["tipoOperacao"])+","
-        insert_command+=str(data["nomeBD"])+","
-        insert_command+=str(data["associacoes"]).replace("\n","")+","
-        insert_command+=str(data["dados"]).replace("\n","")+","
-        self.logging.debug(insert_command)
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(insert_command)
-            self.conn.commit()
-        except sqliteError as e:
-            print("erro no sqlite")
-            self.logging.exception(e)
-        except :
-            self.logging.exception("Unexpected error:", sys.exc_info()[0])
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def process_data_generated(self,text):
         pattern_geral=r"([0-9]*),'(.*)',([0-9]*),'(.*)','(.*)'"
@@ -280,6 +258,65 @@ class GeradorDeSql:
         self.logging.debug(dados)
         return dados
 
+    #relacionado a interação com sqlite
+    def buscar_ultimo_id_cadastrado(self,table):
+        retorno=0
+        return retorno
+
+    def insert_data_sqlite(self,tabela:str,data:dict):
+        '''
+        INSERT INTO "operacoes"(	"tipoOperacao",	"nomeBD","associacoes","dados")
+        VALUES(1,"empregado","[(pessoas,pessoas_id,1),(lojas,loja_id)]","{salario:1200,contratado:30/12/20}")
+        '''
+        insert_command="INSERT INTO "
+        insert_command+="'"+tabela+"' ("
+        for coluna in data.keys():
+            insert_command+=str(coluna) 
+            if coluna !=  list(data.keys())[-1]:
+                insert_command+=","
+        insert_command+=") VALUES ("
+        for coluna in data.keys():
+            if type(data[coluna])==type("") or type(data[coluna])==type({}) or  type(data[coluna])==type([])  :
+                insert_command+='"'+data[coluna].replace("\n","")+'"'
+            else:
+                insert_command+=str(data[coluna])
+            if coluna !=  list(data.keys())[-1]:
+                insert_command+=","
+        insert_command+=");"
+        self.logging.debug(insert_command)
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(insert_command)
+            self.conn.commit()
+        except sqliteError as e:
+            print("erro no sqlite")
+            self.logging.error(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def read_data_sqlite(self,tabela:str,filtro=""):
+        read_command=""
+        read_command+="SELECT * FROM "
+        read_command+="'"+tabela+"'"
+        if filtro != "":
+            read_command+=" WHERE "
+            for coluna in filtro.keys():
+                        command+=str(coluna) + " IS "+str(filtro[coluna])
+                        if coluna != filtro.keys()[-1]:
+                            command+=" AND "
+        read_command+=";"
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(read_command)
+            self.conn.commit()
+            return cursor.fetchall()
+        except sqliteError as e:
+            print("erro no sqlite")
+            self.logging.error(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data,nome_coluna_id="id"):
         '''
                 tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
@@ -333,12 +370,18 @@ class GeradorDeSql:
             if data["tipoOpracao"]==1:#insercao
                 command+="("
                 for coluna in data["dados"].keys():
-                    command+=str(coluna)
+                    if type(data[coluna])==type("") or type(data[coluna])==type({}) or  type(data[coluna])==type([])  :
+                        command+='"'+data[coluna].replace("\n","")+'"'
+                    else:
+                        command+=str(data[coluna])
                     if coluna != data["dados"].keys()[-1]:
                         command+=","
                 command+=") VALUES ("
                 for coluna in data["dados"].keys():
-                    command+=str(data["dados"][coluna])
+                    if type(data[coluna])==type("") or type(data[coluna])==type({}) or  type(data[coluna])==type([])  :
+                        command+='"'+data[coluna].replace("\n","")+'"'
+                    else:
+                        command+=str(data[coluna])
                     if coluna != data["dados"].keys()[-1]:
                         command+=","
                 command+=");"
@@ -373,13 +416,15 @@ class GeradorDeSql:
                 command+=";"
         except sqliteError as e:
             print("erro no sqlite")
-            self.logging.exception(e)
+            self.logging.error(e)
         except self.ValorInvalido as e :
-            self.logging.exception(e)
+            self.logging.error(e)
         except :
-            self.logging.exception("Unexpected error:", sys.exc_info()[0])
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
 
         return command
 
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
-pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
+#pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
+gerador.insert_data_sqlite("operacoes",{"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"associacoes":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
+pprint.pprint(gerador.read_data_sqlite("operacoes"))

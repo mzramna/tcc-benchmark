@@ -7,7 +7,8 @@ CREATE TABLE "operacoes" (
 	"dados"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-CREATE TABLE "operacoes" (
+
+CREATE TABLE "contadores" (
 	"id"	INTEGER UNIQUE,
 	"nomeBD"	TEXT NOT NULL,
 	"numeroDDadosCadastrados" INTEGER,
