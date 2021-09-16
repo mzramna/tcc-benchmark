@@ -2,7 +2,7 @@ from loggingSystem import loggingSystem
 from faker import Faker
 from random import random
 from sqlite3 import Error as sqliteError
-import os,sys,re,pprint,sqlite3
+import os,sys,re,pprint,sqlite3,time
 class GeradorDeSql:
     class ValorInvalido(Exception):
         def __init__(self, valor_inserido,mensagem_principal_replace=False,mensage_adicional="",campo="",valor_possivel="") :
@@ -79,8 +79,7 @@ class GeradorDeSql:
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
         self.logging = loggingSystem(loggin_name, arquivo=log_file,level=level)
-        if not os.path.isfile(sqlite_db):
-            self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
+        self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.conn = sqlite3.connect(sqlite_db)
     
     def create_temporary_DB(self,local,pattern):
@@ -88,18 +87,23 @@ class GeradorDeSql:
             f = open(local, "a")
             f.write("")
             f.close()
-            sqlfile=open(pattern).read()
-            self.logging.debug(sqlfile)
             conn = sqlite3.connect(local)
             cursor = conn.cursor()
-            cursor.execute(sqlfile)
+            sqlfile=open(pattern).read().split(";\n")
+            for sqlstatement in sqlfile:
+                if sqlstatement[-1] != ";":
+                    sqlstatement+=";"
+                self.logging.debug(sqlstatement)
+                cursor.execute(sqlstatement)
+                conn.commit()
             conn.close()
             self.logging.debug("bd gerado com sucesso")
         except sqliteError as e:
             print("erro no sqlite")
-            self.logging.error(e.message)
+            #print(e.Message)
+            self.logging.exception(e)
         except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            self.logging.error("Unexpected error:", str(sys.exc_info()[0]))
 
 #relacionado com o processamento/geração de dados
     def create_data(self,table,pattern,select_country="random",id:int=-1): 
@@ -260,23 +264,27 @@ class GeradorDeSql:
 
     #relacionado a interação com sqlite
     def buscar_ultimo_id_cadastrado(self,table):
-        retorno=0
-        return retorno
+        filtro={"nomeBD":table}
+        query=["numeroDDadosCadastrados"]
+        retorno=self.read_data_sqlite("contadores",filtro,query)
+        return int(retorno[0][0])
 
-    def insert_data_sqlite(self,tabela:str,data:dict):
+    def insert_data_sqlite(self,data:dict,nomeDB:str=""):
         '''
         INSERT INTO "operacoes"(	"tipoOperacao",	"nomeBD","associacoes","dados")
         VALUES(1,"empregado","[(pessoas,pessoas_id,1),(lojas,loja_id)]","{salario:1200,contratado:30/12/20}")
         '''
         insert_command="INSERT INTO "
-        insert_command+="'"+tabela+"' ("
+        insert_command+="'"+"operacoes"+"' ("
         for coluna in data.keys():
-            insert_command+=str(coluna) 
+            insert_command+=str(coluna)
+            if nomeDB == "" and coluna == 'nomeBD':
+                nomeDB=data["nomeBD"]
             if coluna !=  list(data.keys())[-1]:
                 insert_command+=","
         insert_command+=") VALUES ("
         for coluna in data.keys():
-            if type(data[coluna])==type("") or type(data[coluna])==type({}) or  type(data[coluna])==type([])  :
+            if type(data[coluna]) == type("") or type(data[coluna]) == type({}) or  type(data[coluna]) == type([])  :
                 insert_command+='"'+data[coluna].replace("\n","")+'"'
             else:
                 insert_command+=str(data[coluna])
@@ -287,6 +295,13 @@ class GeradorDeSql:
         try:
             cursor = self.conn.cursor()
             cursor.execute(insert_command)
+            pprint.pprint(data)
+            cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+nomeDB+"';")
+            listagem=cursor.fetchall() 
+            print(listagem)
+            if listagem == []:
+                cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+nomeDB+"',0);")
+            cursor.execute("UPDATE contadores SET numeroDDadosCadastrados = numeroDDadosCadastrados+1 WHERE nomeBD='"+nomeDB+"';")
             self.conn.commit()
         except sqliteError as e:
             print("erro no sqlite")
@@ -294,19 +309,34 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def read_data_sqlite(self,tabela:str,filtro=""):
+    def read_data_sqlite(self,tabela:str,filtro="",query="*"):
         read_command=""
-        read_command+="SELECT * FROM "
+        read_command+="SELECT "
+        if query != "*":
+            read_command+="("
+            for key in query:
+                read_command+=key
+                if key !=  query[-1]:
+                    read_command+=","
+            read_command+=")"
+        else:
+            read_command+=query
+        read_command+=" FROM "
         read_command+="'"+tabela+"'"
         if filtro != "":
             read_command+=" WHERE "
             for coluna in filtro.keys():
-                        command+=str(coluna) + " IS "+str(filtro[coluna])
-                        if coluna != filtro.keys()[-1]:
-                            command+=" AND "
+                        read_command+=str(coluna) + " IS "
+                        if type(filtro[coluna])==type(""):
+                            read_command+="'"+filtro[coluna]+"'"
+                        else:
+                            read_command+=filtro[coluna]
+                        if coluna !=  list(filtro.keys())[-1]:
+                            read_command+=" AND "
         read_command+=";"
         try:
             cursor = self.conn.cursor()
+            self.logging.debug(read_command)
             cursor.execute(read_command)
             self.conn.commit()
             return cursor.fetchall()
@@ -426,5 +456,7 @@ class GeradorDeSql:
 
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
 #pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
-gerador.insert_data_sqlite("operacoes",{"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"associacoes":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
-pprint.pprint(gerador.read_data_sqlite("operacoes"))
+#gerador.insert_data_sqlite({"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"associacoes":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
+#pprint.pprint(gerador.read_data_sqlite("operacoes"))
+#pprint.pprint(gerador.read_data_sqlite("contadores"))
+print(gerador.buscar_ultimo_id_cadastrado("empregado"))

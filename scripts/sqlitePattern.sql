@@ -1,4 +1,4 @@
-CREATE TABLE "operacoes" (
+CREATE TABLE IF NOT EXISTS "operacoes" (
 	"id"	INTEGER UNIQUE,
 	"tipoOperacao"	INTEGER NOT NULL,
 	"nomeBD"	TEXT NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE "operacoes" (
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 
-CREATE TABLE "contadores" (
+CREATE TABLE IF NOT EXISTS "contadores" (
 	"id"	INTEGER UNIQUE,
 	"nomeBD"	TEXT NOT NULL,
 	"numeroDDadosCadastrados" INTEGER,
