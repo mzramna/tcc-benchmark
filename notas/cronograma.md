@@ -3,7 +3,7 @@ fazer sistema de interação com sqlite
 
 * --ler dados registrados--
 * --inserir dados--
-* interagir com o numero de linhas em cada tabela
+* --interagir com o numero de linhas em cada tabela--
 
 <h1>17/9</h1>
 gerenciar geração de comandos para filtragem
@@ -20,7 +20,7 @@ gerar metodos de edição
 * gerar comando que verifica se foi editado corretamente
 * realizar testes
 
-<h1>19/9</h1>
+<h1>20/9</h1>
 converter dados para padrão do dbbench
 
 * ler documentação
