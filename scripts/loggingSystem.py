@@ -1,6 +1,6 @@
 import logging
 class loggingSystem:
-    def __init__(self, name, arquivo='./arquivo.log', format='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG):
+    def __init__(self,  arquivo='./arquivo.log', format='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG):
         """
         :param name: nome do log a ser escrito no arquivo
         :param arquivo: nome do arquivo a ser utilizado

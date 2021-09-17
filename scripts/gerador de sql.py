@@ -2,83 +2,143 @@ from loggingSystem import loggingSystem
 from faker import Faker
 from random import random
 from sqlite3 import Error as sqliteError
-import os,sys,re,pprint,sqlite3,time
+import sys,re,pprint,sqlite3
 class GeradorDeSql:
+#tratamento de erro
     class ValorInvalido(Exception):
-        def __init__(self, valor_inserido,mensagem_principal_replace=False,mensage_adicional="",campo="",valor_possivel="") :
-            if not mensagem_principal_replace:
-                self.message="um valor inserido foi inserido de forma errada\no valor "+str(valor_inserido)+" é invalido ou foi inserido de forma errada"
-                if campo!="":
-                    self.message=+" no campo "+str(campo)
-                self.message=+"\n"
-                self.listagem_valores_possiveis(valores_possiveis=valor_possivel)
-                self.message=+"\n"
-            self.message=+str(mensage_adicional)
-            
+        def __init__(self, valor_inserido="",mensagem_principal_replace=False,mensage_adicional="",campo="",valor_possivel="") :
+            self.valor_inserido=str(valor_inserido)
+            self.valor_possivel=valor_possivel
+            self.mensage_adicional=mensage_adicional
+            self.mensagem_principal_replace=mensagem_principal_replace
+            self.campo=campo
+            self.construir_mensagem()
             super().__init__(self.message)
 
         def listagem_valores_possiveis(self,valores_possiveis="",campo=""):
             if valores_possiveis !="":
                 if  type("")==type(valores_possiveis):
-                    self.message=+" o valor possivel "
+                    self.message+=" o valor possivel "
                     if campo!="":
-                        self.message=+"no campo "+str(campo)+" "
-                    self.message=+"é "
+                        self.message+="no campo "+str(campo)+" "
+                    self.message+="é "
                 elif  type("")==type(valores_possiveis):
-                    self.message=+" os valores possiveis "
+                    self.message+=" os valores possiveis "
                     if campo!="":
-                        self.message=+"no campo "+str(campo)+" "
-                    self.message=+"são "+str(valores_possiveis)
-                self.valores_possiveis(valores_possiveis)
+                        self.message+="no campo "+str(campo)+" "
+                    self.message+="são "+str(valores_possiveis)
+                return self.valores_possiveis(valores_possiveis)
 
         def valores_possiveis(self,valores_possiveis=""):
+            retorno=""
             if type(valores_possiveis)==type([]):
                 for valor in valores_possiveis:
-                    self.message+=str(valor) 
+                    if type(valor)==type(""):
+                        retorno+=valor
+                    else:
+                        retorno+=str(valor) 
                     if valor == valores_possiveis[-2]:
-                        self.message+=" ou "
+                        retorno+=" ou "
                     elif valor not in valores_possiveis[-2:]:
-                        self.message+=","
+                        retorno+=","
+            elif type(valores_possiveis)==type(""):
+                    retorno+=valores_possiveis
             else:
-                self.message+=str(valores_possiveis)
+                retorno+=str(valores_possiveis)
+            return retorno
+
+        def construir_mensagem(self,mensage_adicional=""):
+            if not self.mensagem_principal_replace:
+                self.message="um valor inserido foi inserido de forma errada\no valor "
+                self.message+=self.valor_inserido
+                " é invalido ou foi inserido de forma errada"
+                if self.campo!="":
+                    self.message+=" no campo "
+                    self.message+=self.campo
+                self.message+="\n"
+                self.message+=self.listagem_valores_possiveis(valores_possiveis=self.valor_possivel)
+                self.message+="\n"
+            if mensage_adicional == "":
+                self.message+=str(self.mensage_adicional)
+            else:
+                self.message+=mensage_adicional
+
+        def __str__(self):
+            return self.message
     class TamanhoArrayErrado(ValorInvalido):
         def __init__(self,valor_inserido,valor_possivel="",campo="") :
-            self.message="o tamanho para o array passado "
-            if campo!="":
-                self.message=+"no campo "+str(campo)+" "
-            self.message+="é invalido\n"
-            if valor_possivel!="":
-                self.message+=" o tamanho esperado era de "+self.valores_possiveis(valor_inserido)+" programa não pode continuar"
-            super().__init__(valor_inserido,mensagem_principal_replace=True,mensage_adicional=self.message,campo=campo)
+            super(GeradorDeSql.ValorInvalido, self).__init__()
+            self.valor_inserido=str(valor_inserido)
+            self.valor_possivel=valor_possivel
+            self.campo=campo
+            self.valor_inserido=valor_inserido
+            self.mensagem_principal_replace=True
+            self.construir_mensagem()
 
         def valores_possiveis(self,valores_possiveis=""):
-            super.valores_possiveis(valores_possiveis)
+            retorno=super(GeradorDeSql.TamanhoArrayErrado, self).valores_possiveis(valores_possiveis)
+            return retorno
 
         def listagem_valores_possiveis(self,valores_possiveis="",campo=""):
-            super.listagem_valores_possiveis(valores_possiveis="",campo="")
+            return super(GeradorDeSql.TamanhoArrayErrado, self).listagem_valores_possiveis(valores_possiveis=valores_possiveis,campo=campo)
+
+        def construir_mensagem(self):
+            self.message="o tamanho para o array passado "
+            if self.campo!="":
+                if type(self.campo)==type(""):
+                    self.message+="no campo "+self.campo+" "
+                else:
+                    self.message+="no campo "+str(self.campo)+" "
+            self.message+="é invalido\n"
+            if self.valor_possivel!="":
+                self.message+=" o tamanho esperado era de "
+                self.message+=self.valores_possiveis(self.valor_inserido)
+                self.message+=" programa não pode continuar"
+            
+            #super(GeradorDeSql.TamanhoArrayErrado, self).construir_mensagem(self.message)
+
+        def __str__(self):
+            return self.message
     class TipoDeDadoIncompativel(ValorInvalido):
         def __init__(self,valor_inserido,tipo_possivel="",campo="") :
-            self.message="o tipo da variavel passada "
-            if campo!="":
-                self.message=+"no campo "+str(campo)+" "
-            self.message+="é invalido\n"
-            if tipo_possivel!="":
-                self.message+=" o tipo esperado era de "+self.valores_possiveis(valor_inserido)+" programa não pode continuar"
-            super().__init__(valor_inserido,mensagem_principal_replace=True,mensage_adicional=self.message,campo=campo)
+            super(GeradorDeSql.ValorInvalido, self).__init__()
+            self.valor_inserido=valor_inserido
+            self.tipo_possivel=tipo_possivel
+            self.mensagem_principal_replace=True
+            self.campo=campo
+            self.construir_mensagem()
 
         def valores_possiveis(self,valores_possiveis=""):
-            super.valores_possiveis(valores_possiveis)
+            return super(GeradorDeSql.TipoDeDadoIncompativel, self).valores_possiveis(valores_possiveis=valores_possiveis)
 
         def listagem_valores_possiveis(self,valores_possiveis="",campo=""):
-            super.listagem_valores_possiveis(valores_possiveis="",campo="")
+            return super(GeradorDeSql.TipoDeDadoIncompativel, self).listagem_valores_possiveis(valores_possiveis=valores_possiveis,campo=campo)
 
+        def construir_mensagem(self):
+            self.message="o tipo da variavel passada "
+            if self.campo!="":
+                if type(self.campo)==type(""):
+                    self.message+="no campo "+self.campo+" "
+                else:
+                    self.message+="no campo "+str(self.campo)+" "
+            self.message+="é invalido\n"
+            if self.tipo_possivel != "":
+                self.message+=" o tipo esperado era de "
+                self.message+=self.valores_possiveis(self.tipo_possivel)
+                self.message+=" programa não pode continuar"
+            #self.construir_mensagem(self.message)
+
+        def __str__(self):
+            return self.message
+
+#inicialização
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql",loggin_name="geradorSQL", log_file="./geradorSQL.log",level=10):
         """
         classe para gerenciar arquivos csv
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(loggin_name, arquivo=log_file,level=level)
+        self.logging = loggingSystem( arquivo=log_file,level=level)
         self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.conn = sqlite3.connect(sqlite_db)
     
@@ -88,25 +148,17 @@ class GeradorDeSql:
             f.write("")
             f.close()
             conn = sqlite3.connect(local)
-            cursor = conn.cursor()
-            sqlfile=open(pattern).read().split(";\n")
-            for sqlstatement in sqlfile:
-                if sqlstatement[-1] != ";":
-                    sqlstatement+=";"
-                self.logging.debug(sqlstatement)
-                cursor.execute(sqlstatement)
-                conn.commit()
+            self.execute_sqlfile_sqlite(pattern,conn)
             conn.close()
             self.logging.debug("bd gerado com sucesso")
         except sqliteError as e:
             print("erro no sqlite")
-            #print(e.Message)
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", str(sys.exc_info()[0]))
 
 #relacionado com o processamento/geração de dados
-    def create_data(self,table,pattern,select_country="random",id:int=-1): 
+    def create_data(self,table,pattern,select_country="random",id:int=-1):      
         '''
             pattern deve ser dado da seguinte forma:
             {
@@ -126,18 +178,22 @@ class GeradorDeSql:
             }
             }
         '''
+        self.logging.debug("create_data")
         try:
+            self.logging.logger.getLogger('faker').setLevel(self.logging.logger.ERROR)
             if select_country=="random":
                 fake = Faker()
-                fake = Faker(fake.locale()) #define o faker para seguir o padrão de um pais expecifico selecionado aleatoriamente dentre os disponiveis
+                random_locale=fake.locale()
+                self.logging.debug(random_locale)
+                fake = Faker(random_locale)#define o faker para seguir o padrão de um pais expecifico selecionado aleatoriamente dentre os disponiveis
             else:
                 fake = Faker(select_country)#se for definido então o codigo usado será o do pais inserido
             dados_gerados={"nomeBD":table,"tipoOperacao":1}
-            if id !=-1:
-                dados_gerados["idNoBD"]=id
-            else:
-                dados_gerados["idNoBD"]=self.buscar_ultimo_id_cadastrado(table)
+            if id ==-1:
+                id=self.buscar_ultimo_id_cadastrado(table)+1
+            dados_gerados["idNoBD"]=id
             for dado in pattern.keys():
+                self.logging.debug(dado)
                 if pattern[dado][0] == "nomeCompleto":
                     '''supoe-se que qualquer pessoa pode ter nascido em qq lugar e morar em qualquer outro lugar,nomes são dados pelo gerador de qualquer idioma,por isso nao foi definido um pais para a geracao'''
                     dados_gerados[dado]=fake.name()
@@ -152,15 +208,42 @@ class GeradorDeSql:
 
                     o 3 parametro deve ser passado como o 2,mas não se limita apenas ao token de tempo anterior,sendo possivel um intervalo do futuro
                     '''
-                    if len(pattern[dado])<1:
-                        raise self.TamanhoArrayErrado(valor_possivel=[1,2,3],valor_inserido=len(pattern[dado]))
-                    if pattern[dado][1]:#se true é tudo randomico
-                        dados_gerados[dado]=fake.date_between(end_date="today")
+                    if len(pattern[dado])<2:
+                        raise self.TamanhoArrayErrado(valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="timestamp")
+                    regex1=r'[\+,\-][0-9]*[d,m,y]'
+                    regex2=r'[0-9]{4}[\/,\-][0-9]{2}[\/,\-][0-9]{2}'
+                    if len(pattern[dado])>=2:
+                        match1=re.match(regex1,pattern[dado][1])
+                        match2=re.match(regex2,pattern[dado][1])
+                        if type(pattern[dado][1] )!=type("") or ((not match1 and not match2 and (match1 != None or match2 != None)) and pattern[dado][1] != "agora"):
+                            if type(pattern[dado][1] ) != type(""):
+                                print("tipo")
+                            if (not match1 and not match2 and type(match1) != None):
+                                print("regex")
+                                print(match1)
+                                print(match2)
+                            if pattern[dado][1]!="agora":
+                                print("string especial")
+                            raise self.TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string com padrão -30y ou 1999-02-02 ou 1999/02/02",campo="campo 1 adicional em timestamp")
+                    if len(pattern[dado])>=3:
+                        match1=re.match(regex1,pattern[dado][2])
+                        match2=re.match(regex2,pattern[dado][2])
+                        if type(pattern[dado][2] )!=type("") or ((not match1 and not match2 and (match1 != None or match2 != None)) and pattern[dado][2] != "agora") :
+                            raise self.TipoDeDadoIncompativel(pattern[dado][2],tipo_possivel="string com padrão -30y ou 1999-02-02 ou 1999/02/02",campo="campo 2 adicional em timestamp")
+                    start_date=""
+                    end_date=""
+                    if pattern[dado][1] == "agora" :#se true é tudo randomico
+                        end_date="today"
                     else:
-                        if pattern[dado][3] == "agora":
-                            dados_gerados[dado]=fake.fake.date_between(start_date=pattern[dado][2],end_date="today")
-                        else:
-                            dados_gerados[dado]=fake.date_between_dates(pattern[dado][2],pattern[dado][3])
+                        end_date=pattern[dado][1]
+                        if len(pattern[dado])>2:
+                            start_date=end_date
+                            if pattern[dado][2] == "agora":
+                                end_date="today"
+                    if start_date == "" :
+                        dados_gerados[dado]=fake.date_between(end_date=end_date)
+                    else:
+                        dados_gerados[dado]=fake.date_between_dates(start_date=start_date,end_date=end_date)
                 elif pattern[dado][0] == "pais":
                     dados_gerados[dado]=fake.current_country()
                 elif pattern[dado][0] == "cidade":
@@ -204,17 +287,28 @@ class GeradorDeSql:
                 elif pattern[dado][0] == "duracaoHoras":
                     dados_gerados[dado]=random.uniform(0.0,4.0)
                 elif pattern[dado][0] == "naLista":
+                    if not all(isinstance(n, str) for n in list(pattern[dado][0])):
+                        raise self.TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string",campo="variaveis adicionais da variavel naLista")
                     dados_gerados[dado]=fake.word(ext_word_list=pattern[dado][1:] )
                 elif pattern[dado][0] == "valorPago":
                     dados_gerados[dado]=random.uniform(0.0,50.0)
                 elif pattern[dado][0] == "associacao":
-                    ##associação entre as as varias tabelas,precisa de ter 
-                    pass
-                elif pattern[dado][0] == "id":
-                    if id!="":
-                        dados_gerados[dado]=id
+                    '''
+                    parametros obrigatórios são nome da tabela e se random ou se definido
+                    '''
+                    if type(pattern[dado][2]) != type("") or type(pattern[dado][2]) != type([]):
+                        raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][3],tipo_possivel=["string","array"],campo="associacao")
+                    if pattern[dado][2]!="random":
+                        dados_gerados[dado]=pattern[dado][2]
                     else:
-                        dados_gerados[dado]=self.buscar_ultimo_id_cadastrado(table)
+                        total_cadastrado=self.buscar_ultimo_id_cadastrado(pattern[dado][1])
+                        if total_cadastrado>1:
+                            dados_gerados[dado]=fake.random_int(min=1,max=self.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                        else:
+                            dados_gerados[dado]=1
+                elif pattern[dado][0] == "id":
+                    dados_gerados[dado]=id
+            return dados_gerados
         except self.TamanhoArrayErrado as e :
             self.logging.error(e)
         except self.ValorInvalido as e:
@@ -262,10 +356,11 @@ class GeradorDeSql:
         self.logging.debug(dados)
         return dados
 
-    #relacionado a interação com sqlite
+#relacionado a interação com sqlite
     def buscar_ultimo_id_cadastrado(self,table):
         filtro={"nomeBD":table}
         query=["numeroDDadosCadastrados"]
+        self.verify_if_contador_exists(table)
         retorno=self.read_data_sqlite("contadores",filtro,query)
         return int(retorno[0][0])
 
@@ -296,11 +391,7 @@ class GeradorDeSql:
             cursor = self.conn.cursor()
             cursor.execute(insert_command)
             pprint.pprint(data)
-            cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+nomeDB+"';")
-            listagem=cursor.fetchall() 
-            print(listagem)
-            if listagem == []:
-                cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+nomeDB+"',0);")
+            self.verify_if_contador_exists(nomeDB)
             cursor.execute("UPDATE contadores SET numeroDDadosCadastrados = numeroDDadosCadastrados+1 WHERE nomeBD='"+nomeDB+"';")
             self.conn.commit()
         except sqliteError as e:
@@ -308,6 +399,13 @@ class GeradorDeSql:
             self.logging.error(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
+    
+    def verify_if_contador_exists(self,nomeDB):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+nomeDB+"';")
+        listagem=cursor.fetchall() 
+        if listagem == []:
+            cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+nomeDB+"',0);")
 
     def read_data_sqlite(self,tabela:str,filtro="",query="*"):
         read_command=""
@@ -346,7 +444,26 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    #relacionado com a geração do sql final
+    def read_contadores(self,filtro="",query="*"):
+        return gerador.read_data_sqlite("contadores",filtro=filtro,query=query)
+
+    def read_operacoes(self,filtro="",query="*"):
+        return gerador.read_data_sqlite("operacoes",filtro=filtro,query=query)
+
+    def execute_sqlfile_sqlite(self,pattern,conn=None):
+        if conn != None:
+            cursor = conn.cursor()
+        else:
+            cursor=self.conn
+        sqlfile=open(pattern).read().split(";\n")
+        for sqlstatement in sqlfile:
+            if sqlstatement[-1] != ";":
+                sqlstatement+=";"
+            self.logging.debug(sqlstatement)
+            cursor.execute(sqlstatement)
+            conn.commit()
+
+#relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data,nome_coluna_id="id"):
         '''
                 tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
@@ -456,7 +573,16 @@ class GeradorDeSql:
 
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
 #pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
-#gerador.insert_data_sqlite({"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"associacoes":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
-#pprint.pprint(gerador.read_data_sqlite("operacoes"))
-#pprint.pprint(gerador.read_data_sqlite("contadores"))
-print(gerador.buscar_ultimo_id_cadastrado("empregado"))
+# gerador.insert_data_sqlite({"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"associacoes":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
+# pprint.pprint(gerador.read_operacoes())
+# pprint.pprint(gerador.read_contadores())
+# print(gerador.buscar_ultimo_id_cadastrado("empregado"))
+tmp=[]
+for i in range(0,10):
+    tmp.append(gerador.create_data("actor",pattern={
+        "actor_id":["id"],
+        "first_name":["primeiroNome"],
+        "last_name":["sobrenome"],
+        "last_update":["timestamp","agora"]
+    },select_country="en_US"))
+pprint.pprint(tmp)

@@ -3,18 +3,18 @@
         "actor_id":["id"],
         "first_name":["primeiroNome"],
         "last_name":["sobrenome"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "country":{
         "country_id":["id"],
         "country":["pais"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "city":{
         "city_id":["id"],
         "city":["cidade"],
         "country_id":["associacao","country"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "address":{
         "address_id":["id"],
@@ -23,12 +23,12 @@
         "city_id":["associacao","city"],
         "postal_code":["cep"],
         "phone":["telefone"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "category":{
         "category_id":["id"],
         "name":["nomeCategoria"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "staff":{
         "staff_id":["id"],
@@ -40,13 +40,13 @@
         "active":["boleano"],
         "username":["usuario"],
         "password":["senha"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "store":{
         "store_id":["id"],
         "manager_staff_id":["assosiacao","staff"],
         "address_id":["assosiacao","staff"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "customer":{
         "customer_id":["id"],
@@ -61,7 +61,7 @@
     "language":{
         "language_id":["id"],
         "name":["idioma"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "film":{
         "film_id":["id"],
@@ -74,23 +74,23 @@
         "length":["duracaoHoras"],
         "rating":["naLista","G","PG","PG-13","R","NC-17"],
         "special_features":["naLista","Trailers","Commentaries","Deleted Scenes","Behind the Scenes"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "film_actor":{
         "actor_id":["id"],
         "film_id":["assosiacao","film"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "film_category":{
         "film_id":["id"],
         "category_id":["associacao","category"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "inventory":{
         "inventory_id":["id"],
         "film_id":["associacao"],
         "store_id":["associacao","store"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "rental":{
         "rental_id":["id"],
@@ -99,7 +99,7 @@
         "customer_id":["associacao","customer"],
         "return_date":["datetime"],
         "staff_id":["associacao","staff"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     },
     "payment":{
         "payment_id":["id"],
@@ -108,7 +108,7 @@
         "rental_id":["associacao","rental"],
         "amount":["valorPago"],
         "payment_date":["datetime"],
-        "last_update":["timestamp",]
+        "last_update":["timestamp","agora"]
     }
     
 
