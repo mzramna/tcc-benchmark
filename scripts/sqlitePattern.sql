@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS "operacoes" (
 	"tipoOperacao"	INTEGER NOT NULL,
 	"nomeBD"	TEXT NOT NULL,
 	"idNoBD" INTEGER NOT NULL,
-	"associacoes"	TEXT,
+	"adicionais"	TEXT,
 	"dados"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );

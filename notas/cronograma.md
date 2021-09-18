@@ -16,11 +16,23 @@ gerenciar geração de comandos para filtragem
 <h1>18/9</h1>
 gerar metodos de edição
 
-* criar metodo que usa o de criação e listagem filtrada para gerar o comando de edição
+* --criar metodo que usa o de criação e listagem filtrada para gerar o comando de edição--
 * gerar comando que verifica se foi editado corretamente
 * realizar testes
 
+
 <h1>20/9</h1>
+criar metodo de deleção,e listagem
+ * criar metodo de gerar dado de listagem geral
+ * criar metodo de gerar dado de busca filtrada
+ * criar metodo de gerar dado de deleção
+
+ <h1>21/9</h1>
+ * criar metodo de salvar os dados de listagem geral gerados no sql 
+ * criar metodo de salvar os dados de busca filtrada gerados no sql
+ * criar metodo de salvar os dados de deleção gerados no sql
+ 
+<h1>22/9</h1>
 converter dados para padrão do dbbench
 
 * ler documentação
