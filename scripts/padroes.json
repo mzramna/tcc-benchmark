@@ -55,8 +55,8 @@
         "last_name":["sobrenome"],
         "address_id":["assosiacao","address"],
         "active":["boleano"],
-        "create_date":["timestamp"],
-        "last_update":["timestamp"]
+        "create_date":["timestamp","-2w"],
+        "last_update":["timestamp","agora"]
     },
     "language":{
         "language_id":["id"],
@@ -88,7 +88,7 @@
     },
     "inventory":{
         "inventory_id":["id"],
-        "film_id":["associacao"],
+        "film_id":["associacao","film"],
         "store_id":["associacao","store"],
         "last_update":["timestamp","agora"]
     },

@@ -1,8 +1,8 @@
 from loggingSystem import loggingSystem
 from faker import Faker
-from random import random
+from random import random,uniform
 from sqlite3 import Error as sqliteError
-import sys,re,pprint,sqlite3
+import sys,re,pprint,sqlite3,json
 class GeradorDeSql:
 #tratamento de erro
     class ValorInvalido(Exception):
@@ -31,7 +31,7 @@ class GeradorDeSql:
 
         def valores_possiveis(self,valores_possiveis=""):
             retorno=""
-            if type(valores_possiveis)==type([]):
+            if type(valores_possiveis)==type([]) or type(valores_possiveis)==type({}):
                 for valor in valores_possiveis:
                     if type(valor)==type(""):
                         retorno+=valor
@@ -76,6 +76,7 @@ class GeradorDeSql:
             self.construir_mensagem()
 
         def valores_possiveis(self,valores_possiveis=""):
+            print(valores_possiveis)
             retorno=super(GeradorDeSql.TamanhoArrayErrado, self).valores_possiveis(valores_possiveis)
             return retorno
 
@@ -90,7 +91,7 @@ class GeradorDeSql:
                 else:
                     self.message+="no campo "+str(self.campo)+" "
             self.message+="é invalido\n"
-            if self.valor_possivel!="":
+            if self.valor_possivel != "":
                 self.message+=" o tamanho esperado era de "
                 self.message+=self.valores_possiveis(self.valor_inserido)
                 self.message+=" programa não pode continuar"
@@ -126,6 +127,8 @@ class GeradorDeSql:
                 self.message+=" o tipo esperado era de "
                 self.message+=self.valores_possiveis(self.tipo_possivel)
                 self.message+=" programa não pode continuar"
+                self.message+=" mas foi inserido"
+                self.message+=str(self.valor_inserido)
             #self.construir_mensagem(self.message)
 
         def __str__(self):
@@ -188,19 +191,19 @@ class GeradorDeSql:
                 fake = Faker(random_locale)#define o faker para seguir o padrão de um pais expecifico selecionado aleatoriamente dentre os disponiveis
             else:
                 fake = Faker(select_country)#se for definido então o codigo usado será o do pais inserido
-            dados_gerados={"nomeBD":table,"tipoOperacao":1}
-            if id ==-1:
+            dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":{},"associacoes":[]}
+            if id == -1:
                 id=self.buscar_ultimo_id_cadastrado(table)+1
             dados_gerados["idNoBD"]=id
             for dado in pattern.keys():
                 self.logging.debug(dado)
                 if pattern[dado][0] == "nomeCompleto":
                     '''supoe-se que qualquer pessoa pode ter nascido em qq lugar e morar em qualquer outro lugar,nomes são dados pelo gerador de qualquer idioma,por isso nao foi definido um pais para a geracao'''
-                    dados_gerados[dado]=fake.name()
+                    dados_gerados["dados"][dado]=fake.name()
                 elif pattern[dado][0] == "primeiroNome":
-                    dados_gerados[dado]=fake.first_name()
+                    dados_gerados["dados"][dado]=fake.first_name()
                 elif pattern[dado][0] == "sobrenome":
-                    dados_gerados[dado]=fake.last_name()
+                    dados_gerados["dados"][dado]=fake.last_name()
                 elif pattern[dado][0] == "timestamp":
                     '''precisa obrigatoriamente de 1 parametro dizendo se vai ser tudo randomico ou se vai ter um intervalo,se tiver um intervalo devem ser passados mais 2 parametros,um inicial e um final , se o final for o valor "agora" então o valor final sera o timestamp de agora do sistema operacional
 
@@ -241,73 +244,75 @@ class GeradorDeSql:
                             if pattern[dado][2] == "agora":
                                 end_date="today"
                     if start_date == "" :
-                        dados_gerados[dado]=fake.date_between(end_date=end_date)
+                        dados_gerados["dados"][dado]=fake.date_between(end_date=end_date).strftime('%Y-%m-%d %H:%M:%S')
                     else:
-                        dados_gerados[dado]=fake.date_between_dates(start_date=start_date,end_date=end_date)
+                        dados_gerados["dados"][dado]=fake.date_between_dates(start_date=start_date,end_date=end_date).strftime('%Y-%m-%d %H:%M:%S')
                 elif pattern[dado][0] == "pais":
-                    dados_gerados[dado]=fake.current_country()
+                    dados_gerados["dados"][dado]=fake.current_country()
                 elif pattern[dado][0] == "cidade":
-                    dados_gerados[dado]=fake.city()
+                    dados_gerados["dados"][dado]=fake.city()
                 elif pattern[dado][0] == "endereco":
-                    dados_gerados[dado]=fake.street_address()
+                    dados_gerados["dados"][dado]=fake.street_address()
                 elif pattern[dado][0] == "cep":
-                    dados_gerados[dado]=fake.postcode()
+                    dados_gerados["dados"][dado]=fake.postcode()
                 elif pattern[dado][0] == "telefone":
                     if fake.boolean():
-                        dados_gerados[dado]=fake.phone_number()
+                        dados_gerados["dados"][dado]=fake.phone_number()
                     else:
                         try:
-                            dados_gerados[dado]=fake.cellphone_number()
+                            dados_gerados["dados"][dado]=fake.cellphone_number()
                         except:
-                            dados_gerados[dado]=fake.phone_number()
+                            dados_gerados["dados"][dado]=fake.phone_number()
                 elif pattern[dado][0] == "nomeCategoria":
-                    dados_gerados[dado]=fake.word()
+                    dados_gerados["dados"][dado]=fake.word()
                 elif pattern[dado][0] == "email":
-                    dados_gerados[dado]=fake.email()
+                    dados_gerados["dados"][dado]=fake.email()
                 elif pattern[dado][0] == "usuario":
-                    dados_gerados[dado]=fake.profile(fields=["username"])["username"]
+                    dados_gerados["dados"][dado]=fake.profile(fields=["username"])["username"]
                 elif pattern[dado][0] == "senha":
-                    dados_gerados[dado]=fake.password(length=fake.random_int(min=8,max=32))
+                    dados_gerados["dados"][dado]=fake.password(length=fake.random_int(min=8,max=32))
                 elif pattern[dado][0] == "boleano":
-                    dados_gerados[dado]=fake.boolean()
+                    dados_gerados["dados"][dado]=fake.boolean()
                 elif pattern[dado][0] == "idioma":
-                    dados_gerados[dado]=fake.locale()
+                    dados_gerados["dados"][dado]=fake.locale()
                 elif pattern[dado][0] == "titulo":
-                    dados_gerados[dado]=fake.sentence(nb_words=fake.random_int(min=1,max=10))
+                    dados_gerados["dados"][dado]=fake.sentence(nb_words=fake.random_int(min=1,max=10))
                 elif pattern[dado][0] == "textoLongo":
-                    dados_gerados[dado]=fake.paragraphs(nb=fake.random_int(min=1,max=2))
+                    dados_gerados["dados"][dado]=fake.paragraphs(nb=fake.random_int(min=1,max=2))
                 elif pattern[dado][0] == "nota":
-                    dados_gerados[dado]=random.uniform(0.0,10.0)
+                    dados_gerados["dados"][dado]=uniform(0.0,10.0)
                 elif pattern[dado][0] == "ano":
-                    dados_gerados[dado]=fake.date(pattern='%Y')
+                    dados_gerados["dados"][dado]=fake.date(pattern='%Y')
                 elif pattern[dado][0] == "duracaoDias":
-                    dados_gerados[dado]=fake.random_int(min=1,max=10)
+                    dados_gerados["dados"][dado]=fake.random_int(min=1,max=10)
                 elif pattern[dado][0] =="datetime":
-                    dados_gerados[dado]=fake.date_time()
+                    dados_gerados["dados"][dado]=fake.date_time().strftime('%Y-%m-%d')
                 elif pattern[dado][0] == "duracaoHoras":
-                    dados_gerados[dado]=random.uniform(0.0,4.0)
+                    dados_gerados["dados"][dado]=uniform(0.0,4.0)
                 elif pattern[dado][0] == "naLista":
                     if not all(isinstance(n, str) for n in list(pattern[dado][0])):
                         raise self.TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string",campo="variaveis adicionais da variavel naLista")
-                    dados_gerados[dado]=fake.word(ext_word_list=pattern[dado][1:] )
+                    dados_gerados["dados"][dado]=fake.word(ext_word_list=pattern[dado][1:] )
                 elif pattern[dado][0] == "valorPago":
-                    dados_gerados[dado]=random.uniform(0.0,50.0)
+                    dados_gerados["dados"][dado]=uniform(0.0,50.0)
                 elif pattern[dado][0] == "associacao":
                     '''
                     parametros obrigatórios são nome da tabela e se random ou se definido
                     '''
-                    if type(pattern[dado][2]) != type("") or type(pattern[dado][2]) != type([]):
-                        raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][3],tipo_possivel=["string","array"],campo="associacao")
-                    if pattern[dado][2]!="random":
-                        dados_gerados[dado]=pattern[dado][2]
+                    if len(pattern[dado])<2:
+                        raise self.TamanhoArrayErrado(valor_possivel=2,valor_inserido=len(pattern[dado]),campo="associacao")
+                    if type(pattern[dado][1]) != type(""):
+                        raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
+                    if pattern[dado][1]!="random":
+                        dados_gerados["dados"][dado]=pattern[dado][1]
                     else:
                         total_cadastrado=self.buscar_ultimo_id_cadastrado(pattern[dado][1])
                         if total_cadastrado>1:
-                            dados_gerados[dado]=fake.random_int(min=1,max=self.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                            dados_gerados["dados"][dado]=fake.random_int(min=1,max=self.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
-                            dados_gerados[dado]=1
+                            dados_gerados["dados"][dado]=1
                 elif pattern[dado][0] == "id":
-                    dados_gerados[dado]=id
+                    dados_gerados["dados"][dado]=id
             return dados_gerados
         except self.TamanhoArrayErrado as e :
             self.logging.error(e)
@@ -317,6 +322,11 @@ class GeradorDeSql:
             self.logging.error(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def gerador_filtro(self,table,pattern,select_country="random",id:int=-1):
+        parametros=pattern.keys()
+        created_data=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id)
+        return {"filtro":parametros,"data":created_data}
 
     def process_data_generated(self,text):
         pattern_geral=r"([0-9]*),'(.*)',([0-9]*),'(.*)','(.*)'"
@@ -379,8 +389,12 @@ class GeradorDeSql:
                 insert_command+=","
         insert_command+=") VALUES ("
         for coluna in data.keys():
-            if type(data[coluna]) == type("") or type(data[coluna]) == type({}) or  type(data[coluna]) == type([])  :
+            if type(data[coluna]) == type("") :
                 insert_command+='"'+data[coluna].replace("\n","")+'"'
+            elif type(data[coluna]) == type({}) or  type(data[coluna]) == type([]):
+                for i in list(data[coluna]):
+                    i.replace("\n","")
+                insert_command+='"'+str(data[coluna])+'"'
             else:
                 insert_command+=str(data[coluna])
             if coluna !=  list(data.keys())[-1]:
@@ -571,18 +585,44 @@ class GeradorDeSql:
 
         return command
 
+    def gerar_dado_insersao(self,table,pattern,select_country="random",id:int=-1):
+        data=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id)
+        self.logging.debug(data)
+        self.insert_data_sqlite(data,nomeDB=table)
+
+    def gerar_dados_por_json(self,json_file,select_country="random",tabela="random",quantidade="random"):
+        file=open(json_file)
+        json_loaded=json.loads(file.read())
+        if tabela == "random":
+            tabela=random.choice(json_loaded.keys())
+        if quantidade == "random":
+            quantidade=random.randint(0, 20)
+        for i in range(0,quantidade):
+            self.logging.debug("table="+tabela+", pattern="+str(json_loaded[tabela])+", select_country="+select_country)
+            self.gerar_dado_insersao(table=tabela,pattern=json_loaded[tabela],select_country=select_country)
+    
+    def gerar_todos_dados_por_json(self,json_file,select_country="random",quantidade="random"):
+        if quantidade == "random":
+            quantidade=random.randint(0, 20)
+        file=open(json_file)
+        json_loaded=json.loads(file.read())
+        self.logging.debug(json_loaded)
+        for table in json_loaded.keys():
+            self.gerar_dados_por_json(json_file,select_country=select_country,tabela=table,quantidade=quantidade)
+
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
 #pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
 # gerador.insert_data_sqlite({"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"associacoes":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
 # pprint.pprint(gerador.read_operacoes())
 # pprint.pprint(gerador.read_contadores())
 # print(gerador.buscar_ultimo_id_cadastrado("empregado"))
-tmp=[]
-for i in range(0,10):
-    tmp.append(gerador.create_data("actor",pattern={
-        "actor_id":["id"],
-        "first_name":["primeiroNome"],
-        "last_name":["sobrenome"],
-        "last_update":["timestamp","agora"]
-    },select_country="en_US"))
-pprint.pprint(tmp)
+# tmp=[]
+# for i in range(0,10):
+#     gerador.gerar_dado_insersao("city",pattern=dict({
+#         "city_id":["id"],
+#         "city":["cidade"],
+#         "country_id":["associacao","country"],
+#         "last_update":["timestamp","agora"]
+#     }),select_country="en_US")
+gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade=3)
+pprint.pprint(gerador.read_contadores())

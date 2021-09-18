@@ -8,9 +8,9 @@ fazer sistema de interação com sqlite
 <h1>17/9</h1>
 gerenciar geração de comandos para filtragem
 
-* criar metodo de se criar os parametros de filtro,basear no de dados novos
-* verificar os tratamentos de erro
-* realizar testes do q foi criado hj e ontem
+* --criar metodo de se criar os parametros de filtro,basear no de dados novos--
+* --verificar os tratamentos de erro--
+* --realizar testes do q foi criado hj e ontem--
 * refatorar e reorganizar texto de planejamento de acordo com o que foi modificado
 
 <h1>18/9</h1>
