@@ -1,9 +1,9 @@
 from array import array
 from loggingSystem import loggingSystem
 from faker import Faker
-from random import random,uniform
+from random import randint, random,uniform,choice
 from sqlite3 import Error as sqliteError
-import sys,re,pprint,sqlite3,json
+import sys,re,sqlite3,json
 class GeradorDeSql:
 #tratamento de erro
     class ValorInvalido(Exception):
@@ -210,7 +210,7 @@ class GeradorDeSql:
             self.logging.error("Unexpected error:", str(sys.exc_info()[0]))
 
 #relacionado com o processamento/geração de dados
-    def create_data(self,table:str,pattern:dict,select_country:str="random",id:int=-1) -> dict:
+    def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1) -> dict:
         """cria um novo dado para ser inserido no sqlite ou ser usado em outras partes do codigo
 
         Args:
@@ -385,7 +385,7 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def gerador_pesquisa(self,table:str,pattern:dict,select_country:str="random",id:int=-1,filtro:list=[]) -> dict:
+    def create_select(self,table:str,pattern:dict,select_country:str="random",id:int=-1,filtro:list=[]) -> dict:
         
         """função gera um dictionary variante do de create_data que contem os dados equivalentes ao comando de pesquisa para o sqlite
 
@@ -394,31 +394,93 @@ class GeradorDeSql:
             pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
             id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
-            filtro (list, optional): equivalente a coluna adicional do dado gerado. Defaults to [].
+            filtro (list or str, optional): equivalente a coluna adicional do dado pesquisado,se for igual a "*" irá retornar todos. Defaults to [].
 
         Returns:
-            dict: [description]
-        """        
-        
-        filtro=self.gerador_filtro(pattern)
-        removidos=list(set(pattern.keys())-set(filtro))
-        for i in removidos:
+            dict: dados gerados usando faker para corresponder ao padrão necessário de uma pesquisa no bd
+        """
+        pattern=pattern.copy()
+        # if filtro==[]:
+        filtro_=self.gerador_filtro(pattern)
+        # elif filtro=="*":
+        #     filtro=list(pattern.keys())
+        self.logging.debug(filtro_)
+        for i in filtro_:
             pattern.pop(i)
-        created_data=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id)
-        if filtro ==[]:
+        created_data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
+        
+        if filtro == "*":
             created_data["tipoOperacao"]=3
             created_data["adicionais"]=[]
         else:
             created_data["tipoOperacao"]=4
-            created_data["adicionais"]=filtro
+            created_data["adicionais"]=filtro_
+        self.logging.debug(created_data)
         return created_data
 
-    def gerador_filtro(self,pattern:dict) -> array:
+    def create_update(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",id:int=-1) -> dict:
+        """cria um novo dado para ser inserido no sqlite para a operação de update
+
+        Args:
+            table (str): nome da tabela do sql que o dado será inserido
+            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): array com os nomes da colunas que não serão alterados. Defaults to [].
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+
+        Returns:
+            dict: dados gerados usando faker para corresponder ao padrão da operação de update
+        """        
+        try:
+            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro)
+            self.logging.debug(novos_dados)
+            dados_substitutos={}
+            for i in pattern.keys():
+                if i in novos_dados["adicionais"] and ("id" not in pattern[i]):
+                    dados_substitutos[i]=pattern[i]
+            self.logging.debug(dados_substitutos)
+            novos_dados["adicionais"]=self.create_insert(table=table,pattern=dados_substitutos,select_country=select_country,id=id)["dados"]
+            novos_dados["tipoOperacao"]=5
+            return novos_dados
+        except self.TamanhoArrayErrado as e :
+            self.logging.error(e)
+        except self.ValorInvalido as e:
+            self.logging.error(e)
+        except self.TipoDeDadoIncompativel as e:
+            self.logging.error(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1) -> dict:
+        try:
+            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro="*")
+            self.logging.debug(novos_dados)
+            novos_dados["tipoOperacao"]=6
+            return novos_dados
+        except self.TamanhoArrayErrado as e :
+            self.logging.error(e)
+        except self.ValorInvalido as e:
+            self.logging.error(e)
+        except self.TipoDeDadoIncompativel as e:
+            self.logging.error(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+
+    def gerador_filtro(self,pattern:dict,ignorar:list=[]) -> array:
         retorno=[]
-        for i in range(0,random.randint(0, len(pattern.keys())-1)):
-            tmp=random.choice(pattern.keys())
-            while tmp in retorno:
-                tmp=random.choice(pattern.keys())
+        pattern=pattern.copy()
+        for i in ignorar:
+            pattern.pop(i)
+        total_elementos=len(list(pattern.keys()))
+        intervalo=randint(1,total_elementos)
+        while intervalo>=total_elementos:
+            intervalo=randint(1,total_elementos)
+        for i in range(0,intervalo):
+            tmp=choice(list(pattern.keys()))
+            while (tmp in retorno):
+                tmp=choice(list(pattern.keys()))
+            pattern.pop(tmp)
             retorno.append(tmp)
         return retorno
 
@@ -479,64 +541,8 @@ class GeradorDeSql:
         self.logging.debug(dados)
         return dados
 
-    def create_update(self,table:str,pattern:dict,id:int,dados_pesquisados:dict={},dados_mantidos:list=[],select_country:str="random") -> dict:
-        """cria um novo dado para ser inserido no sqlite para a operação de update
 
-        Args:
-            table (str): nome da tabela do sql que o dado será inserido
-            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
-            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
-            dados_pesquisados (dict, optional): dict com as keys sendo os nomes das colunas e o conteudo sendo o valor que será pesquisado. Defaults to {}.
-            dados_mantidos (list, optional): array com os nomes da colunas que não serão alterados. Defaults to [].
-            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
-
-        Returns:
-            dict: dados gerados usando faker para corresponder ao padrão da operação de update
-        """        
-        try:
-            if dados_mantidos != {}:#dados mantidos
-                for dado in dados_mantidos:
-                    pattern.pop(dado)
-                    self.logging.debug("removido ",dado)
-            novos_dados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id)
-            novos_dados["adicionais"]=dados_pesquisados
-            novos_dados["tipoOpracao"]=5
-            return novos_dados
-        except self.TamanhoArrayErrado as e :
-            self.logging.error(e)
-        except self.ValorInvalido as e:
-            self.logging.error(e)
-        except self.TipoDeDadoIncompativel as e:
-            self.logging.error(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def create_delete(self,table:str,id:int=-1,dados_pesquisados:dict={})->dict:
-        try:
-            novos_dados={"nomeBD":table,"tipoOperacao":6,"dados":{}}
-            if dados_pesquisados=={} and id!=-1:
-                novos_dados["dados"]={"idNoBD":id}
-            elif dados_pesquisados!={} :
-                novos_dados["dados"]=dados_pesquisados
-            else:
-                raise self.ValorInvalido(valor_inserido=[dados_pesquisados,id],campo=["dados_pesquisados","id"],valor_possivel="se dados_pesquisados for vazio é obrigatório um id")
-            return novos_dados
-        except self.TamanhoArrayErrado as e :
-            self.logging.error(e)
-        except self.ValorInvalido as e:
-            self.logging.error(e)
-        except self.TipoDeDadoIncompativel as e:
-            self.logging.error(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def create_select(self,table:str,id:int=-1,dados_pesquisados:dict={},filtro:list=[]):
-        novo_dado=self.create_delete(table=table,id=id,dados_pesquisados=dados_pesquisados)
-        if filtro ==[]:
-            novo_dado["adicionais"]="*"
-        else:
-            novo_dado["adicionais"]=filtro
-        return novo_dado
+    
 
 #relacionado a interação com sqlite
     def buscar_ultimo_id_cadastrado(self,table:str):
@@ -617,7 +623,7 @@ class GeradorDeSql:
                         if type(filtro[coluna])==type(""):
                             read_command+="'"+filtro[coluna]+"'"
                         else:
-                            read_command+=filtro[coluna]
+                            read_command+=str(filtro[coluna])
                         if coluna !=  list(filtro.keys())[-1]:
                             read_command+=" AND "
         read_command+=";"
@@ -761,7 +767,7 @@ class GeradorDeSql:
         return command
 
     def gerar_dado_insersao(self,table,pattern:dict,select_country:str="random",id:int=-1):
-        data=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id)
+        data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
         self.logging.debug(data)
         self.insert_data_sqlite(data,table=table)
 
@@ -772,10 +778,10 @@ class GeradorDeSql:
         else:
             if id !=-1:
                 id=self.random_id_cadastrado(table=table)
-            dados_pesquisados=self.gerador_pesquisa(table=table,pattern=pattern,select_country=select_country,id=id)
-        data=self.create_select(table=table,pattern=pattern,dados_pesquisados=dados_pesquisados,id=id,filtro=filtro)
+            dados_pesquisados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id)
+        data=self.create_select(table=table,dados_pesquisados=dados_pesquisados,id=id,filtro=filtro)
         self.logging.debug(data)
-        self.insert_data_sqlite(data,table=table)
+        return data
 
     def gerar_dado_leitura_completa(self,table:str,filtro:list=[]):
 
@@ -792,22 +798,26 @@ class GeradorDeSql:
             if quantidade == "random":
                 quantidade=random.randint(0, 20)
             for i in range(0,quantidade):
+                if tipo==0:
+                    tipo_execucao=randint(1,6)
+                else:
+                    tipo_execucao=tipo
                 self.logging.info("table="+table+", pattern="+str(json_loaded[table])+", select_country="+select_country)
                 filtro=self.gerador_filtro(pattern=json_loaded[table])
-                if tipo == 1:#criacao
+                if tipo_execucao == 1:#criacao
                     self.gerar_dado_insersao(table=table,pattern=json_loaded[table],select_country=select_country)
-                elif tipo == 2:#leitura completa
+                elif tipo_execucao == 2:#leitura completa
                     self.gerar_dado_leitura_completa(table=table,filtro=filtro)
-                elif tipo == 3:#busca
+                elif tipo_execucao == 3:#busca
                     self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country="random",id=self.random_id_cadastrado(table=table),filtro=filtro)
                     pass
-                elif tipo ==4:#busca filtrada
+                elif tipo_execucao ==4:#busca filtrada
                     #busca filtrada
                     pass
-                elif tipo == 5:#edicao
+                elif tipo_execucao == 5:#edicao
                     #edicao
                     pass
-                elif tipo == 6:#delecao
+                elif tipo_execucao == 6:#delecao
                     #delecao
                     pass
                 else:
@@ -830,19 +840,3 @@ class GeradorDeSql:
         for table in json_loaded.keys():
             self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade)
 
-gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10)
-#pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
-# gerador.insert_data_sqlite({"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"adicionais":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
-# pprint.pprint(gerador.read_operacoes())
-# pprint.pprint(gerador.read_contadores())
-# print(gerador.buscar_ultimo_id_cadastrado("empregado"))
-# tmp=[]
-# for i in range(0,10):
-#     gerador.gerar_dado_insersao("city",pattern=dict({
-#         "city_id":["id"],
-#         "city":["cidade"],
-#         "country_id":["associacao","country"],
-#         "last_update":["timestamp","agora"]
-#     }),select_country="en_US")
-gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade=3)
-pprint.pprint(gerador.read_contadores())
