@@ -1,8 +1,10 @@
 from array import array
 from loggingSystem import loggingSystem
+from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
 from random import randint, random,uniform,choice
 from sqlite3 import Error as sqliteError
+from sqlite3 import OperationalError as sqliteOperationalError
 import sys,re,sqlite3,json
 class GeradorDeSql:
 #tratamento de erro
@@ -115,6 +117,7 @@ class GeradorDeSql:
 
         def __str__(self):
             return self.message
+    
     class TamanhoArrayErrado(ValorInvalido):
         def __init__(self,valor_inserido,valor_possivel="",campo="") :
             super(GeradorDeSql.ValorInvalido, self).__init__()
@@ -146,6 +149,7 @@ class GeradorDeSql:
 
         def __str__(self):
             return self.message
+
     class TipoDeDadoIncompativel(ValorInvalido):
         def __init__(self,valor_inserido,tipo_possivel="",campo="") :
             super(GeradorDeSql.ValorInvalido, self).__init__()
@@ -177,37 +181,18 @@ class GeradorDeSql:
             return self.message
 
 #inicialização
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s'):
         """
         classe para gerenciar arquivos csv
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem( arquivo=log_file,level=level)
-        self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
+        self.logging = loggingSystem(name="gerador de sql", arquivo=log_file,level=level,format=logging_pattern)
+        #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
+        self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level)
         self.conn = sqlite3.connect(sqlite_db)
         self.logging.logger.getLogger('faker').setLevel(self.logging.logger.ERROR)
-    
-    def create_temporary_DB(self,local,pattern):
-        """verifica a integridade do db caso ele n exista 
-
-        Args:
-            local (path): local onde o bd sqlite está salvo
-            pattern (path): local onde o arquivo sql está salvo
-        """        
-        try:
-            f = open(local, "a")
-            f.write("")
-            f.close()
-            conn = sqlite3.connect(local)
-            self.execute_sqlfile_sqlite(pattern,conn)
-            conn.close()
-            self.logging.info("bd gerado com sucesso")
-        except sqliteError as e:
-            print("erro no sqlite")
-            self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", str(sys.exc_info()[0]))
+        self.logging = self.logging.logger.getLogger("gerador sql")
 
 #relacionado com o processamento/geração de dados
     def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1) -> dict:
@@ -255,7 +240,7 @@ class GeradorDeSql:
                 fake = Faker(select_country)#se for definido então o codigo usado será o do pais inserido
             dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":{},"adicionais":{}}
             if id == -1:
-                id=self.buscar_ultimo_id_cadastrado(table)+1
+                id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table)+1
             dados_gerados["idNoBD"]=id
             for dado in pattern.keys():
                 self.logging.debug(dado)
@@ -368,9 +353,9 @@ class GeradorDeSql:
                     if pattern[dado][1]!="random":
                         dados_gerados["dados"][dado]=pattern[dado][1]
                     else:
-                        total_cadastrado=self.buscar_ultimo_id_cadastrado(pattern[dado][1])
+                        total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
                         if total_cadastrado>1:
-                            dados_gerados["dados"][dado]=fake.random_int(min=1,max=self.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                            dados_gerados["dados"][dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
                             dados_gerados["dados"][dado]=1
                 elif pattern[dado][0] == "id":
@@ -385,7 +370,7 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def create_select(self,table:str,pattern:dict,select_country:str="random",id:int=-1,filtro:list=[]) -> dict:
+    def create_select(self,table:str,pattern:dict,select_country:str="random",id:int=-1,filtro:list=[],values:dict={}) -> dict:
         
         """função gera um dictionary variante do de create_data que contem os dados equivalentes ao comando de pesquisa para o sqlite
 
@@ -399,6 +384,7 @@ class GeradorDeSql:
         Returns:
             dict: dados gerados usando faker para corresponder ao padrão necessário de uma pesquisa no bd
         """
+        self.logging.info("create_select")
         pattern=pattern.copy()
         # if filtro==[]:
         filtro_=self.gerador_filtro(pattern)
@@ -407,8 +393,11 @@ class GeradorDeSql:
         self.logging.debug(filtro_)
         for i in filtro_:
             pattern.pop(i)
-        created_data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
         
+        created_data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
+
+        if values!={}:
+            created_data["dados"]=values
         if filtro == "*":
             created_data["tipoOperacao"]=3
             created_data["adicionais"]=[]
@@ -418,7 +407,7 @@ class GeradorDeSql:
         self.logging.debug(created_data)
         return created_data
 
-    def create_update(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",id:int=-1) -> dict:
+    def create_update(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",id:int=-1,values:dict={}) -> dict:
         """cria um novo dado para ser inserido no sqlite para a operação de update
 
         Args:
@@ -430,9 +419,10 @@ class GeradorDeSql:
 
         Returns:
             dict: dados gerados usando faker para corresponder ao padrão da operação de update
-        """        
+        """
+        self.logging.info("create_update")
         try:
-            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro)
+            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values)
             self.logging.debug(novos_dados)
             dados_substitutos={}
             for i in pattern.keys():
@@ -451,9 +441,10 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1) -> dict:
+    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={}) -> dict:
+        self.logging.info("create_delete")
         try:
-            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro="*")
+            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro="*",values=values)
             self.logging.debug(novos_dados)
             novos_dados["tipoOperacao"]=6
             return novos_dados
@@ -465,7 +456,6 @@ class GeradorDeSql:
             self.logging.error(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
-
 
     def gerador_filtro(self,pattern:dict,ignorar:list=[]) -> array:
         retorno=[]
@@ -484,179 +474,6 @@ class GeradorDeSql:
             retorno.append(tmp)
         return retorno
 
-    def process_data_generated(self,text:str) -> dict:
-        """processa o dado lido do sqlite para um formato de dict usavel 
-
-        Args:
-            text (str): texto gerado pelo comando de leitura do sqlite
-
-        Returns:
-            dict: dict usavel e processado do que foi lido do sqlite
-        """        
-        pattern_geral=r"([0-9]*),'(.*)',([0-9]*),'(.*)','(.*)'"
-        etapa1_operacoes=re.findall(pattern_geral,text)[0]
-        self.logging.debug(etapa1_operacoes)
-        output={}
-        output["tipoOpracao"]=etapa1_operacoes[0]
-        output["nomeBD"]=etapa1_operacoes[1]
-        output["idNoBD"]=etapa1_operacoes[2]
-        output["adicionais"]=etapa1_operacoes[3]
-        output["dados"]=etapa1_operacoes[4]
-        self.logging.debug(output)
-        pattern_adicionais=r"\[\{(.*)\}\]"
-        adicionais=[]
-        for dado in re.findall(pattern_adicionais, output["adicionais"])[0].split("},{"):
-            adicionais.append(self.string_to_dict(dado,patter_externo=r"(.*)"))
-        self.logging.debug(adicionais)
-        output["adicionais"]=adicionais
-        output["dados"]=self.string_to_dict(output["dados"])
-        return output
-
-    def string_to_dict(self,text:str,patter_externo=r"\{(.*)\}",pattern_interno=r"(.*)\:(.*)",external_header_list:list=[]) -> dict:
-        """converte string legivel em dict usavel a partir de um string
-
-        Args:
-            text (str): texto de entrada
-            patter_externo (regexp, optional): expressão regular usado para processar os dados inseridos,para separar a parte mais externa do string. Defaults to r"\{(.*)}".
-            pattern_interno (regexp, optional): expressão regular usado para processar os dados inseridos,para processar a parte mais interna do string. Defaults to r"(.*)\:(.*)".
-            external_header_list (list, optional): header do dict final. Defaults to [].
-
-        Returns:
-            dict: [description]
-        """        
-        pattern_etapa1=patter_externo
-        etapa1_dados=re.findall(pattern_etapa1,text)
-        etapa1_dados=etapa1_dados[0].split(",")
-        self.logging.debug(etapa1_dados)
-        pattern_dados_etapa2=pattern_interno
-        dados={}
-        tmp=0
-        for dado in etapa1_dados:
-            etapa2_dados=re.findall(pattern_dados_etapa2,dado)[0]
-            if external_header_list == []:
-                dados[etapa2_dados[0].replace("'","").replace('"',"")]=etapa2_dados[1].replace("'","").replace('"',"")
-            else:
-                dados[external_header_list[tmp]]=etapa2_dados[0]
-                tmp+=1
-        self.logging.debug(dados)
-        return dados
-
-
-    
-
-#relacionado a interação com sqlite
-    def buscar_ultimo_id_cadastrado(self,table:str):
-        filtro={"nomeBD":table}
-        query=["numeroDDadosCadastrados"]
-        self.verify_if_contador_exists(table)
-        retorno=self.read_data_sqlite("contadores",filtro,query)
-        return int(retorno[0][0])
-
-    def random_id_cadastrado(self,table:str) -> int:
-        return random.randInt(1,self.buscar_ultimo_id_cadastrado(table=table))
-
-    def insert_data_sqlite(self,data:dict,table:str=""):
-        '''
-        INSERT INTO "operacoes"(	"tipoOperacao",	"nomeBD","adicionais","dados")
-        VALUES(1,"empregado","[(pessoas,pessoas_id,1),(lojas,loja_id)]","{salario:1200,contratado:30/12/20}")
-        '''
-        insert_command="INSERT INTO "
-        insert_command+="'"+"operacoes"+"' ("
-        for coluna in data.keys():
-            insert_command+=str(coluna)
-            if table == "" and coluna == 'nomeBD':
-                table=data["nomeBD"]
-            if coluna !=  list(data.keys())[-1]:
-                insert_command+=","
-        insert_command+=") VALUES ("
-        for coluna in data.keys():
-            if type(data[coluna]) == type("") :
-                insert_command+='"'+data[coluna].replace("\n","")+'"'
-            elif type(data[coluna]) == type({}) or  type(data[coluna]) == type([]):
-                for i in list(data[coluna]):
-                    i.replace("\n","")
-                insert_command+='"'+str(data[coluna])+'"'
-            else:
-                insert_command+=str(data[coluna])
-            if coluna !=  list(data.keys())[-1]:
-                insert_command+=","
-        insert_command+=");"
-        self.logging.debug(insert_command)
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(insert_command)
-            pprint.pprint(data)
-            self.verify_if_contador_exists(table)
-            cursor.execute("UPDATE contadores SET numeroDDadosCadastrados = numeroDDadosCadastrados+1 WHERE nomeBD='"+table+"';")
-            self.conn.commit()
-        except sqliteError as e:
-            print("erro no sqlite")
-            self.logging.error(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-    
-    def verify_if_contador_exists(self,table:str):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+table+"';")
-        listagem=cursor.fetchall() 
-        if listagem == []:
-            cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+table+"',0);")
-
-    def read_data_sqlite(self,table:str,filtro:dict={},query="*"):
-        read_command=""
-        read_command+="SELECT "
-        if query != "*":
-            read_command+="("
-            for key in query:
-                read_command+=key
-                if key !=  query[-1]:
-                    read_command+=","
-            read_command+=")"
-        else:
-            read_command+=query
-        read_command+=" FROM "
-        read_command+="'"+table+"'"
-        if filtro != {}:
-            read_command+=" WHERE "
-            for coluna in filtro.keys():
-                        read_command+=str(coluna) + " IS "
-                        if type(filtro[coluna])==type(""):
-                            read_command+="'"+filtro[coluna]+"'"
-                        else:
-                            read_command+=str(filtro[coluna])
-                        if coluna !=  list(filtro.keys())[-1]:
-                            read_command+=" AND "
-        read_command+=";"
-        try:
-            cursor = self.conn.cursor()
-            self.logging.debug(read_command)
-            cursor.execute(read_command)
-            self.conn.commit()
-            return cursor.fetchall()
-        except sqliteError as e:
-            print("erro no sqlite")
-            self.logging.error(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def read_contadores(self,filtro:dict={},query="*"):
-        return gerador.read_data_sqlite("contadores",filtro=filtro,query=query)
-
-    def read_operacoes(self,filtro:dict={},query="*"):
-        return gerador.read_data_sqlite("operacoes",filtro=filtro,query=query)
-
-    def execute_sqlfile_sqlite(self,pattern:dict,conn=None):
-        if conn != None:
-            cursor = conn.cursor()
-        else:
-            cursor=self.conn.cursor()
-        sqlfile=open(pattern).read().split(";\n")
-        for sqlstatement in sqlfile:
-            if sqlstatement[-1] != ";":
-                sqlstatement+=";"
-            self.logging.debug(sqlstatement)
-            cursor.execute(sqlstatement)
-            conn.commit()
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict,nome_coluna_id:str="id"):
@@ -687,29 +504,29 @@ class GeradorDeSql:
             '''
         command=""
         try:
-            if data["tipoOpracao"]==1:#insercao
+            if data["tipoOperacao"]==1:#insercao
                 command+="INSERT INTO "
-            elif data["tipoOpracao"]==2:#leitura completa
+            elif data["tipoOperacao"]==2:#leitura completa
                 command+="SELECT * FROM "
-            elif data["tipoOpracao"]==3:#busca
+            elif data["tipoOperacao"]==3:#busca
                 command+="SELECT * FROM"
-            elif data["tipoOpracao"]==4:#busca filtrada
+            elif data["tipoOperacao"]==4:#busca filtrada
                 command+="SELECT ("
                 for i in data['adicionais']:
                     command+= str(i["variavelRetornada"])+ ","
                 if (data["idNoBD"]!=-1) and ("idNoBD" in data):
                     command+=nome_coluna_id
                 command+=") FROM "
-            elif data["tipoOpracao"]==5:#edicao
+            elif data["tipoOperacao"]==5:#edicao
                 command+=" UPDATE "
-            elif data["tipoOpracao"]==6:#delecao
+            elif data["tipoOperacao"]==6:#delecao
                 command+="DELETE FROM "
             else:
-                raise self.ValorInvalido(valor_inserido=data["tipoOpracao"])
+                raise self.ValorInvalido(valor_inserido=data["tipoOperacao"])
 
             command+=str(data["nomeBD"])
 
-            if data["tipoOpracao"]==1:#insercao
+            if data["tipoOperacao"]==1:#insercao
                 command+="("
                 for coluna in data["dados"].keys():
                     if type(data[coluna])==type("") or type(data[coluna])==type({}) or  type(data[coluna])==type([])  :
@@ -727,9 +544,9 @@ class GeradorDeSql:
                     if coluna != data["dados"].keys()[-1]:
                         command+=","
                 command+=");"
-            elif data["tipoOpracao"]==2:#leitura completa
+            elif data["tipoOperacao"]==2:#leitura completa
                 command+="; "
-            elif data["tipoOpracao"] in [3,4,6]:# busca #busca filtrada #remocao
+            elif data["tipoOperacao"] in [3,4,6]:# busca #busca filtrada #remocao
                 command+=" WHERE "
                 for coluna in data["dados"].keys():
                     command+=str(coluna) + " IS "+str(data["dados"][coluna])
@@ -740,7 +557,7 @@ class GeradorDeSql:
                         command+=" AND "
                     command+=nome_coluna_id+" IS "+data["idNoBD"]
                 command+=";"
-            elif data["tipoOpracao"]==5:#edicao
+            elif data["tipoOperacao"]==5:#edicao
                 command+=" SET "
                 for coluna in data["dados"].keys():
                     command+=str(coluna) + " = "+str(data["dados"][coluna])
@@ -756,8 +573,12 @@ class GeradorDeSql:
                         command+=" AND "
                     command+=nome_coluna_id+" IS "+data["idNoBD"]
                 command+=";"
+        except sqliteOperationalError as e:
+            print("erro operacional no sqlite")
+            self.logging.error(e)
+            quit()
         except sqliteError as e:
-            print("erro no sqlite")
+            print("erro desconhecido no sqlite")
             self.logging.error(e)
         except self.ValorInvalido as e :
             self.logging.error(e)
@@ -766,37 +587,58 @@ class GeradorDeSql:
 
         return command
 
-    def gerar_dado_insersao(self,table,pattern:dict,select_country:str="random",id:int=-1):
+    def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
+        self.logging.info("gerando dados de insercao e inserindo em sqlite")
         data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
         self.logging.debug(data)
-        self.insert_data_sqlite(data,table=table)
+        self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
+        self.processamento_sqlite.add_contador_sqlite(table=table)
 
-    def gerar_dado_busca(self,table,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[]):
+    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[]):
+        self.logging.info("gerando dados de busca e inserindo em sqlite")
         #table,id:int=-1,dados_pesquisados:dict={},filtro=[]
-        if dado_existente or id==-1:
-            dados_pesquisados=self.read_data_sqlite(table=table,filtro={"idNoBD":id,"nomeBD":table})
-        else:
-            if id !=-1:
-                id=self.random_id_cadastrado(table=table)
-            dados_pesquisados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id)
-        data=self.create_select(table=table,dados_pesquisados=dados_pesquisados,id=id,filtro=filtro)
+        if id == -1 and dado_existente:
+            id=self.processamento_sqlite.random_id_cadastrado(table=table)
+
+        dados_pesquisados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id)
+
+        if id !=-1 and dado_existente:
+            dados_adiquiridos = self.processamento_sqlite.read_operacoes(filtro={"idNoBD":id,"nomeBD":table,"tipoOperacao":1})
+            self.logging.debug(dados_adiquiridos[0])
+            dados_pesquisados["dados"] = dados_adiquiridos[0]["dados"]
+        
+        all_filter=False
+        if filtro == "*":
+            all_filter=True
+            filtro=self.gerador_filtro(pattern=pattern)
+        self.logging.debug(filtro)
+        self.logging.debug(dados_pesquisados["dados"])
+        for i in filtro:
+            if i in dados_pesquisados["dados"]:
+                dados_pesquisados["dados"].pop(i)
+        self.logging.debug(dados_pesquisados["dados"])
+        data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro=filtro,pattern=pattern,select_country=select_country)
+        if all_filter:
+            data["tipoOperacao"]=3
         self.logging.debug(data)
-        return data
+        self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
-    def gerar_dado_leitura_completa(self,table:str,filtro:list=[]):
+    def gerar_dado_leitura_completa(self,table:str,pattern:dict,filtro:list=[],select_country:str="random"):
+        self.logging.info("gerando dados de leitura e inserindo em sqlite")
 
-        data=self.create_select(table=table,filtro=filtro)
+        data=self.create_select(table=table,filtro=filtro,select_country=select_country,pattern=pattern)
         self.logging.debug(data)
-        self.insert_data_sqlite(data,table=table)
+        self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
-    def gerar_dados_por_json(self,tipo:int,json_file,select_country:str="random",table:str="random",quantidade="random"):
+    def gerar_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
+        self.logging.info("gerando dados por json")
         try:
             file=open(json_file)
             json_loaded=json.loads(file.read())
             if table == "random":
                 table=random.choice(json_loaded.keys())
             if quantidade == "random":
-                quantidade=random.randint(0, 20)
+                quantidade=randint(0, 20)
             for i in range(0,quantidade):
                 if tipo==0:
                     tipo_execucao=randint(1,6)
@@ -805,15 +647,13 @@ class GeradorDeSql:
                 self.logging.info("table="+table+", pattern="+str(json_loaded[table])+", select_country="+select_country)
                 filtro=self.gerador_filtro(pattern=json_loaded[table])
                 if tipo_execucao == 1:#criacao
-                    self.gerar_dado_insersao(table=table,pattern=json_loaded[table],select_country=select_country)
+                    self.gerar_dado_insercao(table=table,pattern=json_loaded[table],select_country=select_country)
                 elif tipo_execucao == 2:#leitura completa
                     self.gerar_dado_leitura_completa(table=table,filtro=filtro)
                 elif tipo_execucao == 3:#busca
-                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country="random",id=self.random_id_cadastrado(table=table),filtro=filtro)
-                    pass
+                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente)
                 elif tipo_execucao ==4:#busca filtrada
-                    #busca filtrada
-                    pass
+                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro)
                 elif tipo_execucao == 5:#edicao
                     #edicao
                     pass
@@ -831,12 +671,167 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
     
-    def gerar_todos_dados_por_json(self,json_file,select_country:str="random",quantidade="random"):
+    def gerar_todos_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",quantidade="random"):
+        self.logging.info("gerando multiplos dados sqlite")
         if quantidade == "random":
-            quantidade=random.randint(0, 20)
+            quantidade=randint(0, 20)
         file=open(json_file)
         json_loaded=json.loads(file.read())
         self.logging.debug(json_loaded)
         for table in json_loaded.keys():
-            self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade)
+            self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade,tipo=tipo)
 
+class InteracaoSqlite(ProcessamentoSqlite):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s'):
+        """
+        classe para gerenciar arquivos csv
+        :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
+        """
+        super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite")
+        #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
+        
+
+    def buscar_ultimo_id_cadastrado(self,table:str):
+        self.logging.info("ultimo id cadastrado")
+        filtro={"nomeBD":table}
+        query=["numeroDDadosCadastrados"]
+        self.certify_if_contador_exists(table)
+        retorno=self.read_data_sqlite("contadores",filtro,query)
+        return int(retorno[0][0])
+
+    def random_id_cadastrado(self,table:str) -> int:
+        self.logging.info("selecionando id aleatorio")
+        tmp=self.buscar_ultimo_id_cadastrado(table=table)
+        tmp2=randint(1,tmp)
+        self.logging.debug(str(tmp)+"  "+str(tmp2))
+        return tmp2
+
+    def add_contador_sqlite(self,table:str):
+        self.logging.info("insercao contador sqlite")
+        try:
+            cursor = self.conn.cursor()
+            self.certify_if_contador_exists(table)
+            cursor.execute("UPDATE contadores SET numeroDDadosCadastrados = numeroDDadosCadastrados+1 WHERE nomeBD='"+table+"';")
+            self.conn.commit()
+        except sqliteOperationalError as e:
+            print("erro operacional no sqlite")
+            self.logging.error(e)
+            quit()
+        except sqliteError as e:
+            print("erro desconhecido no sqlite")
+            self.logging.error(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def certify_if_contador_exists(self,table:str):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+table+"';")
+        listagem=cursor.fetchall() 
+        if listagem == []:
+            cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+table+"',0);")
+
+    def read_contadores(self,filtro:dict={},query="*"):
+        self.logging.info("lendo sqlite contadores")
+        return self.read_data_sqlite("contadores",filtro=filtro,query=query)
+
+    def read_operacoes(self,filtro:dict={},query="*"):
+        self.logging.info("lendo sqlite operacoes")
+        tmp=self.read_data_sqlite("operacoes",filtro=filtro,query=query)
+        self.logging.debug(tmp)
+        retorno=[]
+        for i in tmp:
+            tmp2=self.process_data_generated(data=i,with_id=True)
+            tmp2.pop("id")
+            retorno.append(tmp2)
+        return retorno
+
+    def process_data_generated(self,data:list,tipo_adicional:str="dict",with_id:bool=False) -> dict:
+        """processa o dado lido do sqlite para um formato de dict usavel 
+
+        Args:
+            text (str): texto gerado pelo comando de leitura do sqlite
+
+        Returns:
+            dict: dict usavel e processado do que foi lido do sqlite
+        """        
+        etapa1_operacoes=data
+        self.logging.debug(etapa1_operacoes)
+        output={}
+        if with_id:
+            output["id"]=etapa1_operacoes[0]
+            output["tipoOperacao"]=etapa1_operacoes[1]
+            output["nomeBD"]=etapa1_operacoes[2]
+            output["idNoBD"]=etapa1_operacoes[3]
+            output["adicionais"]=etapa1_operacoes[4]
+            output["dados"]=etapa1_operacoes[5]
+        else:
+            output["tipoOperacao"]=etapa1_operacoes[0]
+            output["nomeBD"]=etapa1_operacoes[1]
+            output["idNoBD"]=etapa1_operacoes[2]
+            output["adicionais"]=etapa1_operacoes[3]
+            output["dados"]=etapa1_operacoes[4]
+        self.logging.debug(output)
+        if tipo_adicional=="dict":
+            adicionais=self.string_to_dict(output["adicionais"])
+        elif tipo_adicional=="dict_array":
+            pattern_adicionais=r"\[\{(.*)\}\]"
+            adicionais=[]
+            for dado in re.findall(pattern_adicionais, output["adicionais"])[0].split("},{"):
+                adicionais.append(self.string_to_dict(dado,patter_externo=r"(.*)"))
+        elif tipo_adicional == "array":
+            adicionais=self.string_to_dict(output["adicionais"],is_dict=False)
+        self.logging.debug(adicionais)
+        output["adicionais"]=adicionais
+        output["dados"]=self.string_to_dict(output["dados"])
+        return output
+    
+    def string_to_dict(self,text:str,patter_externo=r"\{(.*)\}",pattern_interno=r"([^:]*)\:(.*)",external_header_list:list=[],is_dict=True) -> dict:
+        """converte string legivel em dict usavel a partir de um string
+
+        Args:
+            text (str): texto de entrada
+            patter_externo (regexp, optional): expressão regular usado para processar os dados inseridos,para separar a parte mais externa do string. Defaults to r"\{(.*)}".
+            pattern_interno (regexp, optional): expressão regular usado para processar os dados inseridos,para processar a parte mais interna do string. Defaults to r"([^:]*)\:(.*)".
+            external_header_list (list, optional): header do dict final. Defaults to [].
+            is_dict (boolean): defini se o retorno é um dictionary ou um array
+        Returns:
+            (dict,list): dictionary ou array com o conteudo usavel do retorno de uma consulta no sqlite
+        """        
+        if not is_dict and patter_externo==r"\{(.*)\}" and pattern_interno==r"([^:]*)\:(.*)":
+            patter_externo=r"\[(.*)\]"
+            pattern_interno=r"(.*)"
+        pattern_etapa1=patter_externo
+        etapa1_dados=re.findall(pattern_etapa1,text)
+        if etapa1_dados == [''] or etapa1_dados == [] :
+            if is_dict:
+                return {}
+            else:
+                return []
+        etapa1_dados=etapa1_dados[0].split(",")
+        pattern_dados_etapa2=pattern_interno
+        if is_dict:
+            dados={}
+        else:
+            dados=[]
+        tmp=0
+        if is_dict:
+            for dado in etapa1_dados:
+                self.logging.debug(re.findall(pattern_dados_etapa2,dado))
+                etapa2_dados=re.findall(pattern_dados_etapa2,dado)
+                if etapa2_dados==[]:
+                    break
+                else:
+                    etapa2_dados=etapa2_dados[0]
+                if external_header_list == []:
+                    dados[etapa2_dados[0].replace("'","").replace('"',"")]=etapa2_dados[1].replace("'","").replace('"',"")
+                else:
+                    dados[external_header_list[tmp]]=etapa2_dados[0]
+                    tmp+=1
+        else:
+            for dado in etapa1_dados:
+                etapa2_dados=re.findall(pattern_dados_etapa2,dado)[0]
+                dados[tmp]=etapa2_dados[0]
+                tmp+=1
+        self.logging.debug(dados)
+        return dados

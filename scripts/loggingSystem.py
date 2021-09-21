@@ -1,6 +1,6 @@
 import logging
 class loggingSystem:
-    def __init__(self,  arquivo='./arquivo.log', format='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG):
+    def __init__(self,  arquivo='./arquivo.log', format:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="log"):
         """
         :param name: nome do log a ser escrito no arquivo
         :param arquivo: nome do arquivo a ser utilizado
@@ -21,7 +21,8 @@ class loggingSystem:
         # f.write("")
         # f.close()
         self.logger = logging
-        self.logger.basicConfig(filename=arquivo, level=level,format=format)
+        self.logger.basicConfig(filename=arquivo, level=level,format=format,)
+        #self.logger = logging.getLogger(name)
         #self.logger.addHandler(handler)
         self.debug = self.logger.debug
         self.warning = self.logger.warning
