@@ -1,11 +1,12 @@
 from array import array
+from os import name
 from loggingSystem import loggingSystem
 from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
 from random import randint, random,uniform,choice
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
-import sys,re,sqlite3,json
+import sys,re,sqlite3,json,logging
 class GeradorDeSql:
 #tratamento de erro
     class ValorInvalido(Exception):
@@ -181,18 +182,19 @@ class GeradorDeSql:
             return self.message
 
 #inicialização
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s'):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
         """
         classe para gerenciar arquivos csv
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(name="gerador de sql", arquivo=log_file,level=level,format=logging_pattern)
+
+        self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,format=logging_pattern,logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
-        self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level)
+        self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
         self.conn = sqlite3.connect(sqlite_db)
-        self.logging.logger.getLogger('faker').setLevel(self.logging.logger.ERROR)
-        self.logging = self.logging.logger.getLogger("gerador sql")
+        logging.getLogger('faker').setLevel(logging.ERROR)
+        #self.logging = self.logging.logger.getLogger("gerador sql")
 
 #relacionado com o processamento/geração de dados
     def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1) -> dict:
@@ -441,12 +443,13 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={}) -> dict:
+    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={},filtro:list=[]) -> dict:
         self.logging.info("create_delete")
         try:
-            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro="*",values=values)
+            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values)
             self.logging.debug(novos_dados)
             novos_dados["tipoOperacao"]=6
+            novos_dados["adicionais"]=[]
             return novos_dados
         except self.TamanhoArrayErrado as e :
             self.logging.error(e)
@@ -473,7 +476,6 @@ class GeradorDeSql:
             pattern.pop(tmp)
             retorno.append(tmp)
         return retorno
-
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict,nome_coluna_id:str="id"):
@@ -594,7 +596,7 @@ class GeradorDeSql:
         self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
         self.processamento_sqlite.add_contador_sqlite(table=table)
 
-    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[]):
+    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[],not_define_id=False):
         self.logging.info("gerando dados de busca e inserindo em sqlite")
         #table,id:int=-1,dados_pesquisados:dict={},filtro=[]
         if id == -1 and dado_existente:
@@ -617,9 +619,27 @@ class GeradorDeSql:
             if i in dados_pesquisados["dados"]:
                 dados_pesquisados["dados"].pop(i)
         self.logging.debug(dados_pesquisados["dados"])
-        data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro=filtro,pattern=pattern,select_country=select_country)
+        if not_define_id:
+            data=self.create_select(table=table,values=dados_pesquisados["dados"],filtro=filtro,pattern=pattern,select_country=select_country)
+        else:
+            data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro=filtro,pattern=pattern,select_country=select_country)
         if all_filter:
             data["tipoOperacao"]=3
+        self.logging.debug(data)
+        self.processamento_sqlite.insert_data_sqlite(data,table=table)
+
+    def gerar_dado_delecao(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",not_define_id=False):
+        self.logging.info("gerando dados de delecao e inserindo em sqlite")
+        values={}
+        if id == -1 and dado_existente:
+            id=self.processamento_sqlite.random_id_cadastrado(table=table)
+            dados_adiquiridos = self.processamento_sqlite.read_operacoes(filtro={"idNoBD":id,"nomeBD":table,"tipoOperacao":1})
+            self.logging.debug(dados_adiquiridos[0])
+            values = dados_adiquiridos[0]["dados"]
+        if not_define_id:
+            data=self.create_delete(table=table,pattern=pattern,select_country=select_country,values=values)
+        else:
+            data=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,values=values)
         self.logging.debug(data)
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
@@ -630,8 +650,14 @@ class GeradorDeSql:
         self.logging.debug(data)
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
+    def gerar_dado_atualizacao(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",not_define_id=False):
+        self.logging.info("gerando dados de atualizacao e inserindo em sqlite")
+
+
     def gerar_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
         self.logging.info("gerando dados por json")
+        def random_bool():
+                    return choice([True, False])
         try:
             file=open(json_file)
             json_loaded=json.loads(file.read())
@@ -640,6 +666,7 @@ class GeradorDeSql:
             if quantidade == "random":
                 quantidade=randint(0, 20)
             for i in range(0,quantidade):
+                
                 if tipo==0:
                     tipo_execucao=randint(1,6)
                 else:
@@ -651,15 +678,14 @@ class GeradorDeSql:
                 elif tipo_execucao == 2:#leitura completa
                     self.gerar_dado_leitura_completa(table=table,filtro=filtro)
                 elif tipo_execucao == 3:#busca
-                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente)
+                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
                 elif tipo_execucao ==4:#busca filtrada
-                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro)
+                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
                 elif tipo_execucao == 5:#edicao
                     #edicao
                     pass
                 elif tipo_execucao == 6:#delecao
-                    #delecao
-                    pass
+                    self.gerar_dado_delecao(table=table,pattern=json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
                 else:
                     raise self.ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
         except self.TamanhoArrayErrado as e :
@@ -682,13 +708,14 @@ class GeradorDeSql:
             self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade,tipo=tipo)
 
 class InteracaoSqlite(ProcessamentoSqlite):
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s'):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
         """
         classe para gerenciar arquivos csv
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite")
+        
+        super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite",logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         
 

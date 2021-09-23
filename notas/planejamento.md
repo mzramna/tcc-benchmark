@@ -68,3 +68,10 @@ o 3 parametro deve ser passado como o 2,mas não se limita apenas ao token de te
  *funcaoEspecial: seleciona aleatoriamente um desses valores: 'Trailers','Commentaries','Deleted Scenes','Behind the Scenes'
  *valorPago:gera um valor float entre 0 e 50
  *associacao": gera um id de associação possivel para uma tabela definida,o valor é qualquer id entre 0 e o ultimo inserido nessa tabela
+
+
+tratamento de log
+
+https://discuss.elastic.co/t/python-log-logstash-grok-filter/120753
+
+https://github.com/vklochan/python-logstash

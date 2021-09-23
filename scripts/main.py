@@ -1,6 +1,9 @@
 from geradorDeSql import GeradorDeSql
 from pprint import pprint
-gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
+logstash_data={"host":"192.168.0.116","port":5000}
+#logstash_data={}
+gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 gerador.logging.debug("begin")
 #pprint.pprint(gerador.process_data_generated("1,'empregado',1,'[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]','{salario:1200,contratado:'30/12/20'}'"))
 # gerador.insert_data_sqlite({"tipoOperacao":1,"nomeBD":'empregado',"idNoBD":1,"adicionais":"[{'bdAssociado': 'pessoas', 'fkAssociada': 'pessoas_id', 'id associado': '1'},{'bdAssociado': 'lojas', 'fkAssociada': 'loja_id', 'id associado': '1'}]","dados":"{salario:1200,contratado:'30/12/20'}"})
@@ -99,11 +102,13 @@ gerador.logging.debug("begin")
 
 
 #print(gerador.read_operacoes(filtro={"idNoBD":1,"nomeBD":"actor"}))
-gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade=10)
+gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=1,select_country="en_US",quantidade=10)
 gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=3,select_country="en_US",quantidade=10)
-gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=3,select_country="en_US",quantidade=10,dado_existente=True)
-# gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade=3,)
+gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=4,select_country="en_US",quantidade=10,dado_existente=True)
 
+gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=6,select_country="en_US",quantidade=10,dado_existente=True)
+# gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade=3,)
+# gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade=10)
 #pprint(gerador.read_contadores())
 gerador.logging.debug("end")
 

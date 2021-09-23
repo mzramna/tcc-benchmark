@@ -1,11 +1,12 @@
-import logging
+import logging,logstash
 class loggingSystem:
-    def __init__(self,  arquivo='./arquivo.log', format:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="log"):
+    def __init__(self,  arquivo='./arquivo.log', format:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="",logstash_data:dict={}):
         """
         :param name: nome do log a ser escrito no arquivo
         :param arquivo: nome do arquivo a ser utilizado
         :param format: formato do texto a ser inserido no output do log
         :param level: nivel de log padrão de saida
+        :param logstash_data: dados para conexão com logstash se possivel padrão:{"host":endereço ip,"port":porta}
         Level	Numeric value
         CRITICAL	50
         ERROR	40
@@ -21,8 +22,19 @@ class loggingSystem:
         # f.write("")
         # f.close()
         self.logger = logging
-        self.logger.basicConfig(filename=arquivo, level=level,format=format,)
-        #self.logger = logging.getLogger(name)
+        
+        if  set(["port","host"]).issubset(logstash_data):
+            if name !="":
+                self.logger = self.logger.getLogger(name)
+            self.logger.setLevel(level)
+            if set(["username","password"]).issubset(logstash_data):
+                self.logger.addHandler(logstash.AMQPLogstashHandler(host=logstash_data["host"], port=logstash_data["port"], version=1,username=logstash_data["username"],password=logstash_data["password"],durable=True))
+            else:
+                self.logger.addHandler(logstash.TCPLogstashHandler(logstash_data["host"], logstash_data["port"], version=1))
+        else:
+            self.logger.basicConfig(filename=arquivo, level=level,format=format,)
+            if name !="":
+                self.logger = self.logger.getLogger(name)
         #self.logger.addHandler(handler)
         self.debug = self.logger.debug
         self.warning = self.logger.warning

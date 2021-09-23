@@ -4,16 +4,15 @@ from loggingSystem import loggingSystem
 import sqlite3,sys
 
 class ProcessamentoSqlite:
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite"):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={}):
         """
         classe para gerenciar arquivos sqlite
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(name="gerador de sql", arquivo=log_file,level=level,format=logging_pattern)
+        self.logging = loggingSystem(name=log_name, arquivo=log_file,level=level,format=logging_pattern,logstash_data=logstash_data)
         self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.conn = sqlite3.connect(sqlite_db)
-        self.logging = self.logging.logger.getLogger(log_name)
     
     def create_temporary_DB(self,local,pattern):
         """verifica a integridade do db caso ele n exista 
