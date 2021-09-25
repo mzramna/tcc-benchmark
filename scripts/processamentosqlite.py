@@ -2,7 +2,6 @@ from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 from loggingSystem import loggingSystem
 import sqlite3,sys
-
 class ProcessamentoSqlite:
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={}):
         """
@@ -20,7 +19,7 @@ class ProcessamentoSqlite:
         Args:
             local (path): local onde o bd sqlite está salvo
             pattern (path): local onde o arquivo sql está salvo
-        """        
+        """
         try:
             f = open(local, "a")
             f.write("")
@@ -138,3 +137,11 @@ class ProcessamentoSqlite:
             self.logging.debug(sqlstatement)
             cursor.execute(sqlstatement)
             conn.commit()
+
+    def dict_all_string(self,entrada:dict)-> dict:
+        retorno={}
+        for i in entrada.keys():
+            if type(i)==type(""):
+                retorno[i]=entrada[i]
+            else:
+                retorno[i]=str(entrada[i])

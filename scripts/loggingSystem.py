@@ -1,4 +1,4 @@
-import logging,logstash
+import logging,logstash,inspect
 class loggingSystem:
     def __init__(self,  arquivo='./arquivo.log', format:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="",logstash_data:dict={}):
         """
@@ -15,12 +15,6 @@ class loggingSystem:
         DEBUG	10
         NOTSET	0
         """
-        # formatter = logging.Formatter(format)
-        # handler = logging.FileHandler(arquivo)
-        # handler.setFormatter(formatter)
-        # f = open(arquivo, "w+")
-        # f.write("")
-        # f.close()
         self.logger = logging
         
         if  set(["port","host"]).issubset(logstash_data):
@@ -44,3 +38,22 @@ class loggingSystem:
         self.critical = self.logger.critical
         self.fatal = self.logger.fatal
         self.exception = self.logger.exception
+
+    def inspect_caller(self)->str:
+        """função que chamou a função atual
+
+        Returns:
+            [type]: nome da funcao que chamou
+        """        
+        return  inspect.stack(context=1)[3][3]
+    
+    def full_inspect_caller(self)->list:
+        """retorna lista com o rastreio das chamadas das funções até a execução atual
+
+        Returns:
+            [type]: lista de rastreio
+        """        
+        retorno=[]
+        for i in list(inspect.stack(context=1))[1:-9]:
+            retorno.append(i[3])
+        return retorno

@@ -79,7 +79,16 @@ class GeradorDeSql:
                 retorno+=str(valores_possiveis)
             return retorno
 
-        def tratamento_input(self,valor,adicional:str=""):
+        def tratamento_input(self,valor,adicional:str="")->str:
+            """processa o dado inserido para formular melhor a mensagem de erro
+
+            Args:
+                valor ([str,list]]): lista de valores ou valor que serão formatados
+                adicional (str, optional): valores adicionais para um campo. Defaults to "".
+
+            Returns:
+                str: texto formatado para usar na construção da resposta
+            """            
             retorno=""
             if adicional!="":
                 if type(valor) == type(""):
@@ -129,14 +138,6 @@ class GeradorDeSql:
             self.mensagem_principal_replace=True
             self.construir_mensagem()
 
-        # def valores_possiveis(self,valores_possiveis=""):
-        #     print(valores_possiveis)
-        #     retorno=super(GeradorDeSql.TamanhoArrayErrado, self).valores_possiveis(valores_possiveis)
-        #     return retorno
-
-        # def listagem_valores_possiveis(self,valores_possiveis="",campo=""):
-        #     return super(GeradorDeSql.TamanhoArrayErrado, self).listagem_valores_possiveis(valores_possiveis=valores_possiveis,campo=campo)
-
         def construir_mensagem(self):
             self.message="o tamanho para o array passado "
             self.message+=self.tratamento_input(self.campo,"campo")
@@ -159,12 +160,6 @@ class GeradorDeSql:
             self.mensagem_principal_replace=True
             self.campo=campo
             self.construir_mensagem()
-
-        # def valores_possiveis(self,valores_possiveis=""):
-        #     return super(GeradorDeSql.TipoDeDadoIncompativel, self).valores_possiveis(valores_possiveis=valores_possiveis)
-
-        # def listagem_valores_possiveis(self,valores_possiveis="",campo=""):
-        #     return super(GeradorDeSql.TipoDeDadoIncompativel, self).listagem_valores_possiveis(valores_possiveis=valores_possiveis,campo=campo)
 
         def construir_mensagem(self):
             self.message="o tipo da variavel passada "
@@ -193,66 +188,89 @@ class GeradorDeSql:
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
         self.conn = sqlite3.connect(sqlite_db)
+        
+
         logging.getLogger('faker').setLevel(logging.ERROR)
         #self.logging = self.logging.logger.getLogger("gerador sql")
 
-#relacionado com o processamento/geração de dados
-    def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1) -> dict:
-        """cria um novo dado para ser inserido no sqlite ou ser usado em outras partes do codigo
+    def dict_all_string(self,entrada:dict)-> dict:
+        """converte todos valores de um dict para string
 
         Args:
-            table (str): nome da tabela do sql que o dado será inserido
-            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
-            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
-            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            entrada (dict): dict que deve ser processado
+
+        Returns:
+            dict: dict convertido
+        """        
+        retorno={}
+        for i in entrada.keys():
+            if type(i)==type(""):
+                retorno[i]=entrada[i]
+            else:
+                retorno[i]=str(entrada[i])
+
+    def process_id(self,data:dict,pattern:dict,id:int) -> int:
+        """define o id que sera usado baseado no pattern e no dado gerado
+
+        Args:
+            data (dict): dict com dado gerado onde o id sera pesquisado
+            pattern (dict): padrão correspondente ao dado inserido
+            id (int): id inserido por parametro,é analizado para definir se é pra ser inserido diretamente ele ou se deve ser pesquisado
+
+        Returns:
+            int:id processado
+        """        
+        if id == -1:
+            for campo,valor in pattern.items():
+                if "id" in valor:
+                    return data[campo]
+        return id
+
+    def create_data(self,table:str,pattern:dict,select_country:str="random",id:int=-1,not_define_id=False,lista_restritiva:list=[]) -> dict:
+        """gera os dados baseados nos parametros e padrões passados 
+
+        Args:
+            table (str): nome da tabela que será gerada
+            pattern (dict): padrão usado para a geração de dado
+            select_country (str, optional): padrão de localização para definir o idioma no qual os dados serão gerados,se random sera definido randomicamente. Defaults to "random".
+            id (int, optional): id definido para o dado que será gerado,se for -1 ele será escolhido randomicamente entre os previamente gerados caso o parametro not_defined_id seja falso. Defaults to -1.
+            not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
+            lista_restritiva (list, optional): lista que define os dados que serão gerados dentro do padrão inserido. Defaults to [].
 
         Raises:
-            self.TamanhoArrayErrado: array usado no pattern não possui o tamanho correto de acordo com o 
-            self.TipoDeDadoIncompativel: dado inserido atravez do pattern não é compativel com o necessário para o funcionamento
+            self.TamanhoArrayErrado: caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
+            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+
         Returns:
-            [dict]: dados gerados usando faker para corresponder ao padrão necessário
+            dict: dado gerado seguindo o padrão inserido
         """        
-        '''
-            pattern deve ser dado da seguinte forma:
-            {
-                "nome da coluna no bd":["tipo de dado gerado","dado adicional necessario"], #sempre desve ser passado como um array cada indice do dict,ja que alguns tipos de dados precisam mais do que apenas um dado para funcionar
-                ...
-            }
-
-
-            o padrão de saida deve ser semelhante ao padrão do sqlite:
-            {
-            "tipoOperacao":1 #sempre será 1 já que apenas são gerados dados para inserção por padrão,caso seja necessário algo diferente,deve ser modificado em outra função
-            "nomeBD": # nome do bd q será realizado a operação
-            "adicionais": {} ou []# vazio por padrão,caso seja necessário deversá ser tratado externamente em outra função
-            "dados"{
-                "nome da coluna":"dado", #nome da coluna deve ser passado no input e dado é gerado pela função
-                ...
-            }
-            }
-        '''
-        self.logging.info("create_data")
+        self.logging.info("create_data",extra=locals())
         try:
             if select_country=="random":
                 fake = Faker()
                 random_locale=fake.locale()
-                self.logging.info(random_locale)
+                self.logging.info("selecionada localização aleatoria",extra={"locale":random_locale})
                 fake = Faker(random_locale)#define o faker para seguir o padrão de um pais expecifico selecionado aleatoriamente dentre os disponiveis
             else:
                 fake = Faker(select_country)#se for definido então o codigo usado será o do pais inserido
-            dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":{},"adicionais":{}}
+                self.logging.info("selecionada localização definida",extra={"locale":select_country})
+            dados_gerados={}
             if id == -1:
                 id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table)+1
-            dados_gerados["idNoBD"]=id
-            for dado in pattern.keys():
-                self.logging.debug(dado)
+            dados_geraveis=pattern.keys()
+            if lista_restritiva !=[]:
+                
+                for i in pattern.keys():
+                    if i not in lista_restritiva:
+                        dados_geraveis.pop(i)
+            for dado in dados_geraveis:
                 if pattern[dado][0] == "nomeCompleto":
                     '''supoe-se que qualquer pessoa pode ter nascido em qq lugar e morar em qualquer outro lugar,nomes são dados pelo gerador de qualquer idioma,por isso nao foi definido um pais para a geracao'''
-                    dados_gerados["dados"][dado]=fake.name()
+                    dados_gerados[dado]=fake.name()
                 elif pattern[dado][0] == "primeiroNome":
-                    dados_gerados["dados"][dado]=fake.first_name()
+                    dados_gerados[dado]=fake.first_name()
                 elif pattern[dado][0] == "sobrenome":
-                    dados_gerados["dados"][dado]=fake.last_name()
+                    dados_gerados[dado]=fake.last_name()
                 elif pattern[dado][0] == "timestamp":
                     '''precisa obrigatoriamente de 1 parametro dizendo se vai ser tudo randomico ou se vai ter um intervalo,se tiver um intervalo devem ser passados mais 2 parametros,um inicial e um final , se o final for o valor "agora" então o valor final sera o timestamp de agora do sistema operacional
 
@@ -293,57 +311,58 @@ class GeradorDeSql:
                             if pattern[dado][2] == "agora":
                                 end_date="today"
                     if start_date == "" :
-                        dados_gerados["dados"][dado]=fake.date_between(end_date=end_date).strftime('%Y-%m-%d %H:%M:%S')
+                        dados_gerados[dado]=fake.date_between(end_date=end_date).strftime('%Y-%m-%d %H:%M:%S')
                     else:
-                        dados_gerados["dados"][dado]=fake.date_between_dates(start_date=start_date,end_date=end_date).strftime('%Y-%m-%d %H:%M:%S')
+                        dados_gerados[dado]=fake.date_between_dates(start_date=start_date,end_date=end_date).strftime('%Y-%m-%d %H:%M:%S')
                 elif pattern[dado][0] == "pais":
-                    dados_gerados["dados"][dado]=fake.current_country()
+                    dados_gerados[dado]=fake.current_country()
                 elif pattern[dado][0] == "cidade":
-                    dados_gerados["dados"][dado]=fake.city()
+                    dados_gerados[dado]=fake.city()
                 elif pattern[dado][0] == "endereco":
-                    dados_gerados["dados"][dado]=fake.street_address()
+                    dados_gerados[dado]=fake.street_address()
                 elif pattern[dado][0] == "cep":
-                    dados_gerados["dados"][dado]=fake.postcode()
+                    dados_gerados[dado]=fake.postcode()
                 elif pattern[dado][0] == "telefone":
                     if fake.boolean():
-                        dados_gerados["dados"][dado]=fake.phone_number()
+                        dados_gerados[dado]=fake.phone_number()
                     else:
                         try:
-                            dados_gerados["dados"][dado]=fake.cellphone_number()
-                        except:
-                            dados_gerados["dados"][dado]=fake.phone_number()
+                            dados_gerados[dado]=fake.cellphone_number()
+                        except AttributeError as e :
+                            dados_gerados[dado]=fake.phone_number()
+                            self.logging.exception("tipo celular nao existe")
                 elif pattern[dado][0] == "nomeCategoria":
-                    dados_gerados["dados"][dado]=fake.word()
+                    dados_gerados[dado]=fake.word()
                 elif pattern[dado][0] == "email":
-                    dados_gerados["dados"][dado]=fake.email()
+                    dados_gerados[dado]=fake.email()
                 elif pattern[dado][0] == "usuario":
-                    dados_gerados["dados"][dado]=fake.profile(fields=["username"])["username"]
+                    dados_gerados[dado]=fake.profile(fields=["username"])["username"]
                 elif pattern[dado][0] == "senha":
-                    dados_gerados["dados"][dado]=fake.password(length=fake.random_int(min=8,max=32))
+                    dados_gerados[dado]=fake.password(length=fake.random_int(min=8,max=32))
                 elif pattern[dado][0] == "boleano":
-                    dados_gerados["dados"][dado]=fake.boolean()
+                    dados_gerados[dado]=fake.boolean()
                 elif pattern[dado][0] == "idioma":
-                    dados_gerados["dados"][dado]=fake.locale()
+                    dados_gerados[dado]=fake.locale()
                 elif pattern[dado][0] == "titulo":
-                    dados_gerados["dados"][dado]=fake.sentence(nb_words=fake.random_int(min=1,max=10))
+                    dados_gerados[dado]=fake.sentence(nb_words=fake.random_int(min=1,max=10))
                 elif pattern[dado][0] == "textoLongo":
-                    dados_gerados["dados"][dado]=fake.paragraphs(nb=fake.random_int(min=1,max=2))
+                    dados_gerados[dado]=fake.paragraphs(nb=fake.random_int(min=1,max=2))
                 elif pattern[dado][0] == "nota":
-                    dados_gerados["dados"][dado]=uniform(0.0,10.0)
+                    dados_gerados[dado]=uniform(0.0,10.0)
                 elif pattern[dado][0] == "ano":
-                    dados_gerados["dados"][dado]=fake.date(pattern='%Y')
+                    dados_gerados[dado]=fake.date(pattern='%Y')
                 elif pattern[dado][0] == "duracaoDias":
-                    dados_gerados["dados"][dado]=fake.random_int(min=1,max=10)
+                    dados_gerados[dado]=fake.random_int(min=1,max=10)
                 elif pattern[dado][0] =="datetime":
-                    dados_gerados["dados"][dado]=fake.date_time().strftime('%Y-%m-%d')
+                    dados_gerados[dado]=fake.date_time().strftime('%Y-%m-%d')
                 elif pattern[dado][0] == "duracaoHoras":
-                    dados_gerados["dados"][dado]=uniform(0.0,4.0)
+                    dados_gerados[dado]=uniform(0.0,4.0)
                 elif pattern[dado][0] == "naLista":
                     if not all(isinstance(n, str) for n in list(pattern[dado][0])):
                         raise self.TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string",campo="variaveis adicionais da variavel naLista")
-                    dados_gerados["dados"][dado]=fake.word(ext_word_list=pattern[dado][1:] )
+                    dados_gerados[dado]=fake.word(ext_word_list=pattern[dado][1:] )
                 elif pattern[dado][0] == "valorPago":
-                    dados_gerados["dados"][dado]=uniform(0.0,50.0)
+                    dados_gerados[dado]=uniform(0.0,50.0)
                 elif pattern[dado][0] == "associacao":
                     '''
                     parametros obrigatórios são nome da tabela e se random ou se definido
@@ -353,114 +372,37 @@ class GeradorDeSql:
                     if type(pattern[dado][1]) != type(""):
                         raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
                     if pattern[dado][1]!="random":
-                        dados_gerados["dados"][dado]=pattern[dado][1]
+                        dados_gerados[dado]=pattern[dado][1]
                     else:
                         total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
                         if total_cadastrado>1:
-                            dados_gerados["dados"][dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                            dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
-                            dados_gerados["dados"][dado]=1
-                elif pattern[dado][0] == "id":
-                    dados_gerados["dados"][dado]=id
+                            dados_gerados[dado]=1
+                elif pattern[dado][0] == "id" and not not_define_id:
+                    dados_gerados[dado]=id
+            self.logging.debug("dado gerado por create_data",extra=self.dict_all_string(dados_gerados))
             return dados_gerados
         except self.TamanhoArrayErrado as e :
-            self.logging.error(e)
+            self.logging.exception(e)
         except self.ValorInvalido as e:
-            self.logging.error(e)
+            self.logging.exception(e)
         except self.TipoDeDadoIncompativel as e:
-            self.logging.error(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def create_select(self,table:str,pattern:dict,select_country:str="random",id:int=-1,filtro:list=[],values:dict={}) -> dict:
-        
-        """função gera um dictionary variante do de create_data que contem os dados equivalentes ao comando de pesquisa para o sqlite
-
-        Args:
-            table (str): nome da tabela do sql que o dado será inserido
-            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
-            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
-            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
-            filtro (list or str, optional): equivalente a coluna adicional do dado pesquisado,se for igual a "*" irá retornar todos. Defaults to [].
-
-        Returns:
-            dict: dados gerados usando faker para corresponder ao padrão necessário de uma pesquisa no bd
-        """
-        self.logging.info("create_select")
-        pattern=pattern.copy()
-        # if filtro==[]:
-        filtro_=self.gerador_filtro(pattern)
-        # elif filtro=="*":
-        #     filtro=list(pattern.keys())
-        self.logging.debug(filtro_)
-        for i in filtro_:
-            pattern.pop(i)
-        
-        created_data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
-
-        if values!={}:
-            created_data["dados"]=values
-        if filtro == "*":
-            created_data["tipoOperacao"]=3
-            created_data["adicionais"]=[]
-        else:
-            created_data["tipoOperacao"]=4
-            created_data["adicionais"]=filtro_
-        self.logging.debug(created_data)
-        return created_data
-
-    def create_update(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",id:int=-1,values:dict={}) -> dict:
-        """cria um novo dado para ser inserido no sqlite para a operação de update
-
-        Args:
-            table (str): nome da tabela do sql que o dado será inserido
-            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
-            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
-            filtro (list, optional): array com os nomes da colunas que não serão alterados. Defaults to [].
-            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
-
-        Returns:
-            dict: dados gerados usando faker para corresponder ao padrão da operação de update
-        """
-        self.logging.info("create_update")
-        try:
-            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values)
-            self.logging.debug(novos_dados)
-            dados_substitutos={}
-            for i in pattern.keys():
-                if i in novos_dados["adicionais"] and ("id" not in pattern[i]):
-                    dados_substitutos[i]=pattern[i]
-            self.logging.debug(dados_substitutos)
-            novos_dados["adicionais"]=self.create_insert(table=table,pattern=dados_substitutos,select_country=select_country,id=id)["dados"]
-            novos_dados["tipoOperacao"]=5
-            return novos_dados
-        except self.TamanhoArrayErrado as e :
-            self.logging.error(e)
-        except self.ValorInvalido as e:
-            self.logging.error(e)
-        except self.TipoDeDadoIncompativel as e:
-            self.logging.error(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={},filtro:list=[]) -> dict:
-        self.logging.info("create_delete")
-        try:
-            novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values)
-            self.logging.debug(novos_dados)
-            novos_dados["tipoOperacao"]=6
-            novos_dados["adicionais"]=[]
-            return novos_dados
-        except self.TamanhoArrayErrado as e :
-            self.logging.error(e)
-        except self.ValorInvalido as e:
-            self.logging.error(e)
-        except self.TipoDeDadoIncompativel as e:
-            self.logging.error(e)
+            self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def gerador_filtro(self,pattern:dict,ignorar:list=[]) -> array:
+        """ 
+            gera um conjunto de elementos para serem usados como filtro,eles são gerados a partir do pattern inserido,ignorando os elementos da lista desejada
+        Args:
+            pattern (dict): padrão do qual serão retiradas as keys para gerar a lista de filtro
+            ignorar (list, optional): lista de keys que não devem ser utilizadas na lista de retorno. Defaults to [].
+
+        Returns:
+            array: lista de keys gerada randomicamente para serem usadas como filtro
+        """        
+        self.logging.info("gerador_filtro",extra=locals())
         retorno=[]
         pattern=pattern.copy()
         for i in ignorar:
@@ -475,7 +417,151 @@ class GeradorDeSql:
                 tmp=choice(list(pattern.keys()))
             pattern.pop(tmp)
             retorno.append(tmp)
+        self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
         return retorno
+
+#relacionado com o processamento/geração de dados
+    def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1,values:dict={},not_define_id=False) -> dict:
+        
+        """cria um novo dado para ser inserido no sqlite ou ser usado em outras partes do codigo
+
+        Args:
+            table (str): nome da tabela do sql que o dado será inserido
+            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
+
+        Raises:
+            self.TamanhoArrayErrado: array usado no pattern não possui o tamanho correto de acordo com o 
+            self.TipoDeDadoIncompativel: dado inserido atravez do pattern não é compativel com o necessário para o funcionamento
+        Returns:
+            [dict]: dados gerados usando faker para corresponder ao padrão necessário
+        """        
+        '''
+            pattern deve ser dado da seguinte forma:
+            {
+                "nome da coluna no bd":["tipo de dado gerado","dado adicional necessario"], #sempre desve ser passado como um array cada indice do dict,ja que alguns tipos de dados precisam mais do que apenas um dado para funcionar
+                ...
+            }
+
+
+            o padrão de saida deve ser semelhante ao padrão do sqlite:
+            {
+            "tipoOperacao":1 #sempre será 1 já que apenas são gerados dados para inserção por padrão,caso seja necessário algo diferente,deve ser modificado em outra função
+            "nomeBD": # nome do bd q será realizado a operação
+            "adicionais": {} ou []# vazio por padrão,caso seja necessário deversá ser tratado externamente em outra função
+            "dados"{
+                "nome da coluna":"dado", #nome da coluna deve ser passado no input e dado é gerado pela função
+                ...
+            }
+            }
+        '''
+        self.logging.info("create_insert",extra=locals())
+        self.logging.debug("rastreio create_insert",extra={"rastreio":self.logging.full_inspect_caller()})
+        if values=={}:
+            dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id),"adicionais":{}}
+        else:
+            dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":values,"adicionais":{}}
+
+        dados_gerados["idNoBD"]=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
+        
+        self.logging.debug("dado gerado por create_insert",extra=self.dict_all_string(dados_gerados))
+        return dados_gerados
+        
+    def create_select(self,table:str,pattern:dict,select_country:str="random",id:int=-1,filtro_pesquisa:list=[],values:dict={},not_define_id:bool=False) -> dict:
+        
+        """função gera um dictionary variante do de create_data que contem os dados equivalentes ao comando de pesquisa para o sqlite
+
+        Args:
+            table (str): nome da tabela do sql que o dado será inserido
+            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro_pesquisa (list or str, optional): equivalente a coluna adicional do dado pesquisado,se for igual a "*" irá retornar todos,se for default o filtro será gerado randomicamente. Defaults to [].
+            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
+        Returns:
+            dict: dados gerados usando faker para corresponder ao padrão necessário de uma pesquisa no bd
+        """
+        self.logging.info("create_select",extra=locals())
+        self.logging.debug("rastreio create_select",extra={"rastreio":self.logging.full_inspect_caller()})
+        dados_gerados={"nomeBD":table}
+        pattern=pattern.copy()
+
+        if filtro_pesquisa == "*":
+            filtro_retorno=self.gerador_filtro(pattern)
+            dados_gerados["tipoOperacao"]=3
+            dados_gerados["adicionais"]=[]
+        elif filtro_pesquisa!=[]:
+            filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
+            dados_gerados["tipoOperacao"]=4
+            dados_gerados["adicionais"]=filtro_pesquisa
+        else:
+            filtro_pesquisa=self.gerador_filtro(pattern)
+            filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
+            dados_gerados["tipoOperacao"]=4
+            dados_gerados["adicionais"]=filtro_pesquisa
+
+        if values != {}:
+            dados_gerados["dados"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
+        else:
+            dados_gerados["dados"]=values
+        if not not_define_id:
+            dados_gerados["idNoBD"]=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
+        
+        self.logging.debug("dado gerado por create_select",extra=self.dict_all_string(dados_gerados))
+        return dados_gerados
+
+    def create_update(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",id:int=-1,values:dict={},not_define_id:bool=False) -> dict:
+        """cria um novo dado para ser inserido no sqlite para a operação de update
+
+        Args:
+            table (str): nome da tabela do sql que o dado será inserido
+            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): array com os nomes da colunas que serão pesquisadas se for default elas serão geradas randomicamente. Defaults to []
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
+
+        Returns:
+            dict: dados gerados usando faker para corresponder ao padrão da operação de update
+        """
+        self.logging.info("create_update",extra=locals())
+        self.logging.debug("rastreio create_update",extra={"rastreio":self.logging.full_inspect_caller()})
+
+        novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro,values=values,not_define_id=not_define_id)
+        novos_dados["adicionais"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=True,lista_restritiva=novos_dados["adicionais"])
+
+        novos_dados["tipoOperacao"]=5
+        self.logging.debug("dado gerado por create_update",extra=self.dict_all_string(novos_dados))
+        return novos_dados
+
+    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={},filtro:list=[],not_define_id:bool=False) -> dict:
+        """cria um novo dado para ser inserido no sqlite para a operação de delete
+
+        Args:
+            table (str): nome da tabela do sql que o dado será inserido
+            pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): array com os nomes da colunas que serão pesquisadas se for default elas serão geradas randomicamente. Defaults to [].
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
+
+        Returns:
+            dict: [description]
+        """        
+        self.logging.info("create_delete",extra=locals())
+        self.logging.debug("rastreio create_delete",extra={"rastreio":self.logging.full_inspect_caller()})
+        novos_dados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro,values=values,not_define_id=not_define_id)
+        novos_dados["tipoOperacao"]=6
+        novos_dados["adicionais"]=[]
+        self.logging.debug("dado gerado por create_delete",extra=self.dict_all_string(novos_dados))
+        return novos_dados
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict,nome_coluna_id:str="id"):
@@ -504,6 +590,7 @@ class GeradorDeSql:
                         nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
                     }
             '''
+        self.logging.info("generate_SQL_command_from_data",extra=locals())
         command=""
         try:
             if data["tipoOperacao"]==1:#insercao
@@ -577,32 +664,50 @@ class GeradorDeSql:
                 command+=";"
         except sqliteOperationalError as e:
             print("erro operacional no sqlite")
-            self.logging.error(e)
+            self.logging.exception(e)
             quit()
         except sqliteError as e:
             print("erro desconhecido no sqlite")
-            self.logging.error(e)
+            self.logging.exception(e)
         except self.ValorInvalido as e :
-            self.logging.error(e)
+            self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
         return command
 
     def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
-        self.logging.info("gerando dados de insercao e inserindo em sqlite")
+        """função que chama funções anteriormente descritas para gerar dados para o dado de inserção e cadastrar elas direto no sqlite
+
+        Args:
+            table ([type]): tabela para a qual o dado será gerado
+            pattern (dict):padrão do dado que será gerado
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+        """        
+        self.logging.info("gerar_dado_insercao",extra=locals())
         data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
-        self.logging.debug(data)
         self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
         self.processamento_sqlite.add_contador_sqlite(table=table)
 
-    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[],not_define_id=False):
-        self.logging.info("gerando dados de busca e inserindo em sqlite")
+    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[],not_define_id:bool=False):
+        """função que chama funções anteriormente descritas para gerar dados para o dado de busca e cadastrar elas direto no sqlite
+
+        Args:
+            table ([type]): tabela para a qual o dado será gerado
+            pattern (dict):padrão do dado que será gerado
+            dado_existente (bool, optional): se for verdadeiro o dado gerado deve ser compativel com um dado existente previamente na tabela . Defaults to False.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): o filtro de dado que será filtrado,se ele for default ele será gerado randomicamente,se for "*" ele listará todos. Defaults to [].
+            not_define_id (bool, optional): se True ele não retornará o id na consulta gerada. Defaults to False.
+        """
+        self.logging.info("gerar_dado_busca",extra=locals())
         #table,id:int=-1,dados_pesquisados:dict={},filtro=[]
         if id == -1 and dado_existente:
             id=self.processamento_sqlite.random_id_cadastrado(table=table)
 
-        dados_pesquisados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id)
+        dados_pesquisados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id)
 
         if id !=-1 and dado_existente:
             dados_adiquiridos = self.processamento_sqlite.read_operacoes(filtro={"idNoBD":id,"nomeBD":table,"tipoOperacao":1})
@@ -620,16 +725,27 @@ class GeradorDeSql:
                 dados_pesquisados["dados"].pop(i)
         self.logging.debug(dados_pesquisados["dados"])
         if not_define_id:
-            data=self.create_select(table=table,values=dados_pesquisados["dados"],filtro=filtro,pattern=pattern,select_country=select_country)
+            data=self.create_select(table=table,values=dados_pesquisados["dados"],filtro_pesquisa=filtro,pattern=pattern,select_country=select_country)
         else:
-            data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro=filtro,pattern=pattern,select_country=select_country)
+            data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro_pesquisa=filtro,pattern=pattern,select_country=select_country)
         if all_filter:
             data["tipoOperacao"]=3
-        self.logging.debug(data)
+        self.logging.debug("dado gerado gerar_dado_busca",extra=self.dict_all_string(data))
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
-    def gerar_dado_delecao(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",not_define_id=False):
-        self.logging.info("gerando dados de delecao e inserindo em sqlite")
+    def gerar_dado_delecao(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",not_define_id:bool=False):
+        """função que chama funções anteriormente descritas para gerar dados para o dado de deleção e cadastrar elas direto no sqlite
+
+        Args:
+            table ([type]): tabela para a qual o dado será gerado
+            pattern (dict):padrão do dado que será gerado
+            dado_existente (bool, optional): se for verdadeiro o dado gerado deve ser compativel com um dado existente previamente na tabela . Defaults to False.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): o filtro de dado que será filtrado,se ele for default ele será gerado randomicamente,se for "*" ele listará todos. Defaults to [].
+            not_define_id (bool, optional): se True ele não retornará o id na consulta gerada. Defaults to False.
+        """
+        self.logging.info("gerar_dado_delecao",extra=locals())
         values={}
         if id == -1 and dado_existente:
             id=self.processamento_sqlite.random_id_cadastrado(table=table)
@@ -637,27 +753,82 @@ class GeradorDeSql:
             self.logging.debug(dados_adiquiridos[0])
             values = dados_adiquiridos[0]["dados"]
         if not_define_id:
-            data=self.create_delete(table=table,pattern=pattern,select_country=select_country,values=values)
+            data=self.create_delete(table=table,pattern=pattern,select_country=select_country,values=values,not_define_id=not_define_id)
         else:
-            data=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,values=values)
-        self.logging.debug(data)
+            data=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,values=values,not_define_id=not_define_id)
+        self.logging.debug("gerar_dado_delecao",extra=self.dict_all_string(data))
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
-    def gerar_dado_leitura_completa(self,table:str,pattern:dict,filtro:list=[],select_country:str="random"):
+    def gerar_dado_leitura_completa(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",not_define_id:bool=False):
+        """função que chama funções anteriormente descritas para gerar dados para o dado de leitura e cadastrar elas direto no sqlite
+
+        Args:
+            table ([type]): tabela para a qual o dado será gerado
+            pattern (dict):padrão do dado que será gerado
+            dado_existente (bool, optional): se for verdadeiro o dado gerado deve ser compativel com um dado existente previamente na tabela . Defaults to False.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): o filtro de dado que será filtrado,se ele for default ele será gerado randomicamente,se for "*" ele listará todos. Defaults to [].
+            not_define_id (bool, optional): se True ele não retornará o id na consulta gerada. Defaults to False.
+        """
         self.logging.info("gerando dados de leitura e inserindo em sqlite")
 
-        data=self.create_select(table=table,filtro=filtro,select_country=select_country,pattern=pattern)
-        self.logging.debug(data)
+        data=self.create_select(table=table,filtro_pesquisa=filtro,select_country=select_country,pattern=pattern,not_define_id=not_define_id)
+        self.logging.debug("gerar_dado_leitura_completa",extra=self.dict_all_string(data))
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
-    def gerar_dado_atualizacao(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",not_define_id=False):
-        self.logging.info("gerando dados de atualizacao e inserindo em sqlite")
+    def gerar_dado_atualizacao(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",not_define_id=False,filtro:list=[]):
+        """função que chama funções anteriormente descritas para gerar dados para o dado de atualização e cadastrar elas direto no sqlite
+
+        Args:
+            table ([type]): tabela para a qual o dado será gerado
+            pattern (dict):padrão do dado que será gerado
+            dado_existente (bool, optional): se for verdadeiro o dado gerado deve ser compativel com um dado existente previamente na tabela . Defaults to False.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
+            filtro (list, optional): o filtro de dado que será filtrado,se ele for default ele será gerado randomicamente,se for "*" ele listará todos. Defaults to [].
+            not_define_id (bool, optional): se True ele não retornará o id na consulta gerada. Defaults to False.
+        """
+        self.logging.info("gerando dados de atualizacao e inserindo em sqlite")        #table,id:int=-1,dados_pesquisados:dict={},filtro=[]
+        if id == -1 and dado_existente:
+            id=self.processamento_sqlite.random_id_cadastrado(table=table)
+
+        dados_pesquisados=self.create_update(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id)
+
+        if id !=-1 and dado_existente:
+            dados_adiquiridos = self.processamento_sqlite.read_operacoes(filtro={"idNoBD":id,"nomeBD":table,"tipoOperacao":1})
+            self.logging.debug(dados_adiquiridos[0])
+            dados_pesquisados["dados"] = dados_adiquiridos[0]["dados"]
+        
+        all_filter=False
+        if filtro == "*":
+            all_filter=True
+            filtro=self.gerador_filtro(pattern=pattern)
+        self.logging.debug(filtro)
+        self.logging.debug(dados_pesquisados["dados"])
+        for i in filtro:
+            if i in dados_pesquisados["dados"]:
+                dados_pesquisados["dados"].pop(i)
+        self.logging.debug(dados_pesquisados["dados"])
+        data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro_pesquisa=filtro,pattern=pattern,select_country=select_country,not_define_id=not_define_id)
+        if all_filter:
+            data["tipoOperacao"]=3
+        self.logging.debug("gerar_dado_busca",extra=self.dict_all_string(data))
+        self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
 
     def gerar_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
-        self.logging.info("gerando dados por json")
-        def random_bool():
-                    return choice([True, False])
+        """gera uma sequencia de dados para serem inseridos no sqlite,esses dados são aleatórios,cada execução dessa função corresponde a um ciclo de geração de dado
+
+        Args:
+            json_file ([type]): arquivo do qual os dados de padrão serão carregados
+            tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            table (str, optional): nome da tabela no qual os serão gerados,se default será escolhido randomicamente entre os existentes dentro do arquivo json. Defaults to "random".
+            quantidade (str, optional): quantidade de dados gerados desta tabela selecionada. Defaults to "random".
+            dado_existente (bool, optional): verifica se o dado é compativel com os previamente existenes no bd cadastrado. Defaults to False.
+        """
+        self.logging.info("gerar_dados_por_json",extra=locals())
         try:
             file=open(json_file)
             json_loaded=json.loads(file.read())
@@ -665,47 +836,82 @@ class GeradorDeSql:
                 table=random.choice(json_loaded.keys())
             if quantidade == "random":
                 quantidade=randint(0, 20)
+            self.logging.debug("dados gerados automaticamente",extra={"quantidade":str(quantidade)})
             for i in range(0,quantidade):
-                
-                if tipo==0:
-                    tipo_execucao=randint(1,6)
-                else:
-                    tipo_execucao=tipo
-                self.logging.info("table="+table+", pattern="+str(json_loaded[table])+", select_country="+select_country)
-                filtro=self.gerador_filtro(pattern=json_loaded[table])
-                if tipo_execucao == 1:#criacao
-                    self.gerar_dado_insercao(table=table,pattern=json_loaded[table],select_country=select_country)
-                elif tipo_execucao == 2:#leitura completa
-                    self.gerar_dado_leitura_completa(table=table,filtro=filtro)
-                elif tipo_execucao == 3:#busca
-                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
-                elif tipo_execucao ==4:#busca filtrada
-                    self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
-                elif tipo_execucao == 5:#edicao
-                    #edicao
-                    pass
-                elif tipo_execucao == 6:#delecao
-                    self.gerar_dado_delecao(table=table,pattern=json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
-                else:
-                    raise self.ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
-        except self.TamanhoArrayErrado as e :
-            self.logging.error(e)
-        except self.ValorInvalido as e:
-            self.logging.error(e)
-        except self.TipoDeDadoIncompativel as e:
-            self.logging.error(e)
+                self.ciclo_geracao_dados_json(json_loaded=json_loaded,tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
     
-    def gerar_todos_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",quantidade="random"):
-        self.logging.info("gerando multiplos dados sqlite")
-        if quantidade == "random":
-            quantidade=randint(0, 20)
+    def  ciclo_geracao_dados_json(self,json_loaded,tipo:int=1,select_country:str="random",table:str="random",dado_existente:bool=False):
+        """gera uma das possiveis operações para a tebala definida 
+
+        Args:
+            json_loaded ([type]): dictionary correspondente ao json carregado com os padrões de todas as tabelas
+            tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            table (str, optional): nome da tabela no qual os serão gerados,se default será escolhido randomicamente entre os existentes dentro do arquivo json. Defaults to "random".
+            dado_existente (bool, optional): verifica se o dado é compativel com os previamente existenes no bd cadastrado. Defaults to False.
+        """        
+        def random_bool():
+                    return choice([True, False])
+        self.logging.info("ciclo_geracao_dados_json",extra=locals())
+        try:
+            if tipo==0:
+                tipo_execucao=randint(1,6)
+            else:
+                tipo_execucao=tipo
+            tracking_data=locals()
+            tracking_data["tipo_execucao"]=tipo_execucao
+            self.logging.info("ciclo_geracao_dados_json",extra=self.dict_all_string(tracking_data))
+            filtro=self.gerador_filtro(pattern=json_loaded[table])
+            self.logging.debug("ultimo id cadastrado",extra={"id":self.processamento_sqlite.buscar_ultimo_id_cadastrado(table=table)})
+            ultimo_id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table=table)
+            if tipo_execucao == 1:#criacao
+                self.gerar_dado_insercao(table=table,pattern=json_loaded[table],select_country=select_country)
+            elif tipo_execucao == 2 and ultimo_id != 0:#leitura completa
+                self.gerar_dado_leitura_completa(table=table,pattern=json_loaded[table],filtro=filtro,select_country=select_country)
+            elif tipo_execucao == 3 and ultimo_id != 0:#busca
+                self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
+            elif tipo_execucao == 4 and ultimo_id != 0:#busca filtrada
+                self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
+            elif tipo_execucao == 5 and ultimo_id != 0:#edicao
+                self.gerar_dado_atualizacao(table=table,pattern=json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
+            elif tipo_execucao == 6 and ultimo_id != 0:#delecao
+                self.gerar_dado_delecao(table=table,pattern=json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
+            elif ultimo_id == 0:
+                raise self.ValorInvalido(campo="quantidade de valores cadastrados",valor_inserido=tipo,valor_possivel="maior que 0")
+            else:
+                raise self.ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
+        except self.TamanhoArrayErrado as e :
+            self.logging.exception(e)
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+            if e.campo =="quantidade de valores cadastrados" and tipo == 0:
+                self.ciclo_geracao_dados_json(json_loaded=json_loaded,tipo=1,select_country=select_country,table=table,dado_existente=dado_existente)
+        except self.TipoDeDadoIncompativel as e:
+            self.logging.exception(e)
+
+    def gerar_todos_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",quantidade_ciclo="random",total_ciclos="random"):
+        """gera os dados de acordo com o arquivo json e quantidades definidas
+
+        Args:
+            json_file ([type]): arquivo do qual os dados de padrão serão carregados
+            tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            quantidade_ciclo (str, optional): quantidade de dados que serão gerados a cada ciclo. Defaults to "random".
+            total_ciclos (str, optional): quantidade de ciclos de dados que serão gerados. Defaults to "random".
+        """        
+        self.logging.info("gerar_todos_dados_por_json",extra=locals())
+        if quantidade_ciclo == "random":
+            quantidade_ciclo=randint(0, 20)
+        if total_ciclos == "random":
+            total_ciclos=randint(0, 20)
         file=open(json_file)
         json_loaded=json.loads(file.read())
         self.logging.debug(json_loaded)
-        for table in json_loaded.keys():
-            self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade,tipo=tipo)
+        for i in range(0,total_ciclos):
+            table = choice(list(json_loaded.keys()))
+            self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
 
 class InteracaoSqlite(ProcessamentoSqlite):
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
@@ -720,50 +926,53 @@ class InteracaoSqlite(ProcessamentoSqlite):
         
 
     def buscar_ultimo_id_cadastrado(self,table:str):
-        self.logging.info("ultimo id cadastrado")
+        self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
         filtro={"nomeBD":table}
         query=["numeroDDadosCadastrados"]
         self.certify_if_contador_exists(table)
         retorno=self.read_data_sqlite("contadores",filtro,query)
+        self.logging.debug("ultimo id cadastrado",extra={"retorno":retorno[0][0]})
         return int(retorno[0][0])
 
     def random_id_cadastrado(self,table:str) -> int:
-        self.logging.info("selecionando id aleatorio")
+        self.logging.info("random_id_cadastrado",extra=locals())
         tmp=self.buscar_ultimo_id_cadastrado(table=table)
         tmp2=randint(1,tmp)
-        self.logging.debug(str(tmp)+"  "+str(tmp2))
+        self.logging.debug("",extra={"ultimo id":str(tmp),"valor escolhido":str(tmp2)})
         return tmp2
 
     def add_contador_sqlite(self,table:str):
-        self.logging.info("insercao contador sqlite")
+        self.logging.info("add_contador_sqlite",extra=locals())
         try:
             cursor = self.conn.cursor()
             self.certify_if_contador_exists(table)
             cursor.execute("UPDATE contadores SET numeroDDadosCadastrados = numeroDDadosCadastrados+1 WHERE nomeBD='"+table+"';")
             self.conn.commit()
+            self.logging.debug("adicionado contador")
         except sqliteOperationalError as e:
             print("erro operacional no sqlite")
-            self.logging.error(e)
+            self.logging.exception(e)
             quit()
         except sqliteError as e:
             print("erro desconhecido no sqlite")
-            self.logging.error(e)
+            self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def certify_if_contador_exists(self,table:str):
+        self.logging.info("certify_if_contador_exists",extra=locals())
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+table+"';")
         listagem=cursor.fetchall() 
         if listagem == []:
             cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+table+"',0);")
 
-    def read_contadores(self,filtro:dict={},query="*"):
-        self.logging.info("lendo sqlite contadores")
+    def read_contadores(self,filtro:dict={},query="*")->list:
+        self.logging.info("read_contadores",extra=locals())
         return self.read_data_sqlite("contadores",filtro=filtro,query=query)
 
-    def read_operacoes(self,filtro:dict={},query="*"):
-        self.logging.info("lendo sqlite operacoes")
+    def read_operacoes(self,filtro:dict={},query="*")->list:
+        self.logging.info("read_operacoes",extra=locals())
         tmp=self.read_data_sqlite("operacoes",filtro=filtro,query=query)
         self.logging.debug(tmp)
         retorno=[]
@@ -782,6 +991,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         Returns:
             dict: dict usavel e processado do que foi lido do sqlite
         """        
+        self.logging.info("process_data_generated",extra=locals())
         etapa1_operacoes=data
         self.logging.debug(etapa1_operacoes)
         output={}
@@ -825,6 +1035,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         Returns:
             (dict,list): dictionary ou array com o conteudo usavel do retorno de uma consulta no sqlite
         """        
+        self.logging.info("string_to_dict",extra=locals())
         if not is_dict and patter_externo==r"\{(.*)\}" and pattern_interno==r"([^:]*)\:(.*)":
             patter_externo=r"\[(.*)\]"
             pattern_interno=r"(.*)"
@@ -844,7 +1055,6 @@ class InteracaoSqlite(ProcessamentoSqlite):
         tmp=0
         if is_dict:
             for dado in etapa1_dados:
-                self.logging.debug(re.findall(pattern_dados_etapa2,dado))
                 etapa2_dados=re.findall(pattern_dados_etapa2,dado)
                 if etapa2_dados==[]:
                     break
@@ -860,5 +1070,5 @@ class InteracaoSqlite(ProcessamentoSqlite):
                 etapa2_dados=re.findall(pattern_dados_etapa2,dado)[0]
                 dados[tmp]=etapa2_dados[0]
                 tmp+=1
-        self.logging.debug(dados)
+        self.logging.debug("string_to_dict",extra=self.dict_all_string(dados))
         return dados

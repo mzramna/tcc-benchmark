@@ -30,8 +30,8 @@ criar metodo de deleção,e listagem
  <h1>21/9</h1>
  * --criar metodo de salvar os dados de listagem geral gerados no sql --
  * --criar metodo de salvar os dados de busca filtrada gerados no sql--
- * criar metodo de salvar os dados de deleção gerados no sql
- * criar tratamento de log decente
+ * --criar metodo de salvar os dados de deleção gerados no sql--
+ * --criar tratamento de log decente--
  
 <h1>22/9</h1>
 converter dados para padrão do dbbench
