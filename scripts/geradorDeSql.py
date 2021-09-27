@@ -823,6 +823,7 @@ class GeradorDeSql:
         self.logging.info("gerando dados de leitura e inserindo em sqlite")
 
         data=self.create_select(table=table,filtro_pesquisa=filtro,select_country=select_country,pattern=pattern,not_define_id=not_define_id)
+        data["tipoOperacao"]=2
         self.logging.debug("gerar_dado_leitura_completa",extra=self.dict_all_string(data))
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
@@ -861,6 +862,7 @@ class GeradorDeSql:
                 dados_pesquisados["dados"].pop(i)
         self.logging.debug(dados_pesquisados["dados"])
         data=self.create_select(table=table,values=dados_pesquisados["dados"],id=id,filtro_pesquisa=filtro,pattern=pattern,select_country=select_country,not_define_id=not_define_id)
+        data["tipoOperacao"]=5
         if all_filter:
             data["tipoOperacao"]=3
         self.logging.debug("gerar_dado_busca",extra=self.dict_all_string(data))

@@ -99,12 +99,13 @@ gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts
 # pprint(tmp2)
 
 #print(gerador.read_operacoes(filtro={"idNoBD":1,"nomeBD":"actor"}))
-# gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=1,select_country="en_US",quantidade=10)
-# gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=2,select_country="en_US",quantidade=10)
-# gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=3,select_country="en_US",quantidade=10)
-# gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=4,select_country="en_US",quantidade=10,dado_existente=True)
-# gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=5,select_country="en_US",quantidade=10,dado_existente=True)
-# gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=6,select_country="en_US",quantidade=10,dado_existente=True)
 gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=200)
+# gerador.gerar_dados_validos_por_json(table="actor",tipo=1,select_country="pt_br",quantidade=10)
+gerador.gerar_dados_validos_por_json(table="actor",tipo=2,select_country="pt_br",quantidade=10)
+# gerador.gerar_dados_validos_por_json(table="actor",tipo=3,select_country="pt_br",quantidade=10)
+# gerador.gerar_dados_validos_por_json(table="actor",tipo=4,select_country="pt_br",quantidade=10,dado_existente=True)
+gerador.gerar_dados_validos_por_json(table="actor",tipo=5,select_country="pt_br",quantidade=10,dado_existente=True)
+# gerador.gerar_dados_validos_por_json(table="actor",tipo=6,select_country="pt_br",quantidade=10,dado_existente=True)
+
 #pprint(gerador.read_contadores())
 
