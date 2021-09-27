@@ -177,9 +177,10 @@ class GeradorDeSql:
             return self.message
 
 #inicialização
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
+    def __init__(self,sqlite_db:str="./initial_db.db",sql_file_pattern:str="./sqlitePattern.sql",json_file:str="./scripts/padroes.json", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
         """
-        classe para gerenciar arquivos csv
+        classe para gerar dados de teste para bancos de dados
+        json_file ([type]): arquivo do qual os dados de padrão serão carregados
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
@@ -189,7 +190,9 @@ class GeradorDeSql:
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
         self.conn = sqlite3.connect(sqlite_db)
         
-
+        file=open(json_file)
+        self.json_loaded=json.loads(file.read())
+        self.logging.debug(self.json_loaded)
         logging.getLogger('faker').setLevel(logging.ERROR)
         #self.logging = self.logging.logger.getLogger("gerador sql")
 
@@ -223,7 +226,10 @@ class GeradorDeSql:
         if id == -1:
             for campo,valor in pattern.items():
                 if "id" in valor:
-                    return data[campo]
+                    if campo in data:
+                        return data[campo]
+                    else:
+                        return -1
         return id
 
     def create_data(self,table:str,pattern:dict,select_country:str="random",id:int=-1,not_define_id=False,lista_restritiva:list=[]) -> dict:
@@ -245,6 +251,7 @@ class GeradorDeSql:
             dict: dado gerado seguindo o padrão inserido
         """        
         self.logging.info("create_data",extra=locals())
+        self.logging.debug("rastreio create_data",extra={"rastreio":self.logging.full_inspect_caller()})
         try:
             if select_country=="random":
                 fake = Faker()
@@ -257,13 +264,15 @@ class GeradorDeSql:
             dados_gerados={}
             if id == -1:
                 id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table)+1
-            dados_geraveis=pattern.keys()
+            dados_geraveis=list(pattern.keys())
             if lista_restritiva !=[]:
                 
                 for i in pattern.keys():
                     if i not in lista_restritiva:
-                        dados_geraveis.pop(i)
+                        dados_geraveis.remove(i)
             for dado in dados_geraveis:
+                if type(pattern[dado][0]) != type(""):
+                        raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][0],tipo_possivel="string",campo="nome do campo")
                 if pattern[dado][0] == "nomeCompleto":
                     '''supoe-se que qualquer pessoa pode ter nascido em qq lugar e morar em qualquer outro lugar,nomes são dados pelo gerador de qualquer idioma,por isso nao foi definido um pais para a geracao'''
                     dados_gerados[dado]=fake.name()
@@ -365,20 +374,30 @@ class GeradorDeSql:
                     dados_gerados[dado]=uniform(0.0,50.0)
                 elif pattern[dado][0] == "associacao":
                     '''
-                    parametros obrigatórios são nome da tabela e se random ou se definido
+                    parametros obrigatórios é nome da tabela e se random ou se definido é adicional,caso não seja definido obrigatoriamente é random
                     '''
                     if len(pattern[dado])<2:
-                        raise self.TamanhoArrayErrado(valor_possivel=2,valor_inserido=len(pattern[dado]),campo="associacao")
+                        raise self.TamanhoArrayErrado(valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="associacao")
                     if type(pattern[dado][1]) != type(""):
                         raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
-                    if pattern[dado][1]!="random":
-                        dados_gerados[dado]=pattern[dado][1]
+                    if len(pattern[dado])>2:
+                        if pattern[dado][2]!="random":
+                            dados_gerados[dado]=pattern[dado][2]
+                        else:
+                            total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
+                            if total_cadastrado>1:
+                                dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                            else:
+                                dados_gerados[dado]=1
                     else:
                         total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
-                        if total_cadastrado>1:
+                        if total_cadastrado>0:
                             dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
-                            dados_gerados[dado]=1
+                            # raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
+                            self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
+                            dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+
                 elif pattern[dado][0] == "id" and not not_define_id:
                     dados_gerados[dado]=id
             self.logging.debug("dado gerado por create_data",extra=self.dict_all_string(dados_gerados))
@@ -387,6 +406,10 @@ class GeradorDeSql:
             self.logging.exception(e)
         except self.ValorInvalido as e:
             self.logging.exception(e)
+            # if e.campo=="associacao" and  e.valor_inserido[1]==0 and e.valor_possivel=="maior que 0":
+            #     #criar a tabela necessária recursivamente e chamar novamente essa tabela
+            #     self.gerar_dado_insercao(table=e.valor_inserido[0],pattern=self.json_loaded[e.valor_inserido[0]],select_country=select_country)
+            #     return self.create_data(table=table,pattern=pattern,select_country=fake.locales[0],id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva)
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
         except :
@@ -403,22 +426,33 @@ class GeradorDeSql:
             array: lista de keys gerada randomicamente para serem usadas como filtro
         """        
         self.logging.info("gerador_filtro",extra=locals())
-        retorno=[]
-        pattern=pattern.copy()
-        for i in ignorar:
-            pattern.pop(i)
-        total_elementos=len(list(pattern.keys()))
-        intervalo=randint(1,total_elementos)
-        while intervalo>=total_elementos:
+        try:
+            retorno=[]
+            total_elementos=len(list(pattern.keys()))-len(ignorar)
+            if total_elementos == 0 :
+                if list(pattern.keys())==ignorar:
+                    raise self.ValorInvalido(valor_inserido=ignorar,mensage_adicional="ignorar não pode ser igual a pattern",campo="ignorar")
+                else:
+                    raise self.ValorInvalido(valor_inserido=ignorar,mensage_adicional="ignorar não pode ter o mesmo tamanho de pattern",campo="ignorar")
             intervalo=randint(1,total_elementos)
-        for i in range(0,intervalo):
-            tmp=choice(list(pattern.keys()))
-            while (tmp in retorno):
+            while intervalo>=total_elementos:
+                intervalo=randint(1,total_elementos)
+            for i in range(1,intervalo):
                 tmp=choice(list(pattern.keys()))
-            pattern.pop(tmp)
-            retorno.append(tmp)
-        self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
-        return retorno
+                while (tmp in retorno) or (tmp in ignorar):
+                    tmp=choice(list(pattern.keys()))
+                #pattern.pop(tmp)
+                retorno.append(tmp)
+            self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
+            if retorno == []:
+                raise self.TamanhoArrayErrado(valor_inserido=retorno,valor_possivel="maior que 1",campo="retorno")
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+        except self.TamanhoArrayErrado as e:
+            self.logging.exception(e)
+            retorno = self.gerador_filtro(pattern=pattern,ignorar=ignorar)
+        finally:
+            return retorno
 
 #relacionado com o processamento/geração de dados
     def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1,values:dict={},not_define_id=False) -> dict:
@@ -465,8 +499,9 @@ class GeradorDeSql:
             dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id),"adicionais":{}}
         else:
             dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":values,"adicionais":{}}
-
-        dados_gerados["idNoBD"]=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
+        _id=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
+        if not not_define_id and _id !=-1:
+            dados_gerados["idNoBD"]=_id
         
         self.logging.debug("dado gerado por create_insert",extra=self.dict_all_string(dados_gerados))
         return dados_gerados
@@ -488,32 +523,46 @@ class GeradorDeSql:
         """
         self.logging.info("create_select",extra=locals())
         self.logging.debug("rastreio create_select",extra={"rastreio":self.logging.full_inspect_caller()})
-        dados_gerados={"nomeBD":table}
-        pattern=pattern.copy()
+        try:
+            dados_gerados={"nomeBD":table}
+            pattern=pattern.copy()
 
-        if filtro_pesquisa == "*":
-            filtro_retorno=self.gerador_filtro(pattern)
-            dados_gerados["tipoOperacao"]=3
-            dados_gerados["adicionais"]=[]
-        elif filtro_pesquisa!=[]:
-            filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
-            dados_gerados["tipoOperacao"]=4
-            dados_gerados["adicionais"]=filtro_pesquisa
-        else:
-            filtro_pesquisa=self.gerador_filtro(pattern)
-            filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
-            dados_gerados["tipoOperacao"]=4
-            dados_gerados["adicionais"]=filtro_pesquisa
+            if filtro_pesquisa == "*":
+                filtro_retorno=self.gerador_filtro(pattern)
+                dados_gerados["tipoOperacao"]=3
+                filtro_pesquisa_=[]
+            elif filtro_pesquisa!=[]:
+                filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
+                dados_gerados["tipoOperacao"]=4
+                filtro_pesquisa_=filtro_pesquisa
+            else:
+                filtro_pesquisa_=self.gerador_filtro(pattern)
+                filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa_)
+                dados_gerados["tipoOperacao"]=4
+            dados_gerados["adicionais"]=filtro_pesquisa_
 
-        if values != {}:
-            dados_gerados["dados"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
-        else:
-            dados_gerados["dados"]=values
-        if not not_define_id:
-            dados_gerados["idNoBD"]=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
-        
-        self.logging.debug("dado gerado por create_select",extra=self.dict_all_string(dados_gerados))
-        return dados_gerados
+            if values == {}:
+                dados_gerados["dados"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
+            else:
+                dados_gerados["dados"]=values
+            
+            for campo,valor in pattern.items():
+                    if "id" in valor:
+                        if campo in filtro_pesquisa:
+                            not_define_id=False
+
+            _id=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
+            if not not_define_id and _id !=-1:
+                dados_gerados["idNoBD"]=_id
+
+            self.logging.debug("dado gerado por create_select",extra=self.dict_all_string(dados_gerados))
+            if  len(dados_gerados["dados"]) == 0:
+                raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+            dados_gerados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro_pesquisa,values=values,not_define_id=not_define_id)
+        finally:
+            return dados_gerados
 
     def create_update(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",id:int=-1,values:dict={},not_define_id:bool=False) -> dict:
         """cria um novo dado para ser inserido no sqlite para a operação de update
@@ -789,7 +838,8 @@ class GeradorDeSql:
             filtro (list, optional): o filtro de dado que será filtrado,se ele for default ele será gerado randomicamente,se for "*" ele listará todos. Defaults to [].
             not_define_id (bool, optional): se True ele não retornará o id na consulta gerada. Defaults to False.
         """
-        self.logging.info("gerando dados de atualizacao e inserindo em sqlite")        #table,id:int=-1,dados_pesquisados:dict={},filtro=[]
+        self.logging.info("gerando dados de atualizacao e inserindo em sqlite")        #table,id:int=-1,dados_pesquisados:dict={},
+        
         if id == -1 and dado_existente:
             id=self.processamento_sqlite.random_id_cadastrado(table=table)
 
@@ -817,11 +867,10 @@ class GeradorDeSql:
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
 
-    def gerar_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
+    def gerar_dados_validos_por_json(self,tipo:int=0,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
         """gera uma sequencia de dados para serem inseridos no sqlite,esses dados são aleatórios,cada execução dessa função corresponde a um ciclo de geração de dado
 
         Args:
-            json_file ([type]): arquivo do qual os dados de padrão serão carregados
             tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
             table (str, optional): nome da tabela no qual os serão gerados,se default será escolhido randomicamente entre os existentes dentro do arquivo json. Defaults to "random".
@@ -830,23 +879,23 @@ class GeradorDeSql:
         """
         self.logging.info("gerar_dados_por_json",extra=locals())
         try:
-            file=open(json_file)
-            json_loaded=json.loads(file.read())
+            
             if table == "random":
-                table=random.choice(json_loaded.keys())
+                table=random.choice(self.json_loaded.keys())
             if quantidade == "random":
                 quantidade=randint(0, 20)
             self.logging.debug("dados gerados automaticamente",extra={"quantidade":str(quantidade)})
             for i in range(0,quantidade):
-                self.ciclo_geracao_dados_json(json_loaded=json_loaded,tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
+                self.ciclo_geracao_dados_json(tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
-    
-    def  ciclo_geracao_dados_json(self,json_loaded,tipo:int=1,select_country:str="random",table:str="random",dado_existente:bool=False):
+
+    #TODO gerar dados de erro por json
+
+    def  ciclo_geracao_dados_json(self,tipo:int=0,select_country:str="random",table:str="random",dado_existente:bool=False):
         """gera uma das possiveis operações para a tebala definida 
 
         Args:
-            json_loaded ([type]): dictionary correspondente ao json carregado com os padrões de todas as tabelas
             tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
             table (str, optional): nome da tabela no qual os serão gerados,se default será escolhido randomicamente entre os existentes dentro do arquivo json. Defaults to "random".
@@ -863,21 +912,21 @@ class GeradorDeSql:
             tracking_data=locals()
             tracking_data["tipo_execucao"]=tipo_execucao
             self.logging.info("ciclo_geracao_dados_json",extra=self.dict_all_string(tracking_data))
-            filtro=self.gerador_filtro(pattern=json_loaded[table])
+            filtro=self.gerador_filtro(pattern=self.json_loaded[table])
             self.logging.debug("ultimo id cadastrado",extra={"id":self.processamento_sqlite.buscar_ultimo_id_cadastrado(table=table)})
             ultimo_id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table=table)
             if tipo_execucao == 1:#criacao
-                self.gerar_dado_insercao(table=table,pattern=json_loaded[table],select_country=select_country)
+                self.gerar_dado_insercao(table=table,pattern=self.json_loaded[table],select_country=select_country)
             elif tipo_execucao == 2 and ultimo_id != 0:#leitura completa
-                self.gerar_dado_leitura_completa(table=table,pattern=json_loaded[table],filtro=filtro,select_country=select_country)
+                self.gerar_dado_leitura_completa(table=table,pattern=self.json_loaded[table],filtro=filtro,select_country=select_country)
             elif tipo_execucao == 3 and ultimo_id != 0:#busca
-                self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
+                self.gerar_dado_busca(table=table,pattern=self.json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
             elif tipo_execucao == 4 and ultimo_id != 0:#busca filtrada
-                self.gerar_dado_busca(table=table,pattern=json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
+                self.gerar_dado_busca(table=table,pattern=self.json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
             elif tipo_execucao == 5 and ultimo_id != 0:#edicao
-                self.gerar_dado_atualizacao(table=table,pattern=json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
+                self.gerar_dado_atualizacao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
             elif tipo_execucao == 6 and ultimo_id != 0:#delecao
-                self.gerar_dado_delecao(table=table,pattern=json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
+                self.gerar_dado_delecao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
             elif ultimo_id == 0:
                 raise self.ValorInvalido(campo="quantidade de valores cadastrados",valor_inserido=tipo,valor_possivel="maior que 0")
             else:
@@ -887,11 +936,12 @@ class GeradorDeSql:
         except self.ValorInvalido as e:
             self.logging.exception(e)
             if e.campo =="quantidade de valores cadastrados" and tipo == 0:
-                self.ciclo_geracao_dados_json(json_loaded=json_loaded,tipo=1,select_country=select_country,table=table,dado_existente=dado_existente)
+                self.ciclo_geracao_dados_json(tipo=1,select_country=select_country,table=table,dado_existente=dado_existente)
+                self.ciclo_geracao_dados_json(tipo=tipo_execucao,select_country=select_country,table=table,dado_existente=dado_existente)
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
 
-    def gerar_todos_dados_por_json(self,json_file,tipo:int=1,select_country:str="random",quantidade_ciclo="random",total_ciclos="random"):
+    def gerar_todos_dados_por_json(self,tipo:int=0,select_country:str="random",quantidade_ciclo="random",total_ciclos="random"):
         """gera os dados de acordo com o arquivo json e quantidades definidas
 
         Args:
@@ -906,12 +956,10 @@ class GeradorDeSql:
             quantidade_ciclo=randint(0, 20)
         if total_ciclos == "random":
             total_ciclos=randint(0, 20)
-        file=open(json_file)
-        json_loaded=json.loads(file.read())
-        self.logging.debug(json_loaded)
+        
         for i in range(0,total_ciclos):
-            table = choice(list(json_loaded.keys()))
-            self.gerar_dados_por_json(json_file,select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
+            table = choice(list(self.json_loaded.keys()))
+            self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
 
 class InteracaoSqlite(ProcessamentoSqlite):
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):

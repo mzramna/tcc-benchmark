@@ -105,6 +105,6 @@ gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts
 # gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=4,select_country="en_US",quantidade=10,dado_existente=True)
 # gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=5,select_country="en_US",quantidade=10,dado_existente=True)
 # gerador.gerar_dados_por_json(json_file="./scripts/padroes.json",table="actor",tipo=6,select_country="en_US",quantidade=10,dado_existente=True)
-gerador.gerar_todos_dados_por_json(json_file="./scripts/padroes.json",select_country="en_US",quantidade_ciclo=10,total_ciclos=20)
+gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=200)
 #pprint(gerador.read_contadores())
 
