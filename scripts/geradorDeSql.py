@@ -990,15 +990,14 @@ class GeradorDeSql:
         if quantidade_final==0:
             for i in range(0,total_ciclos):
                 cadastrados=self.processamento_sqlite.total_operacoes()
-                print(cadastrados)
+                self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
                 table = choice(list(self.json_loaded.keys()))
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
         elif quantidade_final>0:
             cadastrados=self.processamento_sqlite.total_operacoes()
-            print(cadastrados)
             while cadastrados <quantidade_final:
                 cadastrados=self.processamento_sqlite.total_operacoes()
-                print(cadastrados)
+                self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
                 table = choice(list(self.json_loaded.keys()))
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
 
