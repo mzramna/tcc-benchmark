@@ -1,5 +1,7 @@
 from geradorDeSql import GeradorDeSql
 from pprint import pprint
+from random import randint, random,uniform,choice
+
 #logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
 logstash_data={"host":"192.168.0.116","port":5000}
 #logstash_data={}
@@ -98,14 +100,23 @@ gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts
 
 # pprint(tmp2)
 
-#print(gerador.read_operacoes(filtro={"idNoBD":1,"nomeBD":"actor"}))
-gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=200)
-# gerador.gerar_dados_validos_por_json(table="actor",tipo=1,select_country="pt_br",quantidade=10)
-gerador.gerar_dados_validos_por_json(table="actor",tipo=2,select_country="pt_br",quantidade=10)
+# print(gerador.read_operacoes(filtro={"idNoBD":1,"nomeBD":"actor"}))
+
+gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=100,quantidade_final=200)
+#gerador.gerar_dados_validos_por_json(table="actor",tipo=1,select_country="pt_br",quantidade=10)
+#gerador.gerar_dados_validos_por_json(table="actor",tipo=2,select_country="pt_br",quantidade=10)
 # gerador.gerar_dados_validos_por_json(table="actor",tipo=3,select_country="pt_br",quantidade=10)
 # gerador.gerar_dados_validos_por_json(table="actor",tipo=4,select_country="pt_br",quantidade=10,dado_existente=True)
-gerador.gerar_dados_validos_por_json(table="actor",tipo=5,select_country="pt_br",quantidade=10,dado_existente=True)
+#gerador.gerar_dados_validos_por_json(table="actor",tipo=5,select_country="pt_br",quantidade=10,dado_existente=True)
 # gerador.gerar_dados_validos_por_json(table="actor",tipo=6,select_country="pt_br",quantidade=10,dado_existente=True)
 
 #pprint(gerador.read_contadores())
 
+dados_retornados=gerador.processamento_sqlite.read_operacoes(filtro={"nomeBD":"actor"})
+dados_separados=[[] for x in range(0,7)]
+for i in dados_retornados:
+    dados_separados[i["tipoOperacao"]].append(i)
+for i in range(1,7):
+    tmp=choice(dados_separados[i])
+    pprint(tmp)
+    print(gerador.generate_SQL_command_from_data(data=tmp))
