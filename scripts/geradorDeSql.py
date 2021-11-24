@@ -3,7 +3,7 @@ from os import name
 from loggingSystem import loggingSystem
 from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
-from random import randint, random,uniform,choice
+from random import randint, random,uniform,choice,sample
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 import sys,re,sqlite3,json,logging
@@ -79,16 +79,16 @@ class GeradorDeSql:
                 retorno+=str(valores_possiveis)
             return retorno
 
-        def tratamento_input(self,valor,adicional:str="")->str:
+        def tratamento_input(self,valor,adicional:str="") -> str:
             """processa o dado inserido para formular melhor a mensagem de erro
 
             Args:
-                valor ([str,list]]): lista de valores ou valor que serão formatados
-                adicional (str, optional): valores adicionais para um campo. Defaults to "".
+                valor ([str,list]): lista de valores ou valor que serão formatados
+                adicional (str, optional): valores adicionais para um campo. Defaults to
 
             Returns:
                 str: texto formatado para usar na construção da resposta
-            """            
+            """
             retorno=""
             if adicional!="":
                 if type(valor) == type(""):
@@ -118,7 +118,7 @@ class GeradorDeSql:
                 self.message+=" é invalido ou foi inserido de forma errada"
                 self.message+=self.tratamento_input(self.campo,"campo")
                 self.message+="\n"
-                self.message+=self.listagem_valores_possiveis(valores_possiveis=self.valor_possivel)
+                self.message+=str(self.listagem_valores_possiveis(valores_possiveis=self.valor_possivel))
                 self.message+="\n"
             if mensage_adicional == "":
                 self.message+=str(self.mensage_adicional)
@@ -204,13 +204,15 @@ class GeradorDeSql:
 
         Returns:
             dict: dict convertido
-        """        
+        """
+        
         retorno={}
         for i in entrada.keys():
             if type(i)==type(""):
                 retorno[i]=entrada[i]
             else:
                 retorno[i]=str(entrada[i])
+        return retorno
 
     def process_id(self,data:dict,pattern:dict,id:int) -> int:
         """define o id que sera usado baseado no pattern e no dado gerado
@@ -427,8 +429,8 @@ class GeradorDeSql:
             array: lista de keys gerada randomicamente para serem usadas como filtro
         """        
         self.logging.info("gerador_filtro",extra=locals())
+        retorno=[]
         try:
-            retorno=[]
             total_elementos=len(list(pattern.keys()))-len(ignorar)
             if total_elementos == 0 :
                 if list(pattern.keys())==ignorar:
@@ -456,6 +458,37 @@ class GeradorDeSql:
         finally:
             self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
             return retorno
+
+    def dividir_array(array:[]):
+        def tamanhos_arrays(max):
+            if max<2:
+                return None
+            retorno=[]
+            max_tmp=max
+            retorno.append(randint(1,max_tmp-1))
+            # while max_tmp-retorno[-1] <1:
+            #     retorno[-1]=randint(1,max_tmp-1)
+            max_tmp=max_tmp-retorno[-1]
+            retorno.append(randint(1,max_tmp))
+            # while max_tmp-retorno[-1] <1:
+            #     retorno[-1]=randint(1,max_tmp)
+            max_tmp=max_tmp-retorno[-1]
+            retorno.append( max_tmp )
+            if sum(retorno)!=max:
+                return dividir_array(max)
+            else:
+                return retorno
+        tamanhos=tamanhos_arrays(len(array))
+        if tamanhos==None:
+            return None
+        array_tmp=array
+        retorno=[]
+        for i in range(3):
+            retorno.append(sample(array_tmp,tamanhos[i]))
+            for y in retorno[-1]:
+                array_tmp.remove(y)
+
+        return retorno
 
 #relacionado com o processamento/geração de dados
     def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1,values:dict={},not_define_id=False) -> dict:
