@@ -417,7 +417,7 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def gerador_filtro(self,pattern:dict,ignorar:list=[],max:int=-1) -> array:
+    def gerador_filtro(self,pattern:dict,ignorar=[],max:int=-1,completo=False) -> array:
         """ 
             gera um conjunto de elementos para serem usados como filtro,eles são gerados a partir do pattern inserido,ignorando os elementos da lista desejada
         Args:
@@ -430,6 +430,8 @@ class GeradorDeSql:
         """        
         self.logging.info("gerador_filtro",extra=locals())
         retorno=[]
+        if ignorar =="*":
+            ignorar=[]
         try:
             total_elementos=len(list(pattern.keys()))-len(ignorar)
             if total_elementos == 0 :
@@ -440,10 +442,13 @@ class GeradorDeSql:
             array_para_trabalho=list(pattern.keys())
             for elemento in ignorar:
                 array_para_trabalho.remove(elemento)
-            retorno = self.dividir_array(array=array_para_trabalho,max=max)[0]
+            retorno = self.dividir_array(array=array_para_trabalho,max=max)
             
             if retorno == None :
                 raise self.TamanhoArrayErrado(valor_inserido=retorno,valor_possivel="maior que 1",campo="retorno")
+            
+            if not completo:
+                retorno = retorno[0]
         except self.ValorInvalido as e:
             self.logging.exception(e)
         except self.TamanhoArrayErrado as e:
@@ -454,6 +459,15 @@ class GeradorDeSql:
             return retorno
 
     def dividir_array(self,array:[],max:int=0) -> array :
+        """divide um array em 3 outros arrays de tamanhos aleatorios
+
+        Args:
+            array : array q sera dividido
+            max (int, optional): quando definido é o tamanho do primeiro subarray,se for maior qe o tamanho do array dado menos 1 não vai funcionar,se for menor que 1 ele será ignorado. Defaults to 0.
+
+        Returns:
+            array: matriz composta de 3 subarrays de tamanho minimo 1 - 1 - 0
+        """        
         def tamanhos_arrays(max:int,max_first:int=0):
             """gera tamanhos randomicos para dividir um array para sub arrays,seguindo a regra de minimo 1-1-0
 
@@ -570,18 +584,14 @@ class GeradorDeSql:
             pattern=pattern.copy()
 
             if filtro_pesquisa == "*":
-                filtro_retorno=self.gerador_filtro(pattern)
                 dados_gerados["tipoOperacao"]=3
-                filtro_pesquisa_=[]
-            elif filtro_pesquisa!=[]:
-                filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
-                dados_gerados["tipoOperacao"]=4
-                filtro_pesquisa_=filtro_pesquisa
             else:
-                filtro_pesquisa_=self.gerador_filtro(pattern)
-                filtro_retorno=self.gerador_filtro(pattern,ignorar=filtro_pesquisa_)
                 dados_gerados["tipoOperacao"]=4
-            dados_gerados["adicionais"]=filtro_pesquisa_
+            arrays=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
+            filtro_pesquisa_=arrays[0]
+            filtro_retorno=arrays[1]
+            
+            dados_gerados["adicionais"]=filtro_pesquisa_#arrays[0]
 
             if values == {}:
                 dados_gerados["dados"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
