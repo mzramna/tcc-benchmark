@@ -437,18 +437,12 @@ class GeradorDeSql:
                     raise self.ValorInvalido(valor_inserido=ignorar,mensage_adicional="ignorar não pode ser igual a pattern",campo="ignorar")
                 else:
                     raise self.ValorInvalido(valor_inserido=ignorar,mensage_adicional="ignorar não pode ter o mesmo tamanho de pattern",campo="ignorar")
-            if max >0:
-                total_elementos-=max
-            intervalo=randint(1,total_elementos)
-            while intervalo>=total_elementos:
-                intervalo=randint(1,total_elementos)
-            for i in range(1,intervalo):
-                tmp=choice(list(pattern.keys()))
-                while (tmp in retorno) or (tmp in ignorar):
-                    tmp=choice(list(pattern.keys()))
-                #pattern.pop(tmp)
-                retorno.append(tmp)
-            if retorno == []:
+            array_para_trabalho=list(pattern.keys())
+            for elemento in ignorar:
+                array_para_trabalho.remove(elemento)
+            retorno = self.dividir_array(array=array_para_trabalho,max=max)[0]
+            
+            if retorno == None :
                 raise self.TamanhoArrayErrado(valor_inserido=retorno,valor_possivel="maior que 1",campo="retorno")
         except self.ValorInvalido as e:
             self.logging.exception(e)
@@ -459,13 +453,25 @@ class GeradorDeSql:
             self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
             return retorno
 
-    def dividir_array(array:[]):
-        def tamanhos_arrays(max):
-            if max<2:
+    def dividir_array(self,array:[],max:int=0) -> array :
+        def tamanhos_arrays(max:int,max_first:int=0):
+            """gera tamanhos randomicos para dividir um array para sub arrays,seguindo a regra de minimo 1-1-0
+
+            Args:
+                max (int): total de elementos do array que será dividido no final
+                max_first (int, optional): tamanho máximo que será definido para o primeiro array,ele tem que ser obrigatoriamente menor que o tamanho do array original menos 1. Defaults to 0.
+
+            Returns:
+                array: tres elementos inteiros ,sendo o primeiro um valor randomico entre 1 e max-1,o segundo sendo entre 1 e restante e o 3 o restante que sobrar,podendo ser vazio
+            """            
+            if max<2 or max_first>(max-1):
                 return None
             retorno=[]
             max_tmp=max
-            retorno.append(randint(1,max_tmp-1))
+            if max_tmp >0:
+                retorno.append(randint(1,max_tmp-1))
+            else:
+                retorno.append(randint(1,max_first))
             # while max_tmp-retorno[-1] <1:
             #     retorno[-1]=randint(1,max_tmp-1)
             max_tmp=max_tmp-retorno[-1]
@@ -478,7 +484,7 @@ class GeradorDeSql:
                 return dividir_array(max)
             else:
                 return retorno
-        tamanhos=tamanhos_arrays(len(array))
+        tamanhos=tamanhos_arrays(len(array),max_first=max)
         if tamanhos==None:
             return None
         array_tmp=array

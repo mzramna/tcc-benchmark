@@ -48,3 +48,9 @@ arquivo de queries consiste de um csv de separação por virgula sendo a primeir
 no caso de apenas um dos servidores não aguentar isso deve ser anotado e na sequencia o valor deve ser alterado,é importante tanto a conclusão da lista de execuções quanto a não execução da mesma
 
 dessa forma eles podem ser até ser executados em paralelo
+
+
+<h1>25/11</h1>
+verificar o gerador de filtro e adaptar para usar de forma mais eficiente com o novo divisor de array
+fazer com que o gerador de update funcione como deveria
+fazer teste de geração de grande quantidade,aka 10k+
