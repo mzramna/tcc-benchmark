@@ -268,10 +268,10 @@ class GeradorDeSql:
                 id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table)+1
             dados_geraveis=list(pattern.keys())
             if lista_restritiva !=[]:
-                
                 for i in pattern.keys():
                     if i not in lista_restritiva:
                         dados_geraveis.remove(i)
+                        
             for dado in dados_geraveis:
                 if type(pattern[dado][0]) != type(""):
                         raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][0],tipo_possivel="string",campo="nome do campo")
@@ -399,7 +399,6 @@ class GeradorDeSql:
                             # raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
                             self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
                             dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
-
                 elif pattern[dado][0] == "id" and not not_define_id:
                     dados_gerados[dado]=id
             self.logging.debug("dado gerado por create_data",extra=self.dict_all_string(dados_gerados))
@@ -417,12 +416,13 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def gerador_filtro(self,pattern:dict,ignorar=[],max:int=-1,completo=False) -> array:
+    def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> array:
         """ 
             gera um conjunto de elementos para serem usados como filtro,eles são gerados a partir do pattern inserido,ignorando os elementos da lista desejada
         Args:
             pattern (dict): padrão do qual serão retiradas as keys para gerar a lista de filtro
-            ignorar (list, optional): lista de keys que não devem ser utilizadas na lista de retorno. Defaults to [].
+            pesquisa_pre (list, optional): lista de keys pre definidas para serem usadas no campo equivalente a pesquisa. Defaults to [].
+            retorno_pre (list, optional): lista de keys pre definidas para serem usadas no campo equivalente ao retorno. Defaults to [].
             max (int, optional): valor maximo de retorno ,se for definido ele define quantos elementos a menos que o tamanho total de elementos o retorno deve ser. Defaults to -1.
 
         Returns:
@@ -430,19 +430,26 @@ class GeradorDeSql:
         """        
         self.logging.info("gerador_filtro",extra=locals())
         retorno=[]
-        if ignorar =="*":
-            ignorar=[]
+        if pesquisa_pre =="*":
+            pesquisa_pre=[]
+        if retorno_pre =="*":
+            retorno_pre=[]
         try:
-            total_elementos=len(list(pattern.keys()))-len(ignorar)
-            if total_elementos == 0 :
-                if list(pattern.keys())==ignorar:
-                    raise self.ValorInvalido(valor_inserido=ignorar,mensage_adicional="ignorar não pode ser igual a pattern",campo="ignorar")
-                else:
-                    raise self.ValorInvalido(valor_inserido=ignorar,mensage_adicional="ignorar não pode ter o mesmo tamanho de pattern",campo="ignorar")
+            if len(list(pattern.keys()))-len(pesquisa_pre)-len(retorno_pre)<= 0 :
+                if list(pattern.keys())==pesquisa_pre:
+                    raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser igual a pattern",campo="pesquisa_pre")
+                elif list(pattern.keys())==retorno_pre:
+                    raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser igual a pattern",campo="retorno_pre")
+                elif list(pattern.keys())>pesquisa_pre:
+                    raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser maior que o total de elementos de pattern",campo="pesquisa_pre")
+                elif list(pattern.keys())>retorno_pre:
+                    raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser maior que o total de elementos de pattern",campo="retorno_pre")
+            elif len(list(pattern.keys()))-len(pesquisa_pre)<1:
+                raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser tão grande",campo="pesquisa_pre")
+            elif len(list(pattern.keys()))-len(retorno_pre)<1:
+                raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser tão grande",campo="retorno_pre")
             array_para_trabalho=list(pattern.keys())
-            for elemento in ignorar:
-                array_para_trabalho.remove(elemento)
-            retorno = self.dividir_array(array=array_para_trabalho,max=max)
+            retorno = self.dividir_array(array=array_para_trabalho,max=max,pesquisa_pre=pesquisa_pre,retorno_pre=retorno_pre)
             
             if retorno == None :
                 raise self.TamanhoArrayErrado(valor_inserido=retorno,valor_possivel="maior que 1",campo="retorno")
@@ -458,7 +465,7 @@ class GeradorDeSql:
             self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
             return retorno
 
-    def dividir_array(self,array:[],max:int=0) -> array :
+    def dividir_array(self,array:[],max:int=0,pesquisa_pre=[],retorno_pre=[]) -> array :
         """divide um array em 3 outros arrays de tamanhos aleatorios
 
         Args:
@@ -468,7 +475,7 @@ class GeradorDeSql:
         Returns:
             array: matriz composta de 3 subarrays de tamanho minimo 1 - 1 - 0
         """        
-        def tamanhos_arrays(max:int,max_first:int=0):
+        def tamanhos_arrays(max:int,max_first:int=0,pesquisa_pre=[],retorno_pre=[]):
             """gera tamanhos randomicos para dividir um array para sub arrays,seguindo a regra de minimo 1-1-0
 
             Args:
@@ -480,16 +487,24 @@ class GeradorDeSql:
             """            
             if max<2 or max_first>(max-1):
                 return None
+            #fazer retorno e pesquisa pre definirem automaticamente nos locais certos,verificar se eles existem no pattern e se são possiveis
+            
             retorno=[]
             max_tmp=max
-            if max_tmp >0:
-                retorno.append(randint(1,max_tmp-1))
+            if pesquisa_pre ==[]:
+                if max_tmp >0:
+                    retorno.append(randint(1,max_tmp-1))
+                else:
+                    retorno.append(randint(1,max_first))
             else:
-                retorno.append(randint(1,max_first))
+                retorno.append(len(pesquisa_pre))
             # while max_tmp-retorno[-1] <1:
             #     retorno[-1]=randint(1,max_tmp-1)
             max_tmp=max_tmp-retorno[-1]
-            retorno.append(randint(1,max_tmp))
+            if retorno_pre==[]:
+                retorno.append(randint(1,max_tmp))
+            else:
+                retorno.append(len(retorno_pre))
             # while max_tmp-retorno[-1] <1:
             #     retorno[-1]=randint(1,max_tmp)
             max_tmp=max_tmp-retorno[-1]
@@ -498,17 +513,34 @@ class GeradorDeSql:
                 return dividir_array(max)
             else:
                 return retorno
-        tamanhos=tamanhos_arrays(len(array),max_first=max)
-        if tamanhos==None:
-            return None
-        array_tmp=array
-        retorno=[]
-        for i in range(3):
-            retorno.append(sample(array_tmp,tamanhos[i]))
-            for y in retorno[-1]:
-                array_tmp.remove(y)
+            
+        try:
+            if len(set(retorno_pre).difference(array))>0 and retorno_pre !=[]:
+                raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre precisa estar contido no array",campo="retorno_pre")
+            elif len(set(pesquisa_pre).difference(array))>0 and pesquisa_pre !=[] :
+                raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre precisa estar contido no array",campo="pesquisa_pre")
+            tamanhos=tamanhos_arrays(len(array),max_first=max,pesquisa_pre=pesquisa_pre,retorno_pre=retorno_pre)
+            if tamanhos==None:
+                return None
+            array_tmp=array
+            retorno=[]
+            
+            for i in range(3):
+                if pesquisa_pre !=[] and i == 0:
+                    retorno.append(pesquisa_pre)
+                elif retorno_pre !=[] and i == 1:
+                    retorno.append(retorno_pre)
+                else:
+                    retorno.append(sample(array_tmp,tamanhos[i]))
+                for y in retorno[-1]:
+                    array_tmp.remove(y)
+                
 
-        return retorno
+            return retorno
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+        except self.TamanhoArrayErrado as e:
+            self.logging.exception(e)
 
 #relacionado com o processamento/geração de dados
     def create_insert(self,table:str,pattern:dict,select_country:str="random",id:int=-1,values:dict={},not_define_id=False) -> dict:
@@ -587,13 +619,16 @@ class GeradorDeSql:
                 dados_gerados["tipoOperacao"]=3
             else:
                 dados_gerados["tipoOperacao"]=4
-            arrays=self.gerador_filtro(pattern,ignorar=filtro_pesquisa)
+            arrays=self.gerador_filtro(pattern,pesquisa_pre=filtro_pesquisa,completo=True)
             filtro_pesquisa_=arrays[0]
             filtro_retorno=arrays[1]
             
             dados_gerados["adicionais"]=filtro_pesquisa_#arrays[0]
 
             if values == {}:
+                for value_pattern in pattern.keys():
+                    if pattern[value_pattern]=="id":
+                        not_define_id=False
                 dados_gerados["dados"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
             else:
                 dados_gerados["dados"]=values
@@ -1192,6 +1227,8 @@ class InteracaoSqlite(ProcessamentoSqlite):
             patter_externo=r"\[(.*)\]"
             pattern_interno=r"(.*)"
         pattern_etapa1=patter_externo
+        if type(text) == type(None):
+            text="{}"
         etapa1_dados=re.findall(pattern_etapa1,text)
         if etapa1_dados == [''] or etapa1_dados == [] :
             if is_dict:
