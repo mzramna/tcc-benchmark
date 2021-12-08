@@ -1,8 +1,8 @@
 {
     "actor":{
         "actor_id":["id"],
-        "first_name":["primeiroNome"],
-        "last_name":["sobrenome"],
+        "first_nome":["primeiroNome"],
+        "last_nome":["sobrenome"],
         "last_update":["timestamp","agora"]
     },
     "country":{
@@ -27,13 +27,13 @@
     },
     "category":{
         "category_id":["id"],
-        "name":["nomeCategoria"],
+        "nome":["nomeCategoria"],
         "last_update":["timestamp","agora"]
     },
     "staff":{
         "staff_id":["id"],
-        "first_name":["primeiroNome"],
-        "last_name":["sobrenome"],
+        "first_nome":["primeiroNome"],
+        "last_nome":["sobrenome"],
         "address_id":["associacao","address"],
         "email":["email"],
         "store_id":["associacao","store"],
@@ -44,23 +44,23 @@
     },
     "store":{
         "store_id":["id"],
-        "manager_staff_id":["assosiacao","staff"],
-        "address_id":["assosiacao","staff"],
+        "manager_staff_id":["associacao","staff"],
+        "address_id":["associacao","staff"],
         "last_update":["timestamp","agora"]
     },
     "customer":{
         "customer_id":["id"],
-        "store_id":["assosiacao","store"],
-        "first_name":["primeiroNome"],
-        "last_name":["sobrenome"],
-        "address_id":["assosiacao","address"],
+        "store_id":["associacao","store"],
+        "first_nome":["primeiroNome"],
+        "last_nome":["sobrenome"],
+        "address_id":["associacao","address"],
         "active":["boleano"],
         "create_date":["timestamp","-2w"],
         "last_update":["timestamp","agora"]
     },
     "language":{
         "language_id":["id"],
-        "name":["idioma"],
+        "nome":["idioma"],
         "last_update":["timestamp","agora"]
     },
     "film":{
@@ -68,8 +68,8 @@
         "title":["titulo"],
         "description":["textoLongo"],
         "release_year":["ano"],
-        "language_id":["assosiacao","language"],
-        "original_language_id":["assosiacao","language"],
+        "language_id":["associacao","language"],
+        "original_language_id":["associacao","language"],
         "rental_duration":["duracaoDias"],
         "length":["duracaoHoras"],
         "rating":["naLista","G","PG","PG-13","R","NC-17"],
@@ -78,7 +78,7 @@
     },
     "film_actor":{
         "actor_id":["id"],
-        "film_id":["assosiacao","film"],
+        "film_id":["associacao","film"],
         "last_update":["timestamp","agora"]
     },
     "film_category":{

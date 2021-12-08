@@ -17,8 +17,8 @@ USE `sakila` ;
 
 CREATE TABLE IF NOT EXISTS `actor` (
   `actor_id` SERIAL,
-  `first_name` VARCHAR(45) NOT NULL,
-  `last_name` VARCHAR(45) NOT NULL,
+  `first_nome` VARCHAR(45) NOT NULL,
+  `last_nome` VARCHAR(45) NOT NULL,
   `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`actor_id`)
   )ENGINE=InnoDB;
@@ -58,15 +58,15 @@ ALTER TABLE `address` ADD CONSTRAINT `fk_address_city` FOREIGN KEY (`city_id`) R
 
 CREATE TABLE IF NOT EXISTS `category` (
   `category_id` SERIAL ,
-  `name` VARCHAR(25) NOT NULL,
+  `nome` VARCHAR(25) NOT NULL,
   `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`category_id`))ENGINE=InnoDB;
 
 
 CREATE TABLE IF NOT EXISTS `staff` (
   `staff_id` SERIAL ,
-  `first_name` VARCHAR(45) NOT NULL,
-  `last_name` VARCHAR(45) NOT NULL,
+  `first_nome` VARCHAR(45) NOT NULL,
+  `last_nome` VARCHAR(45) NOT NULL,
   `address_id` BIGINT unsigned NOT NULL,
   `picture` BLOB NULL,
   `email` VARCHAR(50) NULL DEFAULT NULL,
@@ -95,8 +95,8 @@ ALTER TABLE `store` ADD CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_
 CREATE TABLE IF NOT EXISTS `customer` (
   `customer_id` SERIAL,
   `store_id` BIGINT unsigned NOT NULL,
-  `first_name` VARCHAR(45) NOT NULL,
-  `last_name` VARCHAR(45) NOT NULL,
+  `first_nome` VARCHAR(45) NOT NULL,
+  `last_nome` VARCHAR(45) NOT NULL,
   `email` VARCHAR(50) NULL DEFAULT NULL,
   `address_id` BIGINT unsigned NOT NULL,
   `active` smallint(1) NOT NULL DEFAULT TRUE,
@@ -110,7 +110,7 @@ ALTER TABLE `customer` ADD CONSTRAINT `fk_customer_store` FOREIGN KEY (`store_id
 
 CREATE TABLE IF NOT EXISTS `language` (
   `language_id` SERIAL,
-  `name` CHAR(20) NOT NULL,
+  `nome` CHAR(20) NOT NULL,
   `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`language_id`))ENGINE=InnoDB;
 

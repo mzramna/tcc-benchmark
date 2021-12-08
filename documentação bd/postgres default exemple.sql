@@ -15,8 +15,8 @@ DROP TABLE IF EXISTS "actor" CASCADE;
 
 CREATE TABLE "actor" (
   "actor_id" BIGSERIAL,
-  "first_name" varchar(45) NOT NULL,
-  "last_name" varchar(45) NOT NULL,
+  "first_nome" varchar(45) NOT NULL,
+  "last_nome" varchar(45) NOT NULL,
   "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("actor_id") 
 );
@@ -65,7 +65,7 @@ DROP TABLE IF EXISTS "category" CASCADE;
 
 CREATE TABLE "category" (
   "category_id" BIGSERIAL,
-  "name" varchar(25) NOT NULL,
+  "nome" varchar(25) NOT NULL,
   "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("category_id")
 );
@@ -75,8 +75,8 @@ DROP TABLE IF EXISTS "staff" CASCADE;
 
 CREATE TABLE "staff" (
   "staff_id" BIGSERIAL,
-  "first_name" varchar(45) NOT NULL,
-  "last_name" varchar(45) NOT NULL,
+  "first_nome" varchar(45) NOT NULL,
+  "last_nome" varchar(45) NOT NULL,
   "address_id" BIGINT ,
   "picture" bytea NULL,
   "email" varchar(50) DEFAULT NULL,
@@ -113,8 +113,8 @@ DROP TABLE IF EXISTS "customer" CASCADE;
 CREATE TABLE "customer" (
   "customer_id" BIGSERIAL,
   "store_id" BIGINT ,
-  "first_name" varchar(45) NOT NULL,
-  "last_name" varchar(45) NOT NULL,
+  "first_nome" varchar(45) NOT NULL,
+  "last_nome" varchar(45) NOT NULL,
   "email" varchar(50) DEFAULT NULL,
   "address_id" BIGINT ,
   "active" smallint NOT NULL DEFAULT '1',
@@ -200,7 +200,7 @@ DROP TABLE IF EXISTS "language" CASCADE;
 
 CREATE TABLE "language" (
   "language_id" BIGSERIAL,
-  "name" char(20) NOT NULL,
+  "nome" char(20) NOT NULL,
   "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("language_id")
 );

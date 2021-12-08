@@ -225,6 +225,8 @@ class GeradorDeSql:
         Returns:
             int:id processado
         """        
+        if data == None:
+            return -1
         if id == -1:
             for campo,valor in pattern.items():
                 if "id" in valor:
@@ -390,23 +392,32 @@ class GeradorDeSql:
                             if total_cadastrado>1:
                                 dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                             else:
-                                dados_gerados[dado]=1
+                                raise self.ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela")
                     else:
                         total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
                         if total_cadastrado>0:
                             dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
-                            # raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
-                            self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
-                            dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
-                elif pattern[dado][0] == "id" and not not_define_id:
-                    dados_gerados[dado]=id
-            self.logging.debug("dado gerado por create_data",extra=self.dict_all_string(dados_gerados))
-            return dados_gerados
+                            raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
+                            
+                            #dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                elif pattern[dado][0] == "id" :
+                    if not not_define_id:
+                        dados_gerados[dado]=id
+                    elif len(dados_geraveis) <2 and  lista_restritiva[0] == dado :
+                        dados_gerados[dado]=id
+            if dados_gerados=={}:
+                raise self.ValorInvalido(valor_inserido=dados_gerados,mensage_adicional="o valor não pode ser vazio",campo="dados_gerados")
+            self.logging.debug("dado gerado por create_data",extra=dados_gerados)
         except self.TamanhoArrayErrado as e :
             self.logging.exception(e)
         except self.ValorInvalido as e:
             self.logging.exception(e)
+            if e.campo== "dados_gerados":
+                dados_gerados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva) 
+            elif e.campo=="associacao":
+                self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
+                dados_gerados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva) 
             # if e.campo=="associacao" and  e.valor_inserido[1]==0 and e.valor_possivel=="maior que 0":
             #     #criar a tabela necessária recursivamente e chamar novamente essa tabela
             #     self.gerar_dado_insercao(table=e.valor_inserido[0],pattern=self.json_loaded[e.valor_inserido[0]],select_country=select_country)
@@ -415,6 +426,9 @@ class GeradorDeSql:
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
+        finally:
+            if dados_gerados != {}:
+                return dados_gerados
 
     def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> array:
         """ 
@@ -584,9 +598,8 @@ class GeradorDeSql:
         self.logging.info("create_insert",extra=locals())
         self.logging.debug("rastreio create_insert",extra={"rastreio":self.logging.full_inspect_caller()})
         if values=={}:
-            dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id),"adicionais":{}}
-        else:
-            dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":values,"adicionais":{}}
+            values=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id)
+        dados_gerados={"nomeBD":table,"tipoOperacao":1,"dados":values,"adicionais":{}}
         _id=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
         if not not_define_id and _id !=-1:
             dados_gerados["idNoBD"]=_id
@@ -629,9 +642,8 @@ class GeradorDeSql:
                 for value_pattern in pattern.keys():
                     if pattern[value_pattern]=="id":
                         not_define_id=False
-                dados_gerados["dados"]=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
-            else:
-                dados_gerados["dados"]=values
+                values=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=filtro_retorno)
+            dados_gerados["dados"]=values
             
             for campo,valor in pattern.items():
                     if "id" in valor:
@@ -643,7 +655,8 @@ class GeradorDeSql:
                 dados_gerados["idNoBD"]=_id
 
             self.logging.debug("dado gerado por create_select",extra=self.dict_all_string(dados_gerados))
-            if  len(dados_gerados["dados"]) == 0:
+            dados_gerados["dados"]=values
+            if  dados_gerados["dados"]== {} or dados_gerados["dados"]== None:
                 raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
         except self.ValorInvalido as e:
             self.logging.exception(e)
@@ -704,11 +717,33 @@ class GeradorDeSql:
         """        
         self.logging.info("create_delete",extra=locals())
         self.logging.debug("rastreio create_delete",extra={"rastreio":self.logging.full_inspect_caller()})
-        dados_gerados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro,values=values,not_define_id=not_define_id)
-        dados_gerados["tipoOperacao"]=6
-        dados_gerados["adicionais"]=[]
-        self.logging.debug("dado gerado por create_delete",extra=self.dict_all_string(dados_gerados))
-        return dados_gerados
+        try:
+            dados_gerados={"nomeBD":table}
+            pattern=pattern.copy()
+            dados_gerados["tipoOperacao"]=6
+            dados_gerados["adicionais"]=[]
+            arrays=self.gerador_filtro(pattern,pesquisa_pre=filtro,completo=True)
+            
+            for value_pattern in pattern.keys():
+                    if pattern[value_pattern]=="id" and value_pattern in arrays[0] :
+                        not_define_id=False
+            if values == {}:
+                values=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=arrays[0])
+            dados_gerados["dados"]=values
+
+            _id=self.process_id(data=dados_gerados["dados"],pattern=pattern,id=id)
+            if not not_define_id and _id !=-1:
+                dados_gerados["idNoBD"]=_id
+
+            if  len(dados_gerados["dados"]) == 0:
+                raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+            dados_gerados=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values,not_define_id=not_define_id)
+        finally:
+            self.logging.debug("dado gerado por create_delete",extra=dados_gerados)
+            return dados_gerados
+        
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict):
