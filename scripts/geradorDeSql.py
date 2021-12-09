@@ -398,7 +398,11 @@ class GeradorDeSql:
                         if total_cadastrado>0:
                             dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
-                            raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
+                            quantidade_tabelas_sqlite=self.processamento_sqlite.read_data_sqlite(table="contadores")
+                            if len(quantidade_tabelas_sqlite)==len(self.json_loaded.keys()):
+                                raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
+                            else:
+                                return {}
                             
                             #dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                 elif pattern[dado][0] == "id" :
@@ -633,10 +637,9 @@ class GeradorDeSql:
             else:
                 dados_gerados["tipoOperacao"]=4
             arrays=self.gerador_filtro(pattern,pesquisa_pre=filtro_pesquisa,completo=True)
-            filtro_pesquisa_=arrays[0]
             filtro_retorno=arrays[1]
             
-            dados_gerados["adicionais"]=filtro_pesquisa_#arrays[0]
+            dados_gerados["adicionais"]=filtro_pesquisa#arrays[0]
 
             if values == {}:
                 for value_pattern in pattern.keys():
@@ -660,6 +663,7 @@ class GeradorDeSql:
                 raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
         except self.ValorInvalido as e:
             self.logging.exception(e)
+            filtro_pesquisa=self.gerador_filtro(pattern,completo=True)[0]
             dados_gerados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro_pesquisa,values=values,not_define_id=not_define_id)
         finally:
             return dados_gerados
@@ -739,11 +743,11 @@ class GeradorDeSql:
                 raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
         except self.ValorInvalido as e:
             self.logging.exception(e)
+            filtro=self.gerador_filtro(pattern,completo=True)[0]
             dados_gerados=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values,not_define_id=not_define_id)
         finally:
             self.logging.debug("dado gerado por create_delete",extra=dados_gerados)
             return dados_gerados
-        
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict):
