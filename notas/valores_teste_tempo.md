@@ -164,3 +164,142 @@ media por elemento 0.1149456599354744
 para  500  dados foram gastos os seguintes dados de tempo
 media geração completa 58.30326068401337
 media por elemento 0.11660652136802674
+
+7.8392674922943115
+6.708228826522827
+8.884844779968262
+7.931575775146484
+para  100  dados foram gastos os seguintes dados de tempo
+media geração completa 7.840979218482971
+media por elemento 0.07840979218482971
+13.637807607650757
+14.088096141815186
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+13.579838037490845
+12.729421138763428
+para  200  dados foram gastos os seguintes dados de tempo
+media geração completa 13.508790731430054
+media por elemento 0.06754395365715027
+19.94083547592163
+erro desconhecido no sqlite
+21.01622700691223
+erro desconhecido no sqlite
+20.74110174179077
+19.65869402885437
+para  300  dados foram gastos os seguintes dados de tempo
+media geração completa 20.33921456336975
+media por elemento 0.06779738187789917
+28.90384292602539
+27.921354293823242
+26.698604822158813
+erro desconhecido no sqlite
+27.963266849517822
+para  400  dados foram gastos os seguintes dados de tempo
+media geração completa 27.871767222881317
+media por elemento 0.06967941805720329
+erro desconhecido no sqlite
+34.1319477558136
+erro desconhecido no sqlite
+35.99055194854736
+33.34667897224426
+33.01921892166138
+para  500  dados foram gastos os seguintes dados de tempo
+media geração completa 34.12209939956665
+media por elemento 0.06824419879913331
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+39.24289011955261
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+41.940999031066895
+erro desconhecido no sqlite
+42.27272081375122
+erro desconhecido no sqlite
+39.52074432373047
+para  600  dados foram gastos os seguintes dados de tempo
+media geração completa 40.7443385720253
+media por elemento 0.0679072309533755
+erro desconhecido no sqlite
+46.417359828948975
+48.04546618461609
+49.85762143135071
+47.077566385269165
+para  700  dados foram gastos os seguintes dados de tempo
+media geração completa 47.849503457546234
+media por elemento 0.06835643351078033
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+58.016727685928345
+54.16534924507141
+57.617592096328735
+54.82980155944824
+para  800  dados foram gastos os seguintes dados de tempo
+media geração completa 56.15736764669418
+media por elemento 0.07019670955836772
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+62.57439398765564
+erro desconhecido no sqlite
+59.508721351623535
+erro desconhecido no sqlite
+63.77759838104248
+erro desconhecido no sqlite
+60.3971529006958
+para  900  dados foram gastos os seguintes dados de tempo
+media geração completa 61.564466655254364
+media por elemento 0.06840496295028263
+erro desconhecido no sqlite
+66.57241129875183
+63.97775745391846
+67.83466720581055
+63.6799840927124
+para  1000  dados foram gastos os seguintes dados de tempo
+media geração completa 65.51620501279831
+media por elemento 0.06551620501279831
+73.21715998649597
+erro desconhecido no sqlite
+73.04804420471191
+erro desconhecido no sqlite
+79.56469416618347
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+75.29488229751587
+para  1100  dados foram gastos os seguintes dados de tempo
+media geração completa 75.2811951637268
+media por elemento 0.06843745014884255
+erro desconhecido no sqlite
+88.10034227371216
+74.98838305473328
+76.79664754867554
+81.96908450126648
+para  1200  dados foram gastos os seguintes dados de tempo
+media geração completa 80.46361434459686
+media por elemento 0.06705301195383072
+88.02988839149475
+84.19868159294128
+erro desconhecido no sqlite
+87.29170417785645
+92.75637722015381
+para  1300  dados foram gastos os seguintes dados de tempo
+media geração completa 88.06916284561157
+media por elemento 0.06774550988123967
+98.63658690452576
+erro desconhecido no sqlite
+93.25878691673279
+erro desconhecido no sqlite
+93.47699427604675
+erro desconhecido no sqlite
+99.15154314041138
+para  1400  dados foram gastos os seguintes dados de tempo
+media geração completa 96.13097780942917
+media por elemento 0.06866498414959227
+101.39789652824402
+erro desconhecido no sqlite
+101.93185949325562
+erro desconhecido no sqlite
+erro desconhecido no sqlite
+102.67177438735962
+erro desconhecido no sqlite

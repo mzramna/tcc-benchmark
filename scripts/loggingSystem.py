@@ -47,7 +47,7 @@ class loggingSystem:
         """        
         return  inspect.stack(context=1)[3][3]
     
-    def full_inspect_caller(self)->list:
+    def full_inspect_caller()->list:
         """retorna lista com o rastreio das chamadas das funções até a execução atual
 
         Returns:
