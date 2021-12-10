@@ -788,6 +788,9 @@ class GeradorDeSql:
                 raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
         except self.ValorInvalido as e:
             self.logging.exception(e)
+            chamadas=loggingSystem.full_inspect_caller()
+            if chamadas.count(chamadas[0])>5:
+                return None
             filtro=self.gerador_filtro(pattern,completo=True)[0]
             dados_gerados=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values,not_define_id=not_define_id)
         finally:
