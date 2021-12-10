@@ -4,4 +4,4 @@ pluginAssets
 __pycache__
 .history
 .venv
-scripts/initial_db
+scripts/initial_db.db
