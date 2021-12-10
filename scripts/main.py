@@ -12,7 +12,7 @@ for k in range(30):
     tempo=[]
     quantidade_elementos+=100
     for i in range(4):
-        
+        f = open("teste_de_execucao.log", "a")
         try:
             os.remove("scripts/initial_db.db")
         except:
@@ -32,18 +32,26 @@ for k in range(30):
         fim=time()
         tempo.append(fim-inicio)
         print(fim-inicio)
+        f.write(str(fim-inicio)+"\n")
+        f.close()
         del gerador
     #pprint(tempos)
     tempos.append(tempo)
+    f = open("teste_de_execucao.log", "a")
     print("para ",quantidade_elementos," dados foram gastos os seguintes dados de tempo")
-    print("media geração completa",sum(tempo)/len(tempo))
-    print("media por elemento",(sum(tempo)/len(tempo))/quantidade_elementos)
-    
+    print("media geração completa",str(sum(tempo)/len(tempo)))
+    print("media por elemento",str((sum(tempo)/len(tempo))/quantidade_elementos))
+    f.write("para "+str(quantidade_elementos)+" dados foram gastos os seguintes dados de tempo"+"\n")
+    f.write("media geração completa"+str(sum(tempo)/len(tempo))+"\n")
+    f.write("media por elemento"+str((sum(tempo)/len(tempo))/quantidade_elementos)+"\n")
 quantidade_elementos=0
 for i in range(30):
     quantidade_elementos+=100
-print("media geração completa",sum(tempos)/len(tempos))
-print("media por elemento",(sum(tempos)/len(tempos))/quantidade_elementos)
+f = open("teste_de_execucao.log", "a")
+print("media geração completa"+str(sum(tempos)/len(tempos))+"\n")
+print("media por elemento"+str((sum(tempos)/len(tempos))/quantidade_elementos)+"\n")
+f.write("media geração completa"+str(sum(tempos)/len(tempos))+"\n")
+f.write("media por elemento"+str((sum(tempos)/len(tempos))/quantidade_elementos)+"\n")
 #dados_retornados=gerador.processamento_sqlite.read_operacoes(filtro={"nomeBD":"actor"})
 #dados_separados=[[] for x in range(0,7)]
 #for i in dados_retornados:
