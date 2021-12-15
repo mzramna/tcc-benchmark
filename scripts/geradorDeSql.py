@@ -1,12 +1,12 @@
 from array import array
-from os import name
+from os import name,DirEntry
 from loggingSystem import loggingSystem
 from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
 from random import randint, random,uniform,choice,sample
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
-import sys,re,sqlite3,json,logging
+import sys,re,sqlite3,json,logging,csv
 class GeradorDeSql:
 #tratamento de erro
     class ValorInvalido(Exception):
@@ -248,12 +248,20 @@ class GeradorDeSql:
             lista_restritiva (list, optional): lista que define os dados que serão gerados dentro do padrão inserido. Defaults to [].
 
         Raises:
+            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
             self.TamanhoArrayErrado: caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
             self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            self.TamanhoArrayErrado: caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
+            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            self.ValorInvalido: [description]
+            self.ValorInvalido: [description]
+            self.ValorInvalido: [description]
 
         Returns:
             dict: dado gerado seguindo o padrão inserido
-        """        
+        """
         self.logging.info("create_data",extra=locals())
         self.logging.debug("rastreio create_data",extra={"rastreio":loggingSystem.full_inspect_caller()})
         try:
@@ -442,7 +450,7 @@ class GeradorDeSql:
             pesquisa_pre (list, optional): lista de keys pre definidas para serem usadas no campo equivalente a pesquisa. Defaults to [].
             retorno_pre (list, optional): lista de keys pre definidas para serem usadas no campo equivalente ao retorno. Defaults to [].
             max (int, optional): valor maximo de retorno ,se for definido ele define quantos elementos a menos que o tamanho total de elementos o retorno deve ser. Defaults to -1.
-
+            completo (bool,optional): retorna apenas valores para o array de pesquisa.Defaults to False
         Returns:
             array: lista de keys gerada randomicamente para serem usadas como filtro
         """        
@@ -489,6 +497,8 @@ class GeradorDeSql:
         Args:
             array : array q sera dividido
             max (int, optional): quando definido é o tamanho do primeiro subarray,se for maior qe o tamanho do array dado menos 1 não vai funcionar,se for menor que 1 ele será ignorado. Defaults to 0.
+            pesquisa_pre (list, optional): lista de keys pre definidas para serem usadas no campo equivalente a pesquisa. Defaults to [].
+            retorno_pre (list, optional): lista de keys pre definidas para serem usadas no campo equivalente ao retorno. Defaults to [].
 
         Returns:
             array: matriz composta de 3 subarrays de tamanho minimo 1 - 1 - 0
@@ -570,7 +580,6 @@ class GeradorDeSql:
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
             id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
             values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
-            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
             not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
 
         Raises:
@@ -620,7 +629,9 @@ class GeradorDeSql:
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
             id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
             filtro_pesquisa (list or str, optional): equivalente a coluna adicional do dado pesquisado,se for igual a "*" irá retornar todos,se for default o filtro será gerado randomicamente. Defaults to [].
-            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            values_pesquisa (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            filtro_retorno (list or str, optional): equivalente a coluna adicional do dado retorno,se for igual a "*" irá retornar todos,se for default o filtro será gerado randomicamente. Defaults to [].
+            values_retorno (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
             not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
         Returns:
             dict: dados gerados usando faker para corresponder ao padrão necessário de uma pesquisa no bd
@@ -684,8 +695,10 @@ class GeradorDeSql:
             pattern (dict): padrão que será usado pelo gerador seguindo o padrão descrtito no json,esses padrões serão descritos a parte
             id (int, optional): id do dado gerado no banco de dados,se preenchido ele será o definido,caso contrário ele será o próximo possivel no bd de acordo com os registros do sqlite. Defaults to -1.
             filtro_pesquisa (list, optional): array com os nomes da colunas que serão pesquisadas se for default elas serão geradas randomicamente. Defaults to []
+            filtro_update (list, optional): array com os nomes da colunas que serão atualizadas se for default elas serão geradas randomicamente. Defaults to []
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
-            values (dict,optional): valores de substituição para os dados gerados,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            values_pesquisa (dict,optional): valores de substituição para os dados gerados na pesquisa,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
+            values_update (dict,optional): valores de substituição para os dados gerados na atualização,se não for default,nenhum dado randomico será gerado,serão utilizados os dados inseridos nessa variavel . Defaults to {}.
             not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
 
         Returns:
@@ -922,6 +935,84 @@ class GeradorDeSql:
             self.logging.error("Unexpected error:", sys.exc_info()[0])
         finally:
             return command
+
+    def generate_dbbench_file_from_data(self,data:dict,file_path:DirEntry):
+        '''
+                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
+                bd:string # banco de dados en que será inserido
+                os dados a baixo estão definidos para uma insercao:
+                    associações: #text  IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
+                    }
+
+                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
+                os dados a baixo estão definidos para uma busca:
+                    associações: #text     IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+                os dados a baixo são associados com uma busca fitrada
+                    associações: #text    
+                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+            '''
+        self.logging.info("generate_SQL_command_from_data",extra=locals())
+        command=[]
+        try:
+            if data["tipoOperacao"] == 4:#busca filtrada
+                for i in data['adicionais']:
+                    command.append(str(i["adicionais"]))
+            command.append(str(data["nomeBD"]))
+
+            if data["tipoOperacao"] == 1:#insercao
+                for coluna in data["dados"].keys():
+                    command.append(coluna)
+                for coluna in data["dados"].keys():
+                    if type(data["dados"][coluna])==type("") or type(data["dados"][coluna])==type({}) or  type(data["dados"][coluna])==type([])  :
+                        command.append(data["dados"][coluna].replace("\n",""))
+                    else:
+                        command.append(str(data["dados"][coluna]))
+            #elif data["tipoOperacao"]==2:#leitura completa
+            if data["tipoOperacao"] == 5:#edicao
+                for coluna in data["dados"].keys():
+                    if type("")==type(data["dados"][coluna]):
+                        command.append(coluna + " = "+data["dados"][coluna])
+                    else:
+                        command.append(coluna + " = "+str(data["dados"][coluna]))
+            if data["tipoOperacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
+                for coluna in data["dados"].keys():
+                    if type("")==type(data["dados"][coluna]):
+                        command.append(coluna + " IS "+data["dados"][coluna])
+                    else:
+                        command.append(coluna + " IS "+str(data["dados"][coluna]))
+                    for campo,valor in self.json_loaded[data["nomeBD"]].items():
+                        if "id" in valor:
+                            if campo in data:
+                                command.append(str(data[campo])+" IS "+str(data["idNoBD"]))
+                                break
+            
+        except sqliteOperationalError as e:
+            print("erro operacional no sqlite")
+            self.logging.exception(e)
+            quit()
+        except sqliteError as e:
+            print("erro desconhecido no sqlite")
+            self.logging.exception(e)
+        except self.ValorInvalido as e :
+            self.logging.exception(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+        finally:
+            file=open(file_path,"a")
+            writer = csv.writer(file)
+            writer.writerow(command)
+            file.close()
 
     def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
         """função que chama funções anteriormente descritas para gerar dados para o dado de inserção e cadastrar elas direto no sqlite
