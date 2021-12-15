@@ -936,7 +936,7 @@ class GeradorDeSql:
         finally:
             return command
 
-    def generate_dbbench_file_from_data(self,data:dict,file_path:DirEntry):
+    def generate_dbbench_data_row(self,data:dict):
         '''
                 tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
                 bd:string # banco de dados en que será inserido
@@ -962,7 +962,7 @@ class GeradorDeSql:
                         nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
                     }
             '''
-        self.logging.info("generate_SQL_command_from_data",extra=locals())
+        self.logging.info("generate_dbbench_data_row",extra=locals())
         command=[]
         try:
             if data["tipoOperacao"] == 4:#busca filtrada
@@ -1009,10 +1009,25 @@ class GeradorDeSql:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
         finally:
+            return command
+
+    def generate_dbbench_file_from_datas(self,datas:list,file_path: DirEntry):
+        """gera arquivo de dados para o dbbench a partir de um array de dados gerados pelos outros metodos da classe
+
+        Args:
+            datas (list): array de dados lidos do sqlite
+            file_path (DirEntry): diretorio de saida do arquivo do dbbench
+        """        
+        self.logging.info("generate_dbbench_file_from_datas",extra=locals())
+        try:
             file=open(file_path,"a")
             writer = csv.writer(file)
-            writer.writerow(command)
+            for data in datas:
+                command=self.generate_dbbench_data_row(data=data,file_path=file_path)
+                writer.writerow(command)
             file.close()
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
         """função que chama funções anteriormente descritas para gerar dados para o dado de inserção e cadastrar elas direto no sqlite

@@ -23,7 +23,7 @@ dados_separados=[[] for x in range(0,7)]
 for i in dados_retornados:
     dados_separados[i["tipoOperacao"]].append(i)
 for i in range(1,7):
-    tmp=choice(dados_separados[i])
-    pprint(tmp)
+    #tmp=choice(dados_separados[i])
+    #pprint(dados_separados[i])
     arquivo="./teste_geracao_dbbench_tipo_"+str(i)+".csv"
-    gerador.generate_dbbench_file_from_data(data=tmp,file_path=arquivo)
+    gerador.generate_dbbench_file_from_datas(datas=dados_separados[i],file_path=arquivo)
