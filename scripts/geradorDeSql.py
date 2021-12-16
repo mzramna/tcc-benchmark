@@ -972,9 +972,9 @@ class GeradorDeSql:
 
             if data["tipoOperacao"] == 1:#insercao
                 for coluna in data["dados"].keys():
-                    command.append(coluna)
+                    command.append(str(coluna))
                 for coluna in data["dados"].keys():
-                    if type(data["dados"][coluna])==type("") or type(data["dados"][coluna])==type({}) or  type(data["dados"][coluna])==type([])  :
+                    if type(data["dados"][coluna])==type(""):
                         command.append(data["dados"][coluna].replace("\n",""))
                     else:
                         command.append(str(data["dados"][coluna]))
@@ -982,21 +982,21 @@ class GeradorDeSql:
             if data["tipoOperacao"] == 5:#edicao
                 for coluna in data["dados"].keys():
                     if type("")==type(data["dados"][coluna]):
-                        command.append(coluna + " = "+data["dados"][coluna])
+                        command.append(str(coluna + " = "+data["dados"][coluna]))
                     else:
-                        command.append(coluna + " = "+str(data["dados"][coluna]))
+                        command.append(str(coluna + " = "+str(data["dados"][coluna])))
             if data["tipoOperacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
                 for coluna in data["dados"].keys():
                     if type("")==type(data["dados"][coluna]):
-                        command.append(coluna + " IS "+data["dados"][coluna])
+                        command.append(str(coluna + " IS "+data["dados"][coluna]))
                     else:
-                        command.append(coluna + " IS "+str(data["dados"][coluna]))
+                        command.append(str(coluna + " IS "+str(data["dados"][coluna])))
                     for campo,valor in self.json_loaded[data["nomeBD"]].items():
                         if "id" in valor:
                             if campo in data:
                                 command.append(str(data[campo])+" IS "+str(data["idNoBD"]))
                                 break
-            
+            return command
         except sqliteOperationalError as e:
             print("erro operacional no sqlite")
             self.logging.exception(e)
@@ -1008,8 +1008,6 @@ class GeradorDeSql:
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
-        finally:
-            return command
 
     def generate_dbbench_file_from_datas(self,datas:list,file_path: DirEntry):
         """gera arquivo de dados para o dbbench a partir de um array de dados gerados pelos outros metodos da classe
@@ -1023,11 +1021,43 @@ class GeradorDeSql:
             file=open(file_path,"a")
             writer = csv.writer(file)
             for data in datas:
-                command=self.generate_dbbench_data_row(data=data,file_path=file_path)
-                writer.writerow(command)
+                command=self.generate_dbbench_data_row(data=data)
+                if command != None:
+                    writer.writerow(command)
             file.close()
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def generate_dbbench_all_data_from_database(self,table:str,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[]):
+        try:
+            dados_retornados=self.processamento_sqlite.read_operacoes(filtro={"nomeBD":table})
+            
+            if tipos==[]:
+                dados_separados=[[] for x in range(0,7)]
+            else:
+                for i in tipos:
+                    if i>6 or i<=0:
+                        raise self.ValorInvalido(valor_inserido=tipos,campo="tipos",valor_possivel="não ser nem maior que 6 nem menor que 1")
+                dados_separados=[[] for x in tipos]
+            for i in dados_retornados:
+                dados_separados[i["tipoOperacao"]].append(i)
+            for i in range(1,7):
+                #tmp=choice(dados_separados[i])
+                #pprint(dados_separados[i])
+                arquivo=str(file_path+default_name_pre+"_"+str(i)+"."+default_file_type)
+                self.generate_dbbench_file_from_datas(datas=dados_separados[i],file_path=arquivo)
+        except self.ValorInvalido:
+            self.logging.exception(e)
+        except:
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def generate_all_dbbench_data(self,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[],table_name_in_file:bool=False):
+        for i in list(self.json_loaded.keys()):
+            if table_name_in_file:
+                _default_name_pre=default_name_pre+"_"+i
+            else:
+                _default_name_pre=default_name_pre
+            self.generate_dbbench_all_data_from_database(table=i,file_path=file_path,default_name_pre=_default_name_pre,default_file_type=default_file_type,tipos=tipos)
 
     def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
         """função que chama funções anteriormente descritas para gerar dados para o dado de inserção e cadastrar elas direto no sqlite
