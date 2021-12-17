@@ -1,0 +1,600 @@
+\documentclass[
+	% -- opções da classe memoir --
+	12pt,				% tamanho da fonte
+	openright,			% capítulos começam em pág ímpar (insere página vazia caso preciso)
+	oneside,			% para impressão em verso e anverso. Oposto a oneside
+	a4paper,			% tamanho do papel. 
+	% -- opções da classe abntex2 --
+	%chapter=TITLE,		% títulos de capítulos convertidos em letras maiúsculas
+	%section=TITLE,		% títulos de seções convertidos em letras maiúsculas
+	%subsection=TITLE,	% títulos de subseções convertidos em letras maiúsculas
+	%subsubsection=TITLE,% títulos de subsubseções convertidos em letras maiúsculas
+	% -- opções do pacote babel --
+	english,			% idioma adicional para hifenização
+	french,				% idioma adicional para hifenização
+	spanish,			% idioma adicional para hifenização
+	brazil,				% o último idioma é o principal do documento
+	]{abntex2}
+
+
+% ---
+% PACOTES
+% ---
+% ---
+% Pacotes fundamentais 
+% ---
+\usepackage{cmap}				% Mapear caracteres especiais no PDF
+%\usepackage{lmodern}			% Usa a fonte Latin Modern		
+\usepackage{helvet}
+\usepackage[T1]{fontenc}		% Selecao de codigos de fonte.
+\usepackage[utf8]{inputenc}		% Codificacao do documento (conversão automática dos acentos)
+\usepackage{lastpage}			% Usado pela Ficha catalográfica
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{color}				% Controle das cores
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{underscore}
+\usepackage{amsfonts}
+
+% ---
+\linespread{1.5} % espaçamento entre linhas		
+% ---
+% Pacotes adicionais, usados apenas no âmbito do Modelo Canônico do abnteX2
+% ---
+\usepackage{lipsum}				% para geração de dummy text
+\usepackage{amsmath}
+% ---
+
+% ---
+% Pacotes de citações
+% ---
+\usepackage[brazilian,hyperpageref]{backref}	 % Paginas com as citações na bibl
+\usepackage[alf]{abntex2cite}	% Citações padrão ABNT
+\usepackage{longtable}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=false,
+    pdfpagemode=FullScreen,
+    pdftitle={benchmark bancos de dados multi arquitetura},
+}
+\hypersetup{final}
+\urlstyle{same}
+% --- 
+% CONFIGURAÇÕES DE PACOTES
+% --- 
+
+% ---
+% Configurações do pacote backref
+% Usado sem a opção hyperpageref de backref
+%\renewcommand{\backrefpagesname}{Citado na(s) página(s):~}
+\renewcommand{\backrefpagesname}{}
+% Texto padrão antes do número das páginas
+\renewcommand{\backref}{}
+% Define os textos da citação
+\renewcommand*{\backrefalt}[4]{
+	\ifcase #1 %
+		Nenhuma citação no texto.%
+	\or
+		%Citado na página #2.%
+	\else
+		%Citado #1 vezes nas páginas #2.%
+	\fi}%
+% ---
+
+
+% ---
+% Informações de dados para CAPA e FOLHA DE ROSTO
+% 
+\titulo{Benchmark de desempenho entre bancos de dados em diferentes arquiteturas}
+
+\autor{Miguel Magalhães Lopes}
+\local{Rio Pomba}
+\data{20XX}
+\orientador{Gustavo Henrique da Rocha Reis}
+\coorientador{CICLANO}
+%\instituicao{}
+\tipotrabalho{Trabalho de Conclusão de Curso}
+% O preambulo deve conter o tipo do trabalho, o objetivo, 
+% o nome da instituição e a área de concentração 
+\preambulo{Trabalho de Conclusão apresentado ao Campus Rio Pomba, do Instituto Federal de Educação, Ciência e Tecnologia do Sudeste de Minas Gerais, como parte das exigências do curso de Bacharelado em Ciência da Computação para a obtenção do título de Bacharel em Ciência da Computação.}
+% ---
+
+
+% ---
+% Configurações de aparência do PDF final
+
+% alterando o aspecto da cor azul
+\definecolor{blue}{RGB}{41,5,195}
+
+% informações do PDF
+%\makeatletter
+%\hypersetup{
+     	%pagebackref=true,
+%		pdftitle={\@title}, 
+%		pdfauthor={\@author},
+%    	pdfsubject={\imprimirpreambulo},
+%	    pdfcreator={Matheus F O Baffa},
+%		pdfkeywords={content-based image retrieval}{desenvolvimento web}{exame de fundo de olho}{histograma backprojection}{íris}, 
+%		colorlinks=true,       		% false: boxed links; true: colored links
+%    	linkcolor=black,          	% color of internal links
+%    	citecolor=black,        		% color of links to bibliography
+%    	filecolor=black,      		% color of file links
+%		urlcolor=black,
+%		bookmarksdepth=4
+%}
+\makeatother
+% --- 
+
+% --- 
+% Espaçamentos entre linhas e parágrafos 
+% --- 
+
+% O tamanho do parágrafo é dado por:
+\setlength{\parindent}{1.3cm}
+
+% Controle do espaçamento entre um parágrafo e outro:
+\setlength{\parskip}{0.2cm}  % tente também \onelineskip
+
+% ---
+% compila o indice
+% ---
+\makeindex
+% ---
+
+% ----
+% Início do documento
+% ----
+\begin{document}
+
+% Retira espaço extra obsoleto entre as frases.
+\frenchspacing 
+
+% ----------------------------------------------------------
+% ELEMENTOS PRÉ-TEXTUAIS
+% ----------------------------------------------------------
+% \pretextual
+
+% ---
+% Capa
+% ---
+\begin{center}
+\textbf{ 
+INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DO SUDESTE DE MINAS GERAIS - CAMPUS RIO POMBA}
+\end{center}
+
+\imprimircapa
+% ---
+
+% ---
+% Folha de rosto
+% (o * indica que haverá a ficha bibliográfica)
+% ---
+\imprimirfolhaderosto*
+% ---
+
+% ---
+% Inserir a ficha bibliografica
+% ---
+
+% Isto é um exemplo de Ficha Catalográfica, ou ``Dados internacionais de
+% catalogação-na-publicação''. Você pode utilizar este modelo como referência. 
+% Porém, provavelmente a biblioteca da sua universidade lhe fornecerá um PDF
+% com a ficha catalográfica definitiva após a defesa do trabalho. Quando estiver
+% com o documento, salve-o como PDF no diretório do seu projeto e substitua todo
+% o conteúdo de implementação deste arquivo pelo comando abaixo:
+%
+% \begin{fichacatalografica}
+%     \includepdf{fig_ficha_catalografica.pdf}
+% \end{fichacatalografica}
+\begin{fichacatalografica}
+	\vspace*{\fill}					% Posição vertical
+	\hrule							% Linha horizontal
+	\begin{center}					% Minipage Centralizado
+	\begin{minipage}[c]{12.5cm}		% Largura
+	
+	\imprimirautor
+	
+	\hspace{0.5cm} \imprimirtitulo  / \imprimirautor. --
+	\imprimirlocal, \imprimirdata-
+	
+	\hspace{0.5cm} \pageref{LastPage} p. : il. (algumas color.) ; 30 cm.\\
+	
+	\hspace{0.5cm} \imprimirorientadorRotulo~\imprimirorientador\\
+	
+	\hspace{0.5cm}
+	\parbox[t]{\textwidth}{\imprimirtipotrabalho~--~Instituto Federal de Educação, Ciência e Tecnologia do Sudeste de Minas, Campus Rio Pomba,
+	\imprimirdata.}\\
+	
+	\hspace{0.5cm}
+		1. 
+		2. 
+		I. 
+		II.
+		III.
+		IV. \\ 			
+	
+	\hspace{8.75cm} %CDU 02:141:005.7\\
+	
+	\end{minipage}
+	\end{center}
+	\hrule
+\end{fichacatalografica}
+% ---
+
+% ---
+% Inserir errata
+% ---
+%\begin{errata}
+%Elemento opcional da \citeonline[4.2.1.2]{NBR14724:2011}. %Exemplo:
+
+%\vspace{\onelineskip}
+%
+%FERRIGNO, C. R. A. \textbf{Tratamento de neoplasias ósseas apendiculares com
+%reimplantação de enxerto ósseo autólogo autoclavado associado ao plasma
+%rico em plaquetas}: estudo crítico na cirurgia de preservação de membro em
+%cães. 2011. 128 f. Tese (Livre-Docência) - Faculdade de Medicina Veterinária e
+%Zootecnia, Universidade de São Paulo, São Paulo, 2011.
+
+%\begin{table}[htb]
+%\center
+%\footnotesize
+%\begin{tabular}{|p{1.4cm}|p{1cm}|p{3cm}|p{3cm}|}
+%  \hline
+%   \textbf{Folha} & \textbf{Linha}  & \textbf{Onde se lê} % & \textbf{Leia-se}  \\
+%    \hline
+%    1 & 10 & auto-conclavo & autoconclavo\\
+%   \hline
+%\end{tabular}
+%\end{table}
+%
+%\end{errata}
+% ---
+
+% ---
+% Inserir folha de aprovação
+% ---
+
+% Isto é um exemplo de Folha de aprovação, elemento obrigatório da NBR
+% 14724/2011 (seção 4.2.1.3). Você pode utilizar este modelo até a aprovação
+% do trabalho. Após isso, substitua todo o conteúdo deste arquivo por uma
+% imagem da página assinada pela banca com o comando abaixo:
+%
+% \includepdf{folhadeaprovacao_final.pdf}
+%
+\begin{folhadeaprovacao}
+
+  \begin{center}
+    {\ABNTEXchapterfont\large\imprimirautor}
+
+    \vspace*{\fill}\vspace*{\fill}
+    {\ABNTEXchapterfont\bfseries\Large\imprimirtitulo}
+    \vspace*{\fill}
+    
+    \hspace{.45\textwidth}
+    \begin{minipage}{.5\textwidth}
+        \imprimirpreambulo
+    \end{minipage}%
+    \vspace*{\fill}
+   \end{center}
+    
+   Trabalho aprovado. \imprimirlocal, 00 de dezembro de 20XX.
+
+   \assinatura{\textbf{\imprimirorientador}, Orientador, IF Sudeste MG - Rio Pomba} 
+   \assinatura{\textbf{CICLANO}, Coorientador, IF Sudeste MG - Rio Pomba}
+   \assinatura{\textbf{Dr. BELTRANO} \\ IF Sudeste MG - Rio Pomba}
+   \assinatura{\textbf{Me. XXXXXXXXXXXXX} \\ IF Sudeste MG - Rio Pomba }
+   %\assinatura{\textbf{Professor W} \\ IF Sudeste MG - Rio Pomba}
+      
+   \begin{center}
+    \vspace*{0.5cm}
+    {\large\imprimirlocal}
+    \par
+    {\large\imprimirdata}
+    \vspace*{1cm}
+  \end{center}
+  
+\end{folhadeaprovacao}
+% ---
+
+
+% ---
+% Dedicatória
+% ---
+\begin{dedicatoria}
+   \vspace*{\fill}
+	\begin{flushright}
+        Este trabalho é dedicado a todos\\ 
+       aqueles que me inspiraram, em especial\\ 
+       XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \\
+       XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.
+    \end{flushright}
+\end{dedicatoria}
+% ---
+
+% ---
+% Agradecimentos
+% ---
+\begin{agradecimentos}
+
+\end{agradecimentos}
+
+% resumo em português
+\begin{resumo}
+\noindent
+
+ \vspace{\onelineskip}
+    
+ \noindent
+ \textbf{Palavras-chaves:} palavra1. palavra2. palavra3. palavra4.
+\end{resumo}
+
+% resumo em inglês
+\begin{resumo}[Abstract]
+ \begin{otherlanguage*}{english}
+   \vspace{\onelineskip}
+    \noindent 
+
+   \vspace{\onelineskip}
+   
+   \noindent  \textbf{Key-words}:  word1. word2. word3. word4. word5.
+ \end{otherlanguage*}
+\end{resumo}
+\urlstyle{same}
+
+\pdfbookmark[0]{\listfigurename}{lof}
+\listoffigures*
+\cleardoublepage
+
+\pdfbookmark[0]{\listtablename}{lot}
+\listoftables*
+\cleardoublepage
+
+\DeclareRobustCommand{\beginAutoTable}[4]{
+%nome da tabela e label
+%cabeçalho
+%quantidade total de colunas
+%formatação da tabela
+\label{tab:#1}
+  \begin{longtable}{#4}
+  \caption{#1}
+\\ \hline \multicolumn{#3}{c}{\textbf{#1}} \\ \hline 
+#2 \\ \hline \endfirsthead
+#2 \\ \hline \endhead
+}
+\newenvironment{easyTableAuto}[4]{
+\beginAutoTable{#1}{#2}{#3}{#4}
+}{
+  \end{longtable}
+}
+\newenvironment{easyTable2}[2]{
+\beginAutoTable{#1}{#2}{2}{p{.15\textwidth}|p{.80\textwidth}}
+}{
+  \end{longtable}
+}
+\newenvironment{easyTable3}[2]{
+\beginAutoTable{#1}{#2}{3}{p{.16\textwidth}|p{.1\textwidth}|p{.70\textwidth}}
+}{
+  \end{longtable}
+}
+\DeclareRobustCommand{\myref}[2]{
+\hyperlink{#1:#2}{#2$^{\text{\ref{#1:#2}}}$}
+}
+\newcounter{sig}
+\DeclareRobustCommand{\sig}[1]{
+   \refstepcounter{sig}
+   \label{sig:#1}
+   \item[#1]
+   }
+\begin{siglas}
+    \sig{DACC} Departamento Acadêmico de Ciência da Computação
+    
+    \sig{UFJF} Universidade Federal de Juiz de Fora
+    
+    \sig{arm} ARM, originalmente Acorn RISC Machine, e depois Advanced RISC Machine, é uma família de arquiteturas RISC desenvolvida pela empresa britânica ARM Holdings
+    
+    \sig{IDE} 
+    
+    \sig{x64}
+    
+    \sig{x86}
+    
+    \sig{aarch64}
+    
+    \sig{ram}
+    
+    \sig{GPU}
+    
+    \sig{TPU}
+    
+    \sig{CPU}
+    
+    \sig{JVM} JVM (Java Virtual Machine) é uma máquina abstrata. É uma especificação que fornece um ambiente de tempo de execução no qual o bytecode do java pode ser executado.
+As JVMs estão disponíveis para muitas plataformas de hardware e software (ou seja, a JVM depende da plataforma).
+    
+    \sig{IOT}
+    
+    \sig{SBC}
+    
+    \sig{BIOS}
+    
+    \sig{TTL}
+    
+    \sig{UART}
+    
+    \sig{WINE}
+    
+\end{siglas}
+%\newenvironment{cirquitos integrados}{
+%  \pretextualchapter{\listadecirquitosname}
+%  \begin{symbols}
+%  \beginAutoTable{cirquitos integrados}{nome do modulo & categoria & descrição  }{3}{p{.18\textwidth}|p{.14\textwidth}|p{.60\textwidth}}
+%}{
+%\end{longtable}
+%  \end{symbols}
+%  \cleardoublepage
+%}
+%\newcounter{hdw}
+%\DeclareRobustCommand{\hdw}[1]{
+%   \refstepcounter{hdw}
+%   \label{hdw:#1}
+%   #1 &
+%   }
+
+\tableofcontents*
+
+\textual
+\setcounter{page}{1}
+% ---------------------------------------------------------------------------------------------
+% Introdução
+% ---------------------------------------------------------------------------------------------
+\chapter*{Introdução}
+\addcontentsline{toc}{chapter}{\textbf{Introdução}}
+\markright{Introdução}
+\label{chapter:introducao}
+Esta pesquisa foi baseada na crescente adoção de processadores \myref{sig}{arm}, estes processadores conseguem entregar uma eficiência energética muito superior a comumente utilizada nos computadores e servidores a arquitetura \myref{sig}{x86} esta arquitetura possui uma versão 64 bit, que hoje em dia é praticamente a única variante utilizada hoje em dia a \myref{sig}{x64} essa arquitetura é no geral apenas uma variante aditiva da \myref{sig}{x86} na qual adiciona varias instruções e vários suportes adicionais , o principal deles sendo suporte a comandos 64bit,o mesmo pode ser dito a arquitetura \myref{sig}{aarch64} ou arm64 que é uma variante aditiva da \myref{sig}{arm},essa não é ,como a \myref{sig}{x64} uma versão única,mas sim uma "denominação" das variantes e evoluções da arquitetura \myref{sig}{arm} com suporte a 64bit,as arquiteturas passaram a ser denominadas assim a partir da armv8,entretanto existem versões do \myref{sig}{arm},como o armv7l que consegue trabalhar com instruções de 64bit,apesar de ser uma arquitetura 32bit.\newline
+O foco da pesquisa foi feito em cima do uso de servidores, que é baixo, apesar de totalmente possível e existente no mundo corporativo,existem alguns servidores comerciais que utilizam a arquitetura \myref{sig}{arm} para trabalhar,foi feita uma comparação em utilização desses processadores para uma aplicação de banco de dados simulada,a aplicação simula a utilização de forma realística de uma base de dados de uma locadora. \newline
+O cenário foi escolhido a partir de um esquema de banco de dados genérico da internet e foram utilizados os bancos de dados postgresql e mariadb,visto que são os bancos de dados de propósito geral mais utilizados atualmente,foi preferido o mariadb sobre o mysql visto que não existe uma versão dele para a arquitetura \myref{sig}{arm} e ambos são basicamente o mesmo sistema,com a diferença de um deles ser open source.\newline
+foi criado um programa para a geração de dados realísticos baseados na biblioteca faker na linguagem python,estes dados são gerados para cada pais especifico em idiomas e caracteres compatíveis para o pais designado,desta forma é plausível que estes dados,como nome,telefone,endereço e até mesmo usuário e senha sejam possíveis de existirem,foi escolhido dessa forma já que um preenchimento de dados totalmente randômicos e de tamanho fixo podem apresentar discrepâncias com o desempenho num ambiente real de uso,isso pode afetar tanto o tempo,quanto carga dos processadores negativamente, e visto que os dados utilizados em cada teste são exatamente os mesmos,com a diferença apenas da quantidade,para a análize de desempenho variante em quantidade,quer dizer que esses dados poderiam sim simbolizar o uso num ambiente real e sendo assim o benchmark se torna mais aplicável a realidade.\newline
+
+\chapter{Fundamentação Teórica}
+\label{ch: fundamentacao teorica}
+
+
+
+\section{arquiteturas}
+\label{sec: arquiteturas}
+Por definição arquitetura de computador é um conjunto de circuitos eletrônicos padronizado associado a um conjunto de instruções de forma a simplificar a programação deles para que funcionem comandos diferentes do binário para a programação de um eletrônico,os compiladores utilizam esses conjuntos de instrução para que seja convertido o código de uma linguagem de programação para um binário de um programa, a arquitetura também define/limita varias propriedades do hardware,como quantidade máxima de \myref{sig}{ram},de disco,suporte ou não de saída de video,capacidades de rede e vários outros,mesmo que algumas dessas limitações possam ser contornadas utilizando variações da arquitetura chamadas microarquiteturas.\newline
+
+Uma micro arquitetura é quando é adicionado tanto um circuito eletrônico novo ao circuito original da arquitetura quanto apenas uma simplificação ou reorganização dos comandos originais de uma arquitetura,entretanto,numa micro arquitetura essas modificações são muito pequenas de forma a serem mais similares a arquitetura original do que uma nova arquitetura,dessa forma as micro arquiteturas podem ser consideradas updates de uma arquitetura,e quando são acumulados muitos desses updates,pode ser que seja gerada uma nova arquitetura,como foi o caso da arquitetura \myref{sig}{x86} para a arquitetura \myref{sig}{x64},onde a \myref{sig}{x64} foi um upgrade grande o bastante da \myref{sig}{x86} a ponto de ser considerado uma nova arquitetura,onde a principal e mais visível diferença entre esses dois é a mudança de 32bit(na \myref{sig}{x86}) para 64bit(no \myref{sig}{x64}).\newline
+
+As arquiteturas também podem ser definidas para coisas fora de \myref{sig}{CPU},elas podem estar definidas em \myref{sig}{GPU},\myref{sig}{TPU} e vários outros módulos de hardware de um computador,inclusive existindo arquiteturas especiais que são aplicadas a nível de software,que não são necessariamente arquiteturas de computador,mas sim um tipo diferente de arquitetura,onde existem maquinas abstratas que simplificam a programação de uma linguagem para que ela funcione de forma mais compatível com varias maquinas de arquiteturas de hardware diferentes,onde você faz otimizações de código na parte do código e da maquina virtual,como o caso da \myref{sig}{JVM} do java,em que a maquina virtual de cada arquitetura pode sofrer otimizações e isso faz com que ela funcione de forma melhor dependendo da maquina virtual em uma arquitetura e pior em outra,mas sem alterar o código,e ao mesmo tempo,outra maquina virtual pode funcionar pior na primeira arquitetura e melhor na segunda.\newline
+
+As arquiteturas não são limitadas apenas a esses previamente citados,as arquiteturas podem estar presentes todos os tipos de circuitos integrados,como os processadores de roteadores e aparelhos \myref{sig}{IOT} como lampadas e tomadas inteligentes.isso quer dizer que uma arquitetura não necessariamente é algo que precise de um hardware potente ou que só funcione ou exista em computadores,as arquiteturas são a forma como os algorítimos são interpretados no hardware,o que quer dizer que dês de que exista um software e um hardware que se comuniquem existe uma arquitetura e provavelmente houve uma conversão da linguagem de programação para a linguagem de maquina dessa arquitetura deste dispositivo\newline
+
+as arquiteturas de computador são definidas para hardwares específicos,mas o softwares não necessariamente precisam de ser funcionais apenas em uma única arquitetura,por mais que ela seja diferente da arquitetura de outro computador,isso por que os conjuntos de instruções podem ser diferentes mas suas funcionalidades gerais podem ser iguais,de forma que mesmo que uma arquitetura seja totalmente diferente de outra,os softwares de uma podem funcionar na outra,por mais que sejam necessárias algumas adaptações,algumas dessas adaptações podem ser tão grandes que as vezes é muito complexo essa adaptação de código,para esses casos,ou mesmo para se testar o código de uma arquitetura em outra,para se executar esses códigos sem ser necessária essa adaptação são usados programas chamados de emuladores ou simuladores estes programas funcionam como uma camada de compatibilidade entre a arquitetura real da maquina que está rodando e a arquitetura na qual o programa foi pensado em funcionar,entretanto esse processo pode acarretar em uma perda considerável de desempenho,podendo resultar em casos onde maquinas com  516 gigaflops sejam necessárias para se emular maquinas com 230 gigaflops,como no caso de um emulador do sistema de videogame playstation 3 utilizando o emulador rpcs3,e mesmo com essa ineficiência,esse emulador não tem 100\% de compatibilidade com os softwares existentes na plataforma,de forma que nem todos os softwares dessa plataforma funcionam exatamente como deveriam,ou mesmo funcionam.por mais que ambas as maquinas rodem o mesmo kernel de sistema,o kernel Linux no caso, ainda assim a perda de desempenho é muito grande pois apesar de em teoria serem o mesmo sistema operacional a diferença de arquiteturas possui um peso muito maior do que o que o sistema operacional utilizado,por mais que pareça que não é o caso.\newline
+
+Esse é um exemplo de como mesmo com tudo para ser um cenário igual de utilização ou mesmo um cenário melhor ao se trocar uma arquitetura de um computador inúmeras adaptações devem ser feitas ou,como no caso do macos,criadas camadas de compatibilidade.Após o lançamento dos macbooks de 2020 com processador M1 que funcionam com a arquitetura \myref{sig}{aarch64} a apple lançou uma camada de compatibilidade dos softwares com arquitetura \myref{sig}{x64} para \myref{sig}{aarch64} chamado de rosetta2 esse software funciona parcialmente como um emulador,exceto que ele faz as adaptações num nível mais próximo do da máquina real e do sistema operacional nativo da máquina,resultando num desempenho muito superior a qualquer emulador existente,o rosetta2 funciona de forma análoga ao projeto \myref{sig}{WINE} do Linux que reinterpreta os programas windows para funcionarem no Linux,você tem uma pequena perda de desempenho por esse processo de reinterpretação em alguns casos,mas em outros essa perda é bem mais visível\newline
+
+As arquiteturas de computador podem variar em diversos fatores de uma para outra de forma que existam varias funcionalidades que não foram pensadas para uma arquitetura que existem em outras.existem também propósitos diferentes para diferentes arquiteturas,como o caso dos processadores \myref{sig}{arm} que foram pensados para entregar uma grande eficiência energética,enquanto os processadores \myref{sig}{x86} foram pensados para apresentarem grande poder de processamento\newline
+
+Existem alguns computadores com processador \myref{sig}{arm} que não são \myref{sig}{SBC} isso faz com que eles possuam varias possibilidades de upgrade,que não são possíveis nos computadores \myref{sig}{SBC},sendo assim existem algumas pequenas variações no funcionamento dos computadores mesmo dentro de uma mesma arquitetura que tenderia a seguir padrões mais uniformes,entretanto uma peculiaridade tende a ser comum nos processadores \myref{sig}{arm},eles costumam apresentar uma \myref{sig}{GPU} integrada e algumas outras unidades de processamento especializadas que os processadores \myref{sig}{x86} costumam ter que ser adicionadas com chips externos,uma dessas unidades é o \myref{sig}{TPU} que ficou mais conhecida com o lançamento do windows 11 que o exigia na sua instalação por propósitos de segurança,o principal propósito da arquitetura \myref{sig}{arm} entretanto não é se diferenciar tanto da arquitetura \myref{sig}{x86},mas sim tornar computadores mais energeticamente eficientes,tanto que um computador doméstico comum utiliza de 200 a 300w por hora enquanto um computador raspberry pi 4,que é o computador \myref{sig}{arm} mais potente atualmente da marca mais popular,consome coisa de 15w hora,que é uma diferença absurda,principalmente se levar em conta que ambos tem a capacidade de utilizar os mesmos programas de trabalho,se considerarmos sistema operacional Linux e programas open source,tanto editores de texto quanto navegadores de internet quanto \myref{sig}{IDE}s de programação estão disponíveis para ambos e para um uso comum funcionam tão bem quanto num cenário real.\newline
+
+Como os processadores \myref{sig}{arm} começaram a ficar mais comuns visto que algumas fabricantes como a apple agora fabricam computadores baseados em \myref{sig}{arm} e a gigabyte agora possui versões de servidor com essa arquitetura de processador,isso faz com que seja cada vez mais fácil de se utilizar essa arquitetura já que se existem mais consumidores também vão existir mais programas feitos para rodar nessa arquitetura,e visto o quanto um computador com processador \myref{sig}{arm} economiza energia para entregar o mesmo poder de processamento de um outro com processador \myref{sig}{x86} , essa diferença pode ser muito benéfica para os vários tipos de empresa que utilizam servidores,já que isso pode significar um impacto considerável no consumo energético da empresa dependendo do quanto ele é utilizado a nível de processamento.\newline
+
+\subsection{Subseção de Exemplo}
+
+
+
+\section{Seção de Exemplo 2}
+\label{sec: exemplo2}
+
+\section{bancos de dados}
+\label{sec: bancos de dados}
+banco de dados é um metodo de armazenamento de dados de forma estruturada para que sejam mais faceis de serem associados e de serem filtradas,elas também podem ser armazenadas de forma a economizar espaço de armazenamento dependendo da forma como foi otimizado o banco de dados,os bancos de dados ainda possuem a capacidade de realizar algumas redundancias de segurança para o armazenamento de dados,de forma que a validação de um dado inserido possa ser feito a nivel de armazenamento de dados e não a nivel de programação,o que pode simplificar o desenvolvimento de um programa
+esses motivos são os principais de por que foram escolhidos os bancos de dados como alvo do benchmark realizado para essa comparação de arquiteturas.
+
+os bancos de dados são onde a maioria dos dados de um sistema são salvos,esses dados são as informações necessárias para o funcionamento dos mais diversos tipos de programas tanto para ambientes comerciais quanto entreterimento ou mesmo comunicação,todos esses ramos de software utilizam bancos de dados de algum tipo para se salvar os dados e acelerar o acesso dos mesmos,isso quer dizer que os bancos de dados são extremamente importantes para qualquer tipo de aplicação.isso por si só já é motivo o bastante para se utilizar esse tipo de programa como base para os testes de desempenho entre as arquiteturas do ponto de vista de um servidor,enquanto as mais diversas aplicações podem rodar de um lado do servidor uma coisa é constante , as aplicações que rodam seguindo o modelo cliente-servidor utilizam algum tipo de banco de dados.\newline
+os tipos de bancos de dados analizados são os bancos de dados sql que são os mais genéricos,de forma que podem ser utilizados no máximo de aplicações diferentes possiveis,isso faz com que os bancos de dado sql sejam os melhores para serem simulados,um dos que foi analizado para ser testado foi o mongodb e o oracle,mas o mongodb não possui propósito geral e o da oracle não existe uma versão para \myref{sig}{arm} até o momento que o projeto foi pensado.
+
+\section{software de benchmark}
+\label{sec: software de benchmark}
+o benchmark foi feito com 2 softwares principais um software de terceiros chamado dbbench que é um programa dedicado para o benchmark de bancos de dados e o segundo foi criado para inserir de forma padronizada os dados para o dbbench realizar os testes.
+o dbbench é um software para benchmark e teste de estresse de bancos de dados variados que utilizam arquivos de configuração para fazer variados tipos de testes.o software desenvolvido gera esses arquivos de configuração,sendo que dentro dos arquivos é possivel inserir as queries que serão testadas e o software criado faz isso,de forma a manter os mesmos dados pesquisados mas alterar a quantidade de consultas recorrentes ou de operações por segundo,o software criado gera a quantidade desejada de operações 
+
+\chapter{testes}
+\label{ch: testes}
+os testes foram realizados utilizando um orangepi pc + e um computador de mesa .
+o orange pi é um SBC ARM baseado no processador allwinner h3 com 3 usb 2.0 , 1 gb de memória ram ddr3 , uma porta de rede 10/100 e wifi bgn,essa é relativamente antiga e seu processador é um 4-core de 1.3ghz no clock máximo,é um processador relativamente bom mas não é bom o bastante para substituir um computador atual,mas consegue funcionar de forma satisfatória como servidor doméstico ,visto que seu processador é bom o bastante para operações simplificadas e poucos acessos,mas quando se tratam de muitos acessos ele pode não ser potente o bastante para aguentar.
+o computador de mesa é um dual core intel com 4 gb de memória ram ddr3, 4 usb 2.0 porta de rede gigabit e algumas portas sata2,entretanto essas portas sta não serão usadas já que o propósito é manter as 2 maquinas o mais próximas em relação a hardwaree possivel
+outros metodos que serão usados para manter as maquinas mais similares serão limitar o clock de ambos para 1.2ghz,que é o clock mais estável para o orange pi ,a memória usada será limitada a 750 mb para o stack do docker e tanto o sistema operacional quanto os dados do docker serão salvos em cartões de memória microsd classe 10 com limitação de acesso de 10 MB/s de escrita e leitura , no orangepi será usado o leitor da própria placa para conectar o microsd e no pc será usado um adaptador usb.
+alem disso serão usadas versões do sistema debian,no orangepi o armbian e no pc o prórpio debian padrão,ambos na versão buster
+
+\chapter{Trabalhos Relacionados}
+\label{ch: trabalhos relacionados}
+
+\chapter{Metodologia}
+\label{ch: materiais e métodos}
+
+\section{Exemplo}
+
+ (Equação \ref{eq: kernel svm}).
+\begin{equation}
+\label{eq: kernel svm}
+    c = \frac {1} {\textit{nf}}
+\end{equation}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                      Capítulo 5                      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Resultados}
+\label{ch: resultados} 
+
+
+\section{Resultados do Método}
+\label{sec: resultados}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                      Capítulo 6                      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \chapter{Conclusão}
+ \label{ch: conclusao}
+ 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                      REFERÊNCIAS                     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ---
+% Finaliza a parte no bookmark do PDF, para que se inicie o bookmark na raiz
+% ---
+\bookmarksetup{startatroot}% 
+% ---
+
+% ---------------------------------------------------------------------------------------------
+% ELEMENTOS PÓS-TEXTUAIS
+% ---------------------------------------------------------------------------------------------
+\postextual
+
+
+% ---------------------------------------------------------------------------------------------
+% Referências bibliográficas
+% ---------------------------------------------------------------------------------------------
+\bibliography{abntex2-modelo-references}
+
+% ---------------------------------------------------------------------------------------------
+% Glossário
+% ---------------------------------------------------------------------------------------------
+%
+% Consulte o manual da classe abntex2 para orientações sobre o glossário.
+%
+%\glossary
+
+% ---------------------------------------------------------------------------------------------
+
+% Anexos
+% ---------------------------------------------------------------------------------------------
+
+% ---
+% Inicia os anexos
+% ---
+%\begin{anexosenv}
+
+% Imprime uma página indicando o início dos anexos
+%\partanexos
+
+%\chapter{Protocolo de Aquisição de Imagens}
+
+%\end{anexosenv}
+
+% ---------------------------------------------------------------------------------------------
+% INDICE REMISSIVO
+% ---------------------------------------------------------------------------------------------
+
+\printindex
+
+\end{document}
