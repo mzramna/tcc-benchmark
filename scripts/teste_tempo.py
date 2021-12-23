@@ -12,13 +12,13 @@ for k in range(30):
     tempo=[]
     quantidade_elementos+=100
     for i in range(4):
-        f = open("teste_de_execucao.log", "a")
+        f = open("teste_tempo_execucao.log", "a")
         try:
-            os.remove("scripts/initial_db.db")
+            os.remove("scripts/teste_tempo_db.db")
         except:
             pass
         inicio=time()
-        gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
+        gerador=GeradorDeSql(sqlite_db="scripts/teste_tempo_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/teste_tempo.log",level=10,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 
         gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=100,quantidade_final=quantidade_elementos)
 
@@ -30,7 +30,7 @@ for k in range(30):
         del gerador
     #pprint(tempos)
     tempos.append(tempo)
-    f = open("teste_de_execucao.log", "a")
+    f = open("teste_tempo_execucao.log", "a")
     print("para ",quantidade_elementos," dados foram gastos os seguintes dados de tempo")
     print("media geração completa",str(sum(tempo)/len(tempo)))
     print("media por elemento",str((sum(tempo)/len(tempo))/quantidade_elementos))
