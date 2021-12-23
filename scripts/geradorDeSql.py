@@ -1213,11 +1213,11 @@ class GeradorDeSql:
 
     #TODO gerar dados de erro por json
 
-    def  ciclo_geracao_dados_json(self,tipo:int=0,select_country:str="random",table:str="random",dado_existente:bool=False):
+    def  ciclo_geracao_dados_json(self,tipo:list=[],select_country:str="random",table:str="random",dado_existente:bool=False):
         """gera uma das possiveis operações para a tebala definida 
 
         Args:
-            tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
+            tipo (list, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to [].
             select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
             table (str, optional): nome da tabela no qual os serão gerados,se default será escolhido randomicamente entre os existentes dentro do arquivo json. Defaults to "random".
             dado_existente (bool, optional): verifica se o dado é compativel com os previamente existenes no bd cadastrado. Defaults to False.
@@ -1226,8 +1226,8 @@ class GeradorDeSql:
                     return choice([True, False])
         self.logging.info("ciclo_geracao_dados_json",extra=locals())
         try:
-            if tipo==0:
-                tipo_execucao=randint(1,6)
+            if tipo==[]:
+                tipo_execucao=[randint(1,6)]
             else:
                 tipo_execucao=tipo
             tracking_data=locals()
@@ -1236,22 +1236,23 @@ class GeradorDeSql:
             filtro=self.gerador_filtro(pattern=self.json_loaded[table])
             self.logging.debug("ultimo id cadastrado",extra={"id":self.processamento_sqlite.buscar_ultimo_id_cadastrado(table=table)})
             ultimo_id=self.processamento_sqlite.buscar_ultimo_id_cadastrado(table=table)
-            if tipo_execucao == 1:#criacao
-                self.gerar_dado_insercao(table=table,pattern=self.json_loaded[table],select_country=select_country)
-            elif tipo_execucao == 2 and ultimo_id != 0:#leitura completa
-                self.gerar_dado_leitura_completa(table=table,pattern=self.json_loaded[table],filtro=filtro,select_country=select_country)
-            elif tipo_execucao == 3 and ultimo_id != 0:#busca
-                self.gerar_dado_busca(table=table,pattern=self.json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
-            elif tipo_execucao == 4 and ultimo_id != 0:#busca filtrada
-                self.gerar_dado_busca(table=table,pattern=self.json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
-            elif tipo_execucao == 5 and ultimo_id != 0:#edicao
-                self.gerar_dado_atualizacao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
-            elif tipo_execucao == 6 and ultimo_id != 0:#delecao
-                self.gerar_dado_delecao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
-            elif ultimo_id == 0:
-                raise self.ValorInvalido(campo="quantidade de valores cadastrados",valor_inserido=tipo,valor_possivel="maior que 0")
-            else:
-                raise self.ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
+            for _tipo_execucao in tipo_execucao:
+                if _tipo_execucao == 1:#criacao
+                    self.gerar_dado_insercao(table=table,pattern=self.json_loaded[table],select_country=select_country)
+                elif _tipo_execucao == 2 and ultimo_id != 0:#leitura completa
+                    self.gerar_dado_leitura_completa(table=table,pattern=self.json_loaded[table],filtro=filtro,select_country=select_country)
+                elif _tipo_execucao == 3 and ultimo_id != 0:#busca
+                    self.gerar_dado_busca(table=table,pattern=self.json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro="*",dado_existente=dado_existente,not_define_id=random_bool())
+                elif _tipo_execucao == 4 and ultimo_id != 0:#busca filtrada
+                    self.gerar_dado_busca(table=table,pattern=self.json_loaded[table],select_country=select_country,id=self.processamento_sqlite.random_id_cadastrado(table=table),filtro=filtro,not_define_id=random_bool())
+                elif _tipo_execucao == 5 and ultimo_id != 0:#edicao
+                    self.gerar_dado_atualizacao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
+                elif _tipo_execucao == 6 and ultimo_id != 0:#delecao
+                    self.gerar_dado_delecao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
+                elif ultimo_id == 0:
+                    raise self.ValorInvalido(campo="quantidade de valores cadastrados",valor_inserido=tipo,valor_possivel="maior que 0")
+                else:
+                    raise self.ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
         except self.TamanhoArrayErrado as e :
             self.logging.exception(e)
         except self.ValorInvalido as e:
@@ -1262,7 +1263,7 @@ class GeradorDeSql:
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
 
-    def gerar_todos_dados_por_json(self,tipo:int=0,select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
+    def gerar_todos_dados_por_json(self,tipo:list=[],select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
         """gera os dados de acordo com o arquivo json e quantidades definidas
 
         Args:

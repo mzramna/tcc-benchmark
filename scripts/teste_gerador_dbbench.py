@@ -5,9 +5,11 @@ import os
 #logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
 #logstash_data={"host":"192.168.0.116","port":5000}
 logstash_data={}
-quantidade_elementos=50000
+quantidade_elementos_geracao=50000
+quantidade_elementos=50000000
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 
+gerador.gerar_todos_dados_por_json(select_country="pt_br",tipo=1,quantidade_final=quantidade_elementos_geracao)
 gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=100,quantidade_final=quantidade_elementos)
 #gerador.gerar_dados_validos_por_json(table="actor",tipo=1,select_country="pt_br",quantidade=10)#create
 #gerador.gerar_dados_validos_por_json(table="actor",tipo=2,select_country="pt_br",quantidade=10)#leitura completa
