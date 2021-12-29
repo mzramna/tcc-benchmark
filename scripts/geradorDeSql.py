@@ -428,12 +428,11 @@ class GeradorDeSql:
             if e.campo== "dados_gerados":
                 dados_gerados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva) 
             elif e.campo=="associacao":
+                chamadas=loggingSystem.full_inspect_caller()
+                if chamadas.count(chamadas[0])>5:
+                    return None
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
                 dados_gerados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva) 
-            # if e.campo=="associacao" and  e.valor_inserido[1]==0 and e.valor_possivel=="maior que 0":
-            #     #criar a tabela necessária recursivamente e chamar novamente essa tabela
-            #     self.gerar_dado_insercao(table=e.valor_inserido[0],pattern=self.json_loaded[e.valor_inserido[0]],select_country=select_country)
-            #     return self.create_data(table=table,pattern=pattern,select_country=fake.locales[0],id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva)
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
         except :
