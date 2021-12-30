@@ -11,4 +11,4 @@ gerador=GeradorDeSql(sqlite_db="scripts/dbbench_teste.db",sql_file_pattern="scri
 
 gerador.gerar_todos_dados_por_json(select_country="pt_br",tipo=[1],quantidade_final=quantidade_elementos_geracao)
 gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_final=quantidade_elementos)
-gerador.generate_all_dbbench_data(file_path="./dbbench/",default_name_pre="teste_de_dbbench",table_name_in_file=True)
+gerador.generate_all_dbbench_data(file_path="./dbbench/csv/",default_name_pre="teste_de_dbbench",table_name_in_file=True)

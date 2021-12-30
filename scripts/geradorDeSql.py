@@ -7,6 +7,8 @@ from random import randint, random,uniform,choice,sample
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 import sys,re,sqlite3,json,logging,csv
+from typing import Union
+
 class GeradorDeSql:
 #tratamento de erro
     class ValorInvalido(Exception):
@@ -935,128 +937,50 @@ class GeradorDeSql:
         finally:
             return command
 
-    def generate_dbbench_data_row(self,data:dict):
-        '''
-                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
-                bd:string # banco de dados en que será inserido
-                os dados a baixo estão definidos para uma insercao:
-                    associações: #text  IGNORADO
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
-                    }
-
-                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
-                os dados a baixo estão definidos para uma busca:
-                    associações: #text     IGNORADO
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
-                    }
-                os dados a baixo são associados com uma busca fitrada
-                    associações: #text    
-                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
-                    }
-            '''
-        self.logging.info("generate_dbbench_data_row",extra=locals())
-        command=[]
-        try:
-            if data["tipoOperacao"] == 4:#busca filtrada
-                for i in data['adicionais']:
-                    command.append(str(i["adicionais"]))
-            command.append(str(data["nomeBD"]))
-
-            if data["tipoOperacao"] == 1:#insercao
-                for coluna in data["dados"].keys():
-                    command.append(str(coluna))
-                for coluna in data["dados"].keys():
-                    if type(data["dados"][coluna])==type(""):
-                        command.append(data["dados"][coluna].replace("\n",""))
-                    else:
-                        command.append(str(data["dados"][coluna]))
-            #elif data["tipoOperacao"]==2:#leitura completa
-            if data["tipoOperacao"] == 5:#edicao
-                for coluna in data["dados"].keys():
-                    if type("")==type(data["dados"][coluna]):
-                        command.append(str(coluna + " = "+data["dados"][coluna]))
-                    else:
-                        command.append(str(coluna + " = "+str(data["dados"][coluna])))
-            if data["tipoOperacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
-                for coluna in data["dados"].keys():
-                    if type("")==type(data["dados"][coluna]):
-                        command.append(str(coluna + " IS "+data["dados"][coluna]))
-                    else:
-                        command.append(str(coluna + " IS "+str(data["dados"][coluna])))
-                    for campo,valor in self.json_loaded[data["nomeBD"]].items():
-                        if "id" in valor:
-                            if campo in data:
-                                command.append(str(data[campo])+" IS "+str(data["idNoBD"]))
-                                break
-            return command
-        except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
-            self.logging.exception(e)
-            quit()
-        except sqliteError as e:
-            print("erro desconhecido no sqlite")
-            self.logging.exception(e)
-        except self.ValorInvalido as e :
-            self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def generate_dbbench_file_from_datas(self,datas:list,file_path: DirEntry):
-        """gera arquivo de dados para o dbbench a partir de um array de dados gerados pelos outros metodos da classe
+    def generate_SQL_from_sqlite_id(self,id:int)->str:
+        """retorna um comando sql a partir de um id de operação do sqlite
 
         Args:
-            datas (list): array de dados lidos do sqlite
-            file_path (DirEntry): diretorio de saida do arquivo do dbbench
+            id (int): id de operação do sqlite
+
+        Raises:
+            self.ValorInvalido: se o valor de id inserido for maior que o total de operações cadastradas no sqlite
+
+        Returns:
+            str: comando sql gerado a partir do elemento cadastrado no sqlite
         """        
-        self.logging.info("generate_dbbench_file_from_datas",extra=locals())
+        max_id=self.processamento_sqlite.total_operacoes()
         try:
-            file=open(file_path,"a")
-            writer = csv.writer(file)
-            for data in datas:
-                command=self.generate_dbbench_data_row(data=data)
-                if command != None:
-                    writer.writerow(command)
-            file.close()
+            if id>max_id:
+                raise self.ValorInvalido(valor_inserido=id,campo="id",valor_possivel="não pode ser maior que "+max_id)
+            return self.generate_SQL_command_from_data(data=self.processamento_sqlite.get_operacao_by_id(id))
+
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+            return None
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
+            return None
 
-    def generate_dbbench_all_data_from_database(self,table:str,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[]):
-        try:
-            dados_retornados=self.processamento_sqlite.read_operacoes(filtro={"nomeBD":table})
-            
-            if tipos==[]:
-                dados_separados=[[] for x in range(0,7)]
-            else:
-                for i in tipos:
-                    if i>6 or i<=0:
-                        raise self.ValorInvalido(valor_inserido=tipos,campo="tipos",valor_possivel="não ser nem maior que 6 nem menor que 1")
-                dados_separados=[[] for x in tipos]
-            for i in dados_retornados:
-                dados_separados[i["tipoOperacao"]].append(i)
-            for i in range(1,7):
-                #tmp=choice(dados_separados[i])
-                #pprint(dados_separados[i])
-                arquivo=str(file_path+default_name_pre+"_"+str(i)+"."+default_file_type)
-                self.generate_dbbench_file_from_datas(datas=dados_separados[i],file_path=arquivo)
-        except self.ValorInvalido:
-            self.logging.exception(e)
-        except:
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+    def gernerate_SQL_from_sqlite_range(self,amount:int)->list:
+        """gera um raio de elementos,a partir do primeiro até o informado,de comandos sql a partir do sqlite
 
-    def generate_all_dbbench_data(self,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[],table_name_in_file:bool=False):
-        for i in list(self.json_loaded.keys()):
-            if table_name_in_file:
-                _default_name_pre=default_name_pre+"_"+i
+        Args:
+            amount (int): total de elementos que serão gerados a partir do sqlite
+
+        Returns:
+            list: comandos sql gerados a partir do sqlite
+        """
+        retorno=[]
+        for i in range(amount):
+            elemento=self.generate_SQL_from_sqlite_id(i)
+            if elemento == None:
+                break
             else:
-                _default_name_pre=default_name_pre
-            self.generate_dbbench_all_data_from_database(table=i,file_path=file_path,default_name_pre=_default_name_pre,default_file_type=default_file_type,tipos=tipos)
+                retorno.append(elemento)
+        return retorno
+
+#geradores sqlite
 
     def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
         """função que chama funções anteriormente descritas para gerar dados para o dado de inserção e cadastrar elas direto no sqlite
@@ -1187,6 +1111,133 @@ class GeradorDeSql:
         self.logging.debug("gerar_dado_busca",extra=self.dict_all_string(data))
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
+#dbbench
+
+    def generate_dbbench_data_row(self,data:dict):
+        '''
+                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
+                bd:string # banco de dados en que será inserido
+                os dados a baixo estão definidos para uma insercao:
+                    associações: #text  IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
+                    }
+
+                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
+                os dados a baixo estão definidos para uma busca:
+                    associações: #text     IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+                os dados a baixo são associados com uma busca fitrada
+                    associações: #text    
+                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+            '''
+        self.logging.info("generate_dbbench_data_row",extra=locals())
+        command=[]
+        try:
+            if data["tipoOperacao"] == 4:#busca filtrada
+                for i in data['adicionais']:
+                    command.append(str(i["adicionais"]))
+            command.append(str(data["nomeBD"]))
+
+            if data["tipoOperacao"] == 1:#insercao
+                for coluna in data["dados"].keys():
+                    command.append(str(coluna))
+                for coluna in data["dados"].keys():
+                    if type(data["dados"][coluna])==type(""):
+                        command.append(data["dados"][coluna].replace("\n",""))
+                    else:
+                        command.append(str(data["dados"][coluna]))
+            #elif data["tipoOperacao"]==2:#leitura completa
+            if data["tipoOperacao"] == 5:#edicao
+                for coluna in data["dados"].keys():
+                    if type("")==type(data["dados"][coluna]):
+                        command.append(str(coluna + " = "+data["dados"][coluna]))
+                    else:
+                        command.append(str(coluna + " = "+str(data["dados"][coluna])))
+            if data["tipoOperacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
+                for coluna in data["dados"].keys():
+                    if type("")==type(data["dados"][coluna]):
+                        command.append(str(coluna + " IS "+data["dados"][coluna]))
+                    else:
+                        command.append(str(coluna + " IS "+str(data["dados"][coluna])))
+                    for campo,valor in self.json_loaded[data["nomeBD"]].items():
+                        if "id" in valor:
+                            if campo in data:
+                                command.append(str(data[campo])+" IS "+str(data["idNoBD"]))
+                                break
+            return command
+        except sqliteOperationalError as e:
+            print("erro operacional no sqlite")
+            self.logging.exception(e)
+            quit()
+        except sqliteError as e:
+            print("erro desconhecido no sqlite")
+            self.logging.exception(e)
+        except self.ValorInvalido as e :
+            self.logging.exception(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def generate_dbbench_file_from_datas(self,datas:list,file_path: DirEntry):
+        """gera arquivo de dados para o dbbench a partir de um array de dados gerados pelos outros metodos da classe
+
+        Args:
+            datas (list): array de dados lidos do sqlite
+            file_path (DirEntry): diretorio de saida do arquivo do dbbench
+        """        
+        self.logging.info("generate_dbbench_file_from_datas",extra=locals())
+        try:
+            file=open(file_path,"a")
+            writer = csv.writer(file)
+            for data in datas:
+                command=self.generate_dbbench_data_row(data=data)
+                if command != None:
+                    writer.writerow(command)
+            file.close()
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def generate_dbbench_all_data_from_database(self,table:str,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[]):
+        try:
+            dados_retornados=self.processamento_sqlite.read_operacoes(filtro={"nomeBD":table})
+            
+            if tipos==[]:
+                dados_separados=[[] for x in range(0,7)]
+            else:
+                for i in tipos:
+                    if i>6 or i<=0:
+                        raise self.ValorInvalido(valor_inserido=tipos,campo="tipos",valor_possivel="não ser nem maior que 6 nem menor que 1")
+                dados_separados=[[] for x in tipos]
+            for i in dados_retornados:
+                dados_separados[i["tipoOperacao"]].append(i)
+            for i in range(1,7):
+                #tmp=choice(dados_separados[i])
+                #pprint(dados_separados[i])
+                arquivo=str(file_path+default_name_pre+"_"+str(i)+"."+default_file_type)
+                self.generate_dbbench_file_from_datas(datas=dados_separados[i],file_path=arquivo)
+        except self.ValorInvalido:
+            self.logging.exception(e)
+        except:
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+    def generate_all_dbbench_data(self,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[],table_name_in_file:bool=False):
+        for i in list(self.json_loaded.keys()):
+            if table_name_in_file:
+                _default_name_pre=default_name_pre+"_"+i
+            else:
+                _default_name_pre=default_name_pre
+            self.generate_dbbench_all_data_from_database(table=i,file_path=file_path,default_name_pre=_default_name_pre,default_file_type=default_file_type,tipos=tipos)
+
+#gerador json
+
     def gerar_dados_validos_por_json(self,tipo:int=0,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
         """gera uma sequencia de dados para serem inseridos no sqlite,esses dados são aleatórios,cada execução dessa função corresponde a um ciclo de geração de dado
 
@@ -1304,7 +1355,15 @@ class InteracaoSqlite(ProcessamentoSqlite):
         super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite",logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         
-    def buscar_ultimo_id_cadastrado(self,table:str):
+    def buscar_ultimo_id_cadastrado(self,table:str)->int:
+        """musca o ultimo id cadastrado de uma tabela expecifica
+
+        Args:
+            table (str): [nome da tabela que sera pesquisada]
+
+        Returns:
+            int:ultimo id cadastrado da tabela informada
+        """        
         self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
         filtro={"nomeBD":table}
         query=["numeroDDadosCadastrados"]
@@ -1314,6 +1373,14 @@ class InteracaoSqlite(ProcessamentoSqlite):
         return int(retorno[0][0])
 
     def random_id_cadastrado(self,table:str) -> int:
+        """um id aleatorio dentre os cadastrados numa tabela definida
+
+        Args:
+            table (str): nome da tabela que sera usada
+
+        Returns:
+            int: um id aleatorio de um bd
+        """        
         self.logging.info("random_id_cadastrado",extra=locals())
         tmp=self.buscar_ultimo_id_cadastrado(table=table)
         tmp2=randint(1,tmp)
@@ -1321,6 +1388,11 @@ class InteracaoSqlite(ProcessamentoSqlite):
         return tmp2
 
     def add_contador_sqlite(self,table:str):
+        """aumenta em um o total de elementos cadastrados em uma tabela expecifica
+
+        Args:
+            table (str): nome da tabela
+        """        
         self.logging.info("add_contador_sqlite",extra=locals())
         try:
             cursor = self.conn.cursor()
@@ -1339,6 +1411,11 @@ class InteracaoSqlite(ProcessamentoSqlite):
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def total_operacoes(self)->int:
+        """total de elementos cadastrados na tabela de operações
+
+        Returns:
+            int: total de elementos cadastrados na tabela de operações
+        """        
         self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
         read_command="SELECT id FROM operacoes ORDER BY id DESC LIMIT 1;"
         cursor = self.conn.cursor()
@@ -1355,6 +1432,11 @@ class InteracaoSqlite(ProcessamentoSqlite):
             return int(saida[0][0])
         
     def certify_if_contador_exists(self,table:str):
+        """verifica e corrige se um contador não existir na tabela de contadores
+
+        Args:
+            table (str): nome da tabela que será verificada se existe o contador
+        """        
         self.logging.info("certify_if_contador_exists",extra=locals())
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+table+"';")
@@ -1362,11 +1444,29 @@ class InteracaoSqlite(ProcessamentoSqlite):
         if listagem == []:
             cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+table+"',0);")
 
-    def read_contadores(self,filtro:dict={},query="*")->list:
+    def read_contadores(self,filtro:dict={},query:Union[str,dict]="*")->list:
+        """consulta e le um elemento ou varios da tabela de contadores
+
+        Args:
+            filtro (dict, optional): elementos que serão retornados dos elementos . Defaults to {}.
+            query (str, optional): elementos de pesquisa que serão usados . Defaults to "*".
+
+        Returns:
+            list: lista de todos elementos que foram reconhecidos pela query
+        """        
         self.logging.info("read_contadores",extra=locals())
         return self.read_data_sqlite("contadores",filtro=filtro,query=query)
 
     def read_operacoes(self,filtro:dict={},query="*")->list:
+        """consulta e le um elemento ou varios da tabela de operações
+
+        Args:
+            filtro (dict, optional): elementos que serão retornados dos elementos . Defaults to {}.
+            query (str, optional): elementos de pesquisa que serão usados . Defaults to "*".
+
+        Returns:
+            list: lista de todos elementos que foram reconhecidos pela query
+        """        
         self.logging.info("read_operacoes",extra=locals())
         tmp=self.read_data_sqlite("operacoes",filtro=filtro,query=query)
         self.logging.debug(tmp)
@@ -1376,6 +1476,19 @@ class InteracaoSqlite(ProcessamentoSqlite):
             tmp2.pop("id")
             retorno.append(tmp2)
         return retorno
+
+    def get_operacao_by_id(self,id:int)->dict:
+        """pesquisa um elemento na tabela de operações pelo id
+
+        Args:
+            id (int): id que será pesquisado
+
+        Returns:
+            dict: elemento retornado
+        """        
+        retornos=self.read_operacoes(query={"id":id})
+        for i in retornos:
+            return self.process_data_generated(i)
 
     def process_data_generated(self,data:list,tipo_adicional:str="dict",with_id:bool=False) -> dict:
         """processa o dado lido do sqlite para um formato de dict usavel 

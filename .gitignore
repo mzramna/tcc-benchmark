@@ -5,3 +5,6 @@ __pycache__
 .history
 .venv
 scripts/initial_db.db
+dbbench/exemplos
+dbbench/dbbench*
+dbbench/csv
