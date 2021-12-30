@@ -2,6 +2,8 @@ from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 from loggingSystem import loggingSystem
 import sqlite3,sys
+from typing import Union
+
 class ProcessamentoSqlite:
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={}):
         """
@@ -81,30 +83,31 @@ class ProcessamentoSqlite:
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-    def read_data_sqlite(self,table:str,filtro:dict={},query="*"):
+    def read_data_sqlite(self,table:str,filtro:Union[str,dict]="*",query:Union[str,dict]="*"):
         self.logging.info("lendo sqlite")
         read_command=""
         read_command+="SELECT "
-        if query != "*":
+        if filtro != "*":
             read_command+="("
-            for key in query:
+            for key in filtro:
                 read_command+=key
-                if key !=  query[-1]:
-                    read_command+=","
+                if len(filtro)>1:
+                    if key !=  filtro[-1]:
+                        read_command+=","
             read_command+=")"
         else:
-            read_command+=query
+            read_command+=filtro
         read_command+=" FROM "
         read_command+="'"+table+"'"
-        if filtro != {}:
+        if query != "*":
             read_command+=" WHERE "
-            for coluna in filtro.keys():
+            for coluna in query.keys():
                         read_command+=str(coluna) + " IS "
-                        if type(filtro[coluna])==type(""):
-                            read_command+="'"+filtro[coluna]+"'"
+                        if type(query[coluna])==type(""):
+                            read_command+="'"+query[coluna]+"'"
                         else:
-                            read_command+=str(filtro[coluna])
-                        if coluna !=  list(filtro.keys())[-1]:
+                            read_command+=str(query[coluna])
+                        if coluna !=  list(query.keys())[-1]:
                             read_command+=" AND "
         read_command+=";"
         try:

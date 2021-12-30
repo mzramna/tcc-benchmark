@@ -972,7 +972,7 @@ class GeradorDeSql:
             list: comandos sql gerados a partir do sqlite
         """
         retorno=[]
-        for i in range(amount):
+        for i in range(1,amount+1):
             elemento=self.generate_SQL_from_sqlite_id(i)
             if elemento == None:
                 break
@@ -1457,7 +1457,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         self.logging.info("read_contadores",extra=locals())
         return self.read_data_sqlite("contadores",filtro=filtro,query=query)
 
-    def read_operacoes(self,filtro:dict={},query="*")->list:
+    def read_operacoes(self,filtro:Union[str,dict]="*",query:Union[str,dict]="*")->list:
         """consulta e le um elemento ou varios da tabela de operações
 
         Args:
@@ -1488,7 +1488,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         """        
         retornos=self.read_operacoes(query={"id":id})
         for i in retornos:
-            return self.process_data_generated(i)
+            return i
 
     def process_data_generated(self,data:list,tipo_adicional:str="dict",with_id:bool=False) -> dict:
         """processa o dado lido do sqlite para um formato de dict usavel 

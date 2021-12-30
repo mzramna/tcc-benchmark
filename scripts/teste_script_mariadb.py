@@ -1,7 +1,7 @@
 import mysql.connector
+import sys
 from os import DirEntry
-from geradorDeSql.py import GeradorDeSql
-
+from geradorDeSql import GeradorDeSql
 def executeScriptsFromFile(filename:DirEntry,cursor:mysql.connector.connection_cext.CMySQLConnection):
     """[executa arquivos sql em bd mariqdb ou mysql]
 
@@ -44,7 +44,9 @@ logstash_data={}
 
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=40,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 
-comandos=gerador.gernerate_SQL_from_sqlite_range(5)
+comandos=gerador.gernerate_SQL_from_sqlite_range(50)
 
 for i in comandos:
     print(i)
+    mycursor.execute(i)
+    mycursor.commit()
