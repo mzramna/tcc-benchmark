@@ -423,25 +423,23 @@ class GeradorDeSql:
             if dados_gerados=={}:
                 raise self.ValorInvalido(valor_inserido=dados_gerados,mensage_adicional="o valor não pode ser vazio",campo="dados_gerados")
             self.logging.debug("dado gerado por create_data",extra=dados_gerados)
+            return dados_gerados
         except self.TamanhoArrayErrado as e :
             self.logging.exception(e)
         except self.ValorInvalido as e:
             self.logging.exception(e)
             if e.campo== "dados_gerados":
-                dados_gerados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva) 
+                return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id) 
             elif e.campo=="associacao":
                 chamadas=loggingSystem.full_inspect_caller()
                 if chamadas.count(chamadas[0])>5:
                     return None
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
-                dados_gerados=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=lista_restritiva) 
+                return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id) 
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
-        finally:
-            if dados_gerados != {}:
-                return dados_gerados
 
     def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> array:
         """ 
@@ -993,6 +991,12 @@ class GeradorDeSql:
         """        
         self.logging.info("gerar_dado_insercao",extra=locals())
         data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
+        overflow_treat=0
+        while data["dados"]=={} or data["dados"]==None :
+            data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
+            overflow_treat+=1
+            if overflow_treat==5:
+                return None
         self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
         self.processamento_sqlite.add_contador_sqlite(table=table)
 
@@ -1365,10 +1369,10 @@ class InteracaoSqlite(ProcessamentoSqlite):
             int:ultimo id cadastrado da tabela informada
         """        
         self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
-        filtro={"nomeBD":table}
-        query=["numeroDDadosCadastrados"]
+        query={"nomeBD":table}
+        filtro=["numeroDDadosCadastrados"]
         self.certify_if_contador_exists(table)
-        retorno=self.read_data_sqlite("contadores",filtro,query)
+        retorno=self.read_data_sqlite(table="contadores",query=query,filtro=filtro)
         self.logging.debug("ultimo id cadastrado",extra={"retorno":retorno[0][0]})
         return int(retorno[0][0])
 
@@ -1544,7 +1548,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
             (dict,list): dictionary ou array com o conteudo usavel do retorno de uma consulta no sqlite
         """        
         self.logging.info("string_to_dict",extra=locals())
-        if not is_dict and patter_externo==r"\{(.*)\}" and pattern_interno==r"([^:]*)\:(.*)":
+        if not is_dict and patter_externo==r"\{(.*)\}" and pattern_interno==r"([^:]*)\:\ (.*)":
             patter_externo=r"\[(.*)\]"
             pattern_interno=r"(.*)"
         pattern_etapa1=patter_externo
@@ -1571,7 +1575,9 @@ class InteracaoSqlite(ProcessamentoSqlite):
                 else:
                     etapa2_dados=etapa2_dados[0]
                 if external_header_list == []:
-                    dados[etapa2_dados[0].replace("'","").replace('"',"")]=etapa2_dados[1].replace("'","").replace('"',"")
+                    #fazer metodo q identifica tipo e converte de string para o tipo certo
+                    value=etapa2_dados[1].replace("'","").replace('"',"")[1:]
+                    dados[etapa2_dados[0].replace("'","").replace('"',"")]=value
                 else:
                     dados[external_header_list[tmp]]=etapa2_dados[0]
                     tmp+=1

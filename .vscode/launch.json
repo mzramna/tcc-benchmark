@@ -4,7 +4,6 @@
     // Para obter mais informações, acesse: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Python: Arquivo Atual",
             "type": "python",
@@ -24,6 +23,13 @@
             "type": "python",
             "request": "launch",
             "program": "scripts/teste_gerador_dbbench.py",
+            "console": "internalConsole"
+        },
+        {
+            "name": "Python: gerar db para testes",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/teste_geracao_sql.py",
             "console": "internalConsole"
         },
     ]
