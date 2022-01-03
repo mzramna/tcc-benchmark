@@ -395,24 +395,25 @@ class GeradorDeSql:
                     if type(pattern[dado][1]) != type(""):
                         raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
                     if len(pattern[dado])>2:
-                        if pattern[dado][2]!="random":
-                            dados_gerados[dado]=pattern[dado][2]
-                        else:
+                        may_be_null=False
+                        if pattern[dado][2]=="random":
                             total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
                             if total_cadastrado>1:
                                 dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                             else:
                                 raise self.ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela")
-                    else:
-                        total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
-                        if total_cadastrado>0:
-                            dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                        elif pattern[dado][2] == "null":
+                            may_be_null=True
                         else:
-                            quantidade_tabelas_sqlite=self.processamento_sqlite.read_data_sqlite(table="contadores")
-                            if len(quantidade_tabelas_sqlite)==len(self.json_loaded.keys()):
-                                raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
-                            else:
-                                return {}
+                            dados_gerados[dado]=pattern[dado][2]
+                    total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
+                    if total_cadastrado>0:
+                        dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                    else:
+                        if may_be_null:
+                            dados_gerados[dado]=None
+                        else:
+                            raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
                             
                             #dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                 elif pattern[dado][0] == "id" :
@@ -434,7 +435,7 @@ class GeradorDeSql:
                 chamadas=loggingSystem.full_inspect_caller()
                 if chamadas.count(chamadas[0])>5:
                     return None
-                self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
+                self.gerar_dado_insercao(table=e.valor_inserido,pattern=self.json_loaded[e.valor_inserido],select_country=select_country)
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id) 
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
@@ -991,12 +992,6 @@ class GeradorDeSql:
         """        
         self.logging.info("gerar_dado_insercao",extra=locals())
         data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
-        overflow_treat=0
-        while data["dados"]=={} or data["dados"]==None :
-            data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
-            overflow_treat+=1
-            if overflow_treat==5:
-                return None
         self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
         self.processamento_sqlite.add_contador_sqlite(table=table)
 

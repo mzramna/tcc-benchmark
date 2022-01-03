@@ -44,7 +44,7 @@
     },
     "store":{
         "store_id":["id"],
-        "manager_staff_id":["associacao","staff"],
+        "manager_staff_id":["associacao","staff","null"],
         "address_id":["associacao","staff"],
         "last_update":["timestamp","agora"]
     },
