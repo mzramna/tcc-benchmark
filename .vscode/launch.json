@@ -32,5 +32,12 @@
             "program": "scripts/teste_geracao_sql.py",
             "console": "internalConsole"
         },
+        {
+            "name": "Python: teste inserção mariadb",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/teste_script_mariadb.py",
+            "console": "internalConsole"
+        },
     ]
 }

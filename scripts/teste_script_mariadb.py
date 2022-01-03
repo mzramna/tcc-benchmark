@@ -44,9 +44,9 @@ logstash_data={}
 
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=40,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 
-comandos=gerador.gernerate_SQL_from_sqlite_range(50)
+comandos=gerador.gernerate_lib_insertion_from_sqlite_range(50)
 
 for i in comandos:
     print(i)
     mycursor.execute(i)
-    mycursor.commit()
+    mydb.commit()

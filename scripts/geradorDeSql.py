@@ -24,7 +24,7 @@ class GeradorDeSql:
                 campo (str, optional): nome do campo que foi preenchido de forma errada. Defaults to "".
                 valor_possivel ({str , array}, optional): valores possiveis de serem inseridos na variavel,podendo ser tipo ou valor mesmo no caso de ser algum valor dinamico. Defaults to "".
             """            
-            self.valor_inserido=str(valor_inserido)
+            self.valor_inserido=valor_inserido
             self.valor_possivel=valor_possivel
             self.mensage_adicional=mensage_adicional
             self.mensagem_principal_replace=mensagem_principal_replace
@@ -42,18 +42,20 @@ class GeradorDeSql:
             Returns:
                 string: mensagem parcialmente formatada da mensagem de erro
             """            
+            retorno=""
             if valores_possiveis !="":
                 if  type("")==type(valores_possiveis):
-                    self.message+=" o valor possivel "
+                    retorno+="o valor possivel "
                     if campo!="":
-                        self.message+="no campo "+str(campo)+" "
-                    self.message+="é "
+                        retorno+="no campo "+str(campo)+" "
+                    retorno+="é "
                 elif  type("")==type(valores_possiveis):
-                    self.message+=" os valores possiveis "
+                    retorno+=" os valores possiveis "
                     if campo!="":
-                        self.message+="no campo "+str(campo)+" "
-                    self.message+="são "+str(valores_possiveis)
-                return self.valores_possiveis(valores_possiveis)
+                        retorno+="no campo "+str(campo)+" "
+                    retorno+="são "+str(valores_possiveis)
+                retorno+= self.valores_possiveis(valores_possiveis)
+                return retorno
 
         def valores_possiveis(self,valores_possiveis=""):
             """formata a entrada de valores possiveis para uma forma mais legivel os valores possiveis caso seja um array e se for um string ele será inserido direto no campo de valor inserido
@@ -120,7 +122,7 @@ class GeradorDeSql:
                 self.message+=" é invalido ou foi inserido de forma errada"
                 self.message+=self.tratamento_input(self.campo,"campo")
                 self.message+="\n"
-                self.message+=str(self.listagem_valores_possiveis(valores_possiveis=self.valor_possivel))
+                self.message+=self.listagem_valores_possiveis(valores_possiveis=self.valor_possivel)
                 self.message+="\n"
             if mensage_adicional == "":
                 self.message+=str(self.mensage_adicional)
@@ -390,12 +392,14 @@ class GeradorDeSql:
                     '''
                     parametros obrigatórios é nome da tabela e se random ou se definido é adicional,caso não seja definido obrigatoriamente é random
                     '''
+                    may_be_null=False
+                    defined=False
                     if len(pattern[dado])<2:
                         raise self.TamanhoArrayErrado(valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="associacao")
                     if type(pattern[dado][1]) != type(""):
                         raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
                     if len(pattern[dado])>2:
-                        may_be_null=False
+                        
                         if pattern[dado][2]=="random":
                             total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
                             if total_cadastrado>1:
@@ -404,18 +408,21 @@ class GeradorDeSql:
                                 raise self.ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela")
                         elif pattern[dado][2] == "null":
                             may_be_null=True
-                        else:
-                            dados_gerados[dado]=pattern[dado][2]
-                    total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
-                    if total_cadastrado>0:
-                        dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                        elif type(0)==type(pattern[dado][2]):
+                            defined=True
+                    if defined:
+                        dados_gerados[dado]=pattern[dado][2]
                     else:
-                        if may_be_null:
-                            dados_gerados[dado]=None
+                        total_cadastrado=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1])
+                        if total_cadastrado>0:
+                            dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                         else:
-                            raise self.ValorInvalido(valor_inserido=(pattern[dado][1],0),campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
-                            
-                            #dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
+                            if may_be_null:
+                                dados_gerados[dado]=None
+                            else:
+                                raise self.ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
+                                
+                                #dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                 elif pattern[dado][0] == "id" :
                     if not not_define_id:
                         dados_gerados[dado]=id
@@ -435,7 +442,7 @@ class GeradorDeSql:
                 chamadas=loggingSystem.full_inspect_caller()
                 if chamadas.count(chamadas[0])>5:
                     return None
-                self.gerar_dado_insercao(table=e.valor_inserido,pattern=self.json_loaded[e.valor_inserido],select_country=select_country)
+                self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id) 
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
@@ -838,97 +845,8 @@ class GeradorDeSql:
                     }
             '''
         self.logging.info("generate_SQL_command_from_data",extra=locals())
-        command=""
         try:
-            if data["tipoOperacao"]==1:#insercao
-                command+="INSERT INTO "
-            elif data["tipoOperacao"] in [2,3]:#leitura completa,#busca
-                command+="SELECT * FROM "
-            elif data["tipoOperacao"] == 4:#busca filtrada
-                command+="SELECT "
-                for i in data['adicionais']:
-                    command+= str(i["adicionais"])
-                    if command != data["adicionais"][-1]:
-                        command+= ","
-                # if (data["idNoBD"]>0 and data["idNoBD"] != None) and ("idNoBD" in data ):
-                #     if len(data['adicionais'])>0:
-                #         command+=" , "
-                #     for campo,valor in self.json_loaded[data["nomeBD"]].items():
-                #         if "id" in valor:
-                #             if campo in data:
-                #                 command+= data[campo]
-                #                 break
-                command+=" FROM "
-            elif data["tipoOperacao"]==5:#edicao
-                command+=" UPDATE "
-            elif data["tipoOperacao"]==6:#delecao
-                command+="DELETE FROM "
-            else:
-                raise self.ValorInvalido(valor_inserido=data["tipoOperacao"])
-
-            command+=str(data["nomeBD"])
-
-            if data["tipoOperacao"] == 1:#insercao
-                command+=" ("
-                for coluna in data["dados"].keys():
-                    command+=coluna
-                    if coluna != list(data["dados"].keys())[-1]:
-                        command+=","
-                command+=") VALUES ("
-                for coluna in data["dados"].keys():
-                    if type(data["dados"][coluna])==type("") or type(data["dados"][coluna])==type({}) or  type(data["dados"][coluna])==type([])  :
-                        command+='"'+data["dados"][coluna].replace("\n","")+'"'
-                    else:
-                        command+=str(data["dados"][coluna])
-                    if coluna != list(data["dados"].keys())[-1]:
-                        command+=","
-                command+=")"
-            #elif data["tipoOperacao"]==2:#leitura completa
-            if data["tipoOperacao"] == 5:#edicao
-                command+=" SET "
-                for coluna in data["dados"].keys():
-                    if type("")==type(data["dados"][coluna]):
-                        command+=coluna + " = "+data["dados"][coluna]
-                    else:
-                        command+=coluna + " = "+str(data["dados"][coluna])
-                    if coluna != list(data["dados"].keys())[-1]:
-                        command+=" , "
-            if data["tipoOperacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
-                command+=" WHERE "
-                for coluna in data["dados"].keys():
-                    if type("")==type(data["dados"][coluna]):
-                        command+=coluna + " IS "+data["dados"][coluna]
-                    else:
-                        command+=coluna + " IS "+str(data["dados"][coluna])
-                    if coluna != list(data["dados"].keys())[-1]:
-                        command+=" AND "
-                if data["idNoBD"] != None and "idNoBD" in data :
-                    if len(data["dados"].keys())>0 and data["idNoBD"]>0:
-                        command+=" AND "
-                    for campo,valor in self.json_loaded[data["nomeBD"]].items():
-                        if "id" in valor:
-                            if campo in data:
-                                command+= data[campo]
-                                break
-                    command+=" IS "+str(data["idNoBD"])
-            # elif data["tipoOperacao"]==5:#edicao
-            #     command+=" WHERE "
-            #     for coluna in data["adicionais"].keys():
-            #         command+=str(coluna) + " IS "+str(data["adicionais"][coluna])
-            #         if coluna != data["adicionais"].keys()[-1]:
-            #             command+=" AND "
-            #     if (data["idNoBD"]!=-1) and ("idNoBD" in data):
-            #         if len(data["dados"].keys())>0:
-            #             command+=" AND "
-            #         command+=nome_coluna_id+" IS "+data["idNoBD"]
-            command+="; "
-        except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
-            self.logging.exception(e)
-            quit()
-        except sqliteError as e:
-            print("erro desconhecido no sqlite")
-            self.logging.exception(e)
+            command=self.generate_lib_insertion_from_data(data=data,sql=True)
         except self.ValorInvalido as e :
             self.logging.exception(e)
         except :
@@ -979,6 +897,162 @@ class GeradorDeSql:
                 retorno.append(elemento)
         return retorno
 
+#relacionado com execução da lib python
+
+    def generate_lib_insertion_from_data(self,data:dict,sql:bool=False,lib:bool=False):
+        '''
+                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
+                bd:string # banco de dados en que será inserido
+                os dados a baixo estão definidos para uma insercao:
+                    associações: #text  IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
+                    }
+
+                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
+                os dados a baixo estão definidos para uma busca:
+                    associações: #text     IGNORADO
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+                os dados a baixo são associados com uma busca fitrada
+                    associações: #text    
+                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
+                    outros dados do bd: #text
+                    {
+                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
+                    }
+            '''
+        self.logging.info("generate_SQL_command_from_data",extra=locals())
+        try:
+            retorno={"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":{},"adicionais_valores":{},"nomeBD":""}
+            for i in data["dados"].keys():
+                retorno["dados_colunas"].append(i)
+                retorno["dados_valores"].append(data["dados"][i])
+            for i in data["adicionais"].keys():
+                retorno["adicionais_colunas"].append(i)
+                retorno["adicionais_valores"].append(data["adicionais"][i])
+            retorno["operacao"]=data["tipoOperacao"]
+            retorno["nomeBD"]=data["nomeBD"]
+            if lib or sql:
+                tmp=[0,0]#transformar no metodo base de geração de elementos generate_lib_insertion_from_data,passar parametro para seleção de qual usar
+                command=""
+                if retorno["operacao"]==1:#insercao
+                    command+="INSERT INTO "
+                elif retorno["operacao"] in [2,3]:#leitura completa,#busca
+                    command+="SELECT * FROM "
+                elif retorno["operacao"] == 4:#busca filtrada
+                    command+="SELECT ("
+                    for i in retorno['dados_colunas']:
+                        command+= "%s"
+                        if command != retorno['dados_colunas'][-1]:
+                            command+= ","
+                    command+=") FROM "
+                elif retorno["operacao"]==5:#edicao
+                    command+=" UPDATE "
+                elif retorno["operacao"]==6:#delecao
+                    command+="DELETE FROM "
+
+                command+=str(retorno["nomeBD"])
+
+                if retorno["operacao"] == 1:#insercao
+                    command+=" ("
+                    for coluna in retorno["dados_colunas"]:
+                        command+="%s"
+                        if coluna != retorno["dados_colunas"][-1]:
+                            command+=","
+                    command+=") VALUES ("
+                    for coluna in retorno["dados_valores"]:
+                        command+="%s"
+                        if coluna != retorno["dados_valores"][-1]:
+                            command+=","
+                    command+=")"
+                elif retorno["operacao"] == 5:#edicao
+                    command+=" SET "
+                    for coluna in retorno["dados_colunas"]:
+                        command+= "%s = %s"
+                        if coluna != retorno["dados_colunas"][-1]:
+                            command+=" , "
+                if retorno["operacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
+                    command+=" WHERE "
+                    for coluna in retorno["adicionais_colunas"]:
+                        command+="%s IS %s"
+                        if coluna != retorno["adicionais_colunas"][-1]:
+                            command+=" AND "
+                command+="; "
+                tmp[0]=command
+                tmp[1]=[]
+                if retorno["operacao"] in [1,3,4,6]:
+                    for i in retorno["dados_colunas"]:
+                        tmp[1].append(i)
+                    for i in retorno["dados_valores"]:
+                        tmp[1].append(i)
+                elif retorno["operacao"] == 5:
+                    for i in range(0, len(retorno["dados_colunas"])):
+                        tmp[1].append(retorno["dados_colunas"][i])
+                        tmp[1].append(retorno["dados_valores"][i])
+                if retorno["operacao"] in [1,3,4,5,6]:
+                    for i in range(0, len(retorno["adicionais_colunas"])):
+                        tmp[1].append(retorno["adicionais_colunas"][i])
+                        tmp[1].append(retorno["adicionais_valores"][i])
+                retorno=tmp
+                if sql:
+                    newtmp=str(tmp[0]).replace('%s',"{}")
+                    retorno = newtmp.format(*tmp[1])
+        except self.ValorInvalido as e :
+            self.logging.exception(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+        finally:
+            return retorno
+
+    def generate_lib_insertion_from_sqlite_id(self,id:int,sql:bool=False)->str:
+        """retorna um comando sql a partir de um id de operação do sqlite
+
+        Args:
+            id (int): id de operação do sqlite
+
+        Raises:
+            self.ValorInvalido: se o valor de id inserido for maior que o total de operações cadastradas no sqlite
+
+        Returns:
+            str: comando sql gerado a partir do elemento cadastrado no sqlite
+        """        
+        max_id=self.processamento_sqlite.total_operacoes()
+        try:
+            if id>max_id:
+                raise self.ValorInvalido(valor_inserido=id,campo="id",valor_possivel="não pode ser maior que "+max_id)
+            return self.generate_lib_insertion_from_data(data=self.processamento_sqlite.get_operacao_by_id(id),lib=True,sql=sql)
+
+        except self.ValorInvalido as e:
+            self.logging.exception(e)
+            return None
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            return None
+
+    def gernerate_lib_insertion_from_sqlite_range(self,amount:int,sql:bool=False)->list:
+        """gera um raio de elementos,a partir do primeiro até o informado,de comandos sql a partir do sqlite
+
+        Args:
+            amount (int): total de elementos que serão gerados a partir do sqlite
+
+        Returns:
+            list: comandos sql gerados a partir do sqlite
+        """
+        retorno=[]
+        for i in range(1,amount+1):
+            elemento=self.generate_lib_insertion_from_sqlite_id(i,sql=sql)
+            if elemento == None:
+                break
+            else:
+                #{"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":{},"adicionais_valores":{},"nomeBD":""}
+                retorno.append(elemento)
+
+        return retorno
+
 #geradores sqlite
 
     def gerar_dado_insercao(self,table,pattern:dict,select_country:str="random",id:int=-1):
@@ -992,8 +1066,9 @@ class GeradorDeSql:
         """        
         self.logging.info("gerar_dado_insercao",extra=locals())
         data=self.create_insert(table=table,pattern=pattern,select_country=select_country,id=id)
-        self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
-        self.processamento_sqlite.add_contador_sqlite(table=table)
+        if data != None:
+            self.processamento_sqlite.insert_data_sqlite(data=data,table=table)
+            self.processamento_sqlite.add_contador_sqlite(table=table)
 
     def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[],not_define_id:bool=False):
         """função que chama funções anteriormente descritas para gerar dados para o dado de busca e cadastrar elas direto no sqlite
@@ -1530,7 +1605,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         output["dados"]=self.string_to_dict(output["dados"])
         return output
     
-    def string_to_dict(self,text:str,patter_externo=r"\{(.*)\}",pattern_interno=r"([^:]*)\:(.*)",external_header_list:list=[],is_dict=True) -> dict:
+    def string_to_dict(self,text:str) -> dict:
         """converte string legivel em dict usavel a partir de um string
 
         Args:
@@ -1543,43 +1618,8 @@ class InteracaoSqlite(ProcessamentoSqlite):
             (dict,list): dictionary ou array com o conteudo usavel do retorno de uma consulta no sqlite
         """        
         self.logging.info("string_to_dict",extra=locals())
-        if not is_dict and patter_externo==r"\{(.*)\}" and pattern_interno==r"([^:]*)\:\ (.*)":
-            patter_externo=r"\[(.*)\]"
-            pattern_interno=r"(.*)"
-        pattern_etapa1=patter_externo
-        if type(text) == type(None):
-            text="{}"
-        etapa1_dados=re.findall(pattern_etapa1,text)
-        if etapa1_dados == [''] or etapa1_dados == [] :
-            if is_dict:
-                return {}
-            else:
-                return []
-        etapa1_dados=etapa1_dados[0].split(",")
-        pattern_dados_etapa2=pattern_interno
-        if is_dict:
-            dados={}
-        else:
-            dados=[]
-        tmp=0
-        if is_dict:
-            for dado in etapa1_dados:
-                etapa2_dados=re.findall(pattern_dados_etapa2,dado)
-                if etapa2_dados==[]:
-                    break
-                else:
-                    etapa2_dados=etapa2_dados[0]
-                if external_header_list == []:
-                    #fazer metodo q identifica tipo e converte de string para o tipo certo
-                    value=etapa2_dados[1].replace("'","").replace('"',"")[1:]
-                    dados[etapa2_dados[0].replace("'","").replace('"',"")]=value
-                else:
-                    dados[external_header_list[tmp]]=etapa2_dados[0]
-                    tmp+=1
-        else:
-            for dado in etapa1_dados:
-                etapa2_dados=re.findall(pattern_dados_etapa2,dado)[0]
-                dados[tmp]=etapa2_dados[0]
-                tmp+=1
-        self.logging.debug("string_to_dict",extra=self.dict_all_string(dados))
-        return dados
+        text=text.replace("'",'"')
+        text=text.replace("None","null")
+        text=text.replace("True","true")
+        text=text.replace("False","false")
+        return json.loads(text)
