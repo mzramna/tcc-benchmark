@@ -1,8 +1,8 @@
 {
     "actor":{
         "actor_id":["id"],
-        "first_nome":["primeiroNome"],
-        "last_nome":["sobrenome"],
+        "first_name":["primeiroNome"],
+        "last_name":["sobrenome"],
         "last_update":["timestamp","agora"]
     },
     "country":{
@@ -27,13 +27,13 @@
     },
     "category":{
         "category_id":["id"],
-        "nome":["nomeCategoria"],
+        "name":["nomeCategoria"],
         "last_update":["timestamp","agora"]
     },
     "staff":{
         "staff_id":["id"],
-        "first_nome":["primeiroNome"],
-        "last_nome":["sobrenome"],
+        "first_name":["primeiroNome"],
+        "last_name":["sobrenome"],
         "address_id":["associacao","address"],
         "email":["email"],
         "store_id":["associacao","store"],
@@ -51,8 +51,8 @@
     "customer":{
         "customer_id":["id"],
         "store_id":["associacao","store"],
-        "first_nome":["primeiroNome"],
-        "last_nome":["sobrenome"],
+        "first_name":["primeiroNome"],
+        "last_name":["sobrenome"],
         "address_id":["associacao","address"],
         "active":["boleano"],
         "create_date":["timestamp","-2w"],
@@ -60,7 +60,7 @@
     },
     "language":{
         "language_id":["id"],
-        "nome":["idioma"],
+        "name":["idioma"],
         "last_update":["timestamp","agora"]
     },
     "film":{
@@ -77,12 +77,12 @@
         "last_update":["timestamp","agora"]
     },
     "film_actor":{
-        "actor_id":["id"],
+        "actor_id":["associacao","actor"],
         "film_id":["associacao","film"],
         "last_update":["timestamp","agora"]
     },
     "film_category":{
-        "film_id":["id"],
+        "film_id":["associacao","film"],
         "category_id":["associacao","category"],
         "last_update":["timestamp","agora"]
     },

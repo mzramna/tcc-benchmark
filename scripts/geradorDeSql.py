@@ -345,6 +345,8 @@ class GeradorDeSql:
                     dados_gerados[dado]=fake.city()
                 elif pattern[dado][0] == "endereco":
                     dados_gerados[dado]=fake.street_address()
+                elif pattern[dado][0] == "bairro":
+                    dados_gerados[dado]=fake.neighborhood()
                 elif pattern[dado][0] == "cep":
                     dados_gerados[dado]=fake.postcode()
                 elif pattern[dado][0] == "telefone":
@@ -375,7 +377,7 @@ class GeradorDeSql:
                 elif pattern[dado][0] == "nota":
                     dados_gerados[dado]=uniform(0.0,10.0)
                 elif pattern[dado][0] == "ano":
-                    dados_gerados[dado]=fake.date(pattern='%Y')
+                    dados_gerados[dado]=int(fake.date(pattern='%Y'))
                 elif pattern[dado][0] == "duracaoDias":
                     dados_gerados[dado]=fake.random_int(min=1,max=10)
                 elif pattern[dado][0] =="datetime":
@@ -928,14 +930,21 @@ class GeradorDeSql:
         self.logging.info("generate_SQL_command_from_data",extra=locals())
         try:
             retorno={"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":{},"adicionais_valores":{},"nomeBD":""}
-            for i in data["dados"].keys():
-                retorno["dados_colunas"].append(i)
-                retorno["dados_valores"].append(data["dados"][i])
-            for i in data["adicionais"].keys():
-                retorno["adicionais_colunas"].append(i)
-                retorno["adicionais_valores"].append(data["adicionais"][i])
             retorno["operacao"]=data["tipoOperacao"]
             retorno["nomeBD"]=data["nomeBD"]
+            for i in data["dados"].keys():
+                if data["tipoOperacao"] ==1 and self.json_loaded[data["nomeBD"]][i][0]=="id":
+                    pass
+                else:
+                    retorno["dados_colunas"].append(i)
+                    retorno["dados_valores"].append(data["dados"][i])
+            for i in data["adicionais"].keys():
+                if retorno["operacao"] ==5 and data["dados"][i][0]=="id":
+                    pass
+                else:
+                    retorno["adicionais_colunas"].append(i)
+                    retorno["adicionais_valores"].append(data["adicionais"][i])
+            
             if lib or sql:
                 tmp=[0,0]#transformar no metodo base de geração de elementos generate_lib_insertion_from_data,passar parametro para seleção de qual usar
                 command=""
@@ -960,25 +969,40 @@ class GeradorDeSql:
                 if retorno["operacao"] == 1:#insercao
                     command+=" ("
                     for coluna in retorno["dados_colunas"]:
-                        command+="%s"
-                        if coluna != retorno["dados_colunas"][-1]:
-                            command+=","
+                        if type(data["dados"][coluna])==type(None):
+                            pass
+                        else:
+                            command+="%s"
+                            if coluna != retorno["dados_colunas"][-1]:
+                                command+=","
                     command+=") VALUES ("
                     for coluna in retorno["dados_valores"]:
-                        command+="%s"
-                        if coluna != retorno["dados_valores"][-1]:
-                            command+=","
+                        if type(coluna)==type(None):
+                            pass
+                        else:
+                            if type(coluna)==type("") or type(coluna)==type([]):
+                                command+="\'%s\'"
+                            else:
+                                command+="%s"
+                            if coluna != retorno["dados_valores"][-1]:
+                                command+=","
                     command+=")"
                 elif retorno["operacao"] == 5:#edicao
                     command+=" SET "
                     for coluna in retorno["dados_colunas"]:
-                        command+= "%s = %s"
+                        if type(data["dados"][coluna])==type(""):
+                            command+="%s = \'%s\'"
+                        else:
+                            command+="%s = %s"
                         if coluna != retorno["dados_colunas"][-1]:
                             command+=" , "
                 if retorno["operacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
                     command+=" WHERE "
                     for coluna in retorno["adicionais_colunas"]:
-                        command+="%s IS %s"
+                        if type(data["adicionais"][coluna])==type("") or type(data["adicionais"][coluna])==type([]):
+                            command+="%s IS \'%s\'"
+                        else:
+                            command+="%s IS %s"
                         if coluna != retorno["adicionais_colunas"][-1]:
                             command+=" AND "
                 command+="; "
@@ -988,19 +1012,33 @@ class GeradorDeSql:
                     for i in retorno["dados_colunas"]:
                         tmp[1].append(i)
                     for i in retorno["dados_valores"]:
-                        tmp[1].append(i)
+                        if type(i)==type([]):
+                            tmp[1].append(str(i).replace("[","").replace("]","").replace("'",""))
+                        else:
+                            tmp[1].append(i)
                 elif retorno["operacao"] == 5:
                     for i in range(0, len(retorno["dados_colunas"])):
                         tmp[1].append(retorno["dados_colunas"][i])
-                        tmp[1].append(retorno["dados_valores"][i])
+                        if type(retorno["dados_valores"][i])==type([]):
+                            vetor_processado=""
+                            for i in retorno["dados_valores"][i]:
+                                vetor_processado+=str(i)
+                            tmp[1].append(vetor_processado)
+                        else:
+                            tmp[1].append(retorno["dados_valores"][i])
                 if retorno["operacao"] in [1,3,4,5,6]:
                     for i in range(0, len(retorno["adicionais_colunas"])):
                         tmp[1].append(retorno["adicionais_colunas"][i])
-                        tmp[1].append(retorno["adicionais_valores"][i])
+                        if type(retorno["adicionais_valores"][i])==type([]):
+                            tmp[1].append(str(retorno["adicionais_valores"][i]).replace("[","").replace("]",""))
+                        else:
+                            tmp[1].append(retorno["adicionais_valores"][i])
                 retorno=tmp
                 if sql:
                     newtmp=str(tmp[0]).replace('%s',"{}")
                     retorno = newtmp.format(*tmp[1])
+                else:
+                    retorno[0]=retorno[0].replace("\'","")
         except self.ValorInvalido as e :
             self.logging.exception(e)
         except :
@@ -1048,7 +1086,6 @@ class GeradorDeSql:
             if elemento == None:
                 break
             else:
-                #{"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":{},"adicionais_valores":{},"nomeBD":""}
                 retorno.append(elemento)
 
         return retorno

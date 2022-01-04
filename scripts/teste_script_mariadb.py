@@ -44,9 +44,11 @@ logstash_data={}
 
 gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=40,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 
-comandos=gerador.gernerate_lib_insertion_from_sqlite_range(50)
+#reset
+executeScriptsFromFile("containers_build/mysql default exemple.sql" , mycursor)
 
-for i in comandos:
+for i in gerador.gernerate_lib_insertion_from_sqlite_range(50,sql=True):
     print(i)
+    #mycursor.execute(i[0],i[1])#usando o lib não funciona no momento,algo a ver com sintaxe sql incompativel
     mycursor.execute(i)
     mydb.commit()
