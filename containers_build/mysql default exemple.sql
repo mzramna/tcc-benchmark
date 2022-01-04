@@ -134,8 +134,8 @@ ALTER TABLE `film` ADD CONSTRAINT `fk_film_language_original` FOREIGN KEY (`orig
 CREATE TABLE IF NOT EXISTS `film_actor` (
   `actor_id` BIGINT unsigned NOT NULL ,
   `film_id` BIGINT unsigned NOT NULL ,
-  `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`actor_id`, `film_id`))ENGINE=InnoDB;
+  `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)ENGINE=InnoDB;
+--  PRIMARY KEY (`actor_id`, `film_id`))ENGINE=InnoDB;
 ALTER TABLE `film_actor` ADD CONSTRAINT `fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES `actor` (`actor_id`) ON UPDATE CASCADE;
 ALTER TABLE `film_actor` ADD CONSTRAINT `fk_film_actor_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE;
 
@@ -144,8 +144,8 @@ ALTER TABLE `film_actor` ADD CONSTRAINT `fk_film_actor_film` FOREIGN KEY (`film_
 CREATE TABLE IF NOT EXISTS `film_category` (
   `film_id` BIGINT unsigned NOT NULL,
   `category_id` BIGINT unsigned NOT NULL,
-  `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`film_id`, `category_id`))ENGINE=InnoDB;
+  `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)ENGINE=InnoDB;
+ -- PRIMARY KEY (`film_id`, `category_id`))ENGINE=InnoDB;
 ALTER TABLE `film_category` ADD CONSTRAINT `fk_film_category_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON UPDATE CASCADE;
 ALTER TABLE `film_category` ADD CONSTRAINT `fk_film_category_film` FOREIGN KEY (`film_id`) REFERENCES `film` (`film_id`) ON UPDATE CASCADE;
 

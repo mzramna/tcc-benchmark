@@ -439,13 +439,13 @@ class GeradorDeSql:
         except self.ValorInvalido as e:
             self.logging.exception(e)
             if e.campo== "dados_gerados":
-                return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id) 
+                return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
             elif e.campo=="associacao":
                 chamadas=loggingSystem.full_inspect_caller()
                 if chamadas.count(chamadas[0])>5:
                     return None
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
-                return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id) 
+                return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
         except self.TipoDeDadoIncompativel as e:
             self.logging.exception(e)
         except :
@@ -653,17 +653,15 @@ class GeradorDeSql:
 
             if values_pesquisa !={}:
                 filtro_pesquisa=list(values_pesquisa.keys())
-
-            if filtro_pesquisa == "*":
-                dados_gerados["tipoOperacao"]=3
-            else:
-                dados_gerados["tipoOperacao"]=4
             arrays=self.gerador_filtro(pattern,pesquisa_pre=filtro_pesquisa,retorno_pre=filtro_retorno,completo=True)
             filtro_pesquisa=arrays[0]
-            filtro_retorno=arrays[1]
-            
+            if filtro_pesquisa == "*":
+                dados_gerados["tipoOperacao"]=3
+                filtro_retorno=[]
+            else:
+                dados_gerados["tipoOperacao"]=4
+                filtro_retorno=arrays[1]
             dados_gerados["adicionais"]=filtro_retorno#arrays[1]
-
             if values_pesquisa == {}:
                 for value_pattern in list(pattern.keys()):
                     if pattern[value_pattern]=="id":
@@ -720,8 +718,12 @@ class GeradorDeSql:
             pattern=pattern.copy()
 
             dados_gerados["tipoOperacao"]=5
-
-            arrays=self.gerador_filtro(pattern,pesquisa_pre=filtro_pesquisa,retorno_pre=filtro_update,completo=True)
+            arrays=[[],[]]
+            while arrays[1]==[]:
+                arrays=self.gerador_filtro(pattern,pesquisa_pre=filtro_pesquisa,retorno_pre=filtro_update,completo=True)
+                elemento_id = [i for i,x in enumerate(self.json_loaded[table]) if x == ["id"]][0]
+                if elemento_id in arrays[1]:
+                    arrays[1].remove(elemento_id)
             _filtro_update=arrays[1]
             _filtro_pesquisa=arrays[0]
 
@@ -735,7 +737,8 @@ class GeradorDeSql:
             if values_update == {}:
                 for value_pattern in list(pattern.keys()):
                     if pattern[value_pattern]=="id":
-                        not_define_id=False
+                        del pattern[value_pattern]
+                        break
                 values_update=self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,not_define_id=not_define_id,lista_restritiva=_filtro_update)
             dados_gerados["adicionais"]=values_update
 
@@ -752,7 +755,7 @@ class GeradorDeSql:
 
             if  dados_gerados["dados"]== {} or dados_gerados["dados"]== None or "dados" not in list(dados_gerados.keys()): # pesquisa
                 raise self.TamanhoArrayErrado(valor_inserido=dados_gerados["dados"],valor_possivel="não vazio",campo="pesquisa")
-            if  dados_gerados["adicionais"]== {} or dados_gerados["adicionais"]== None or "adicionais" not in list(dados_gerados.keys()): # update
+            if  dados_gerados["adicionais"]== {} or dados_gerados["adicionais"] == None or "adicionais" not in list(dados_gerados.keys()): # update
                 raise self.TamanhoArrayErrado(valor_inserido=dados_gerados["adicionais"],valor_possivel="não vazio",campo="update")
 
             self.logging.debug("dado gerado por create_update",extra=self.dict_all_string(dados_gerados))
@@ -929,21 +932,28 @@ class GeradorDeSql:
             '''
         self.logging.info("generate_SQL_command_from_data",extra=locals())
         try:
-            retorno={"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":{},"adicionais_valores":{},"nomeBD":""}
+            retorno={"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":[],"adicionais_valores":[],"nomeBD":""}
             retorno["operacao"]=data["tipoOperacao"]
             retorno["nomeBD"]=data["nomeBD"]
             for i in data["dados"].keys():
                 if data["tipoOperacao"] ==1 and self.json_loaded[data["nomeBD"]][i][0]=="id":
                     pass
+                elif  type(data["dados"][i])==type(None):
+                    pass
                 else:
                     retorno["dados_colunas"].append(i)
                     retorno["dados_valores"].append(data["dados"][i])
-            for i in data["adicionais"].keys():
-                if retorno["operacao"] ==5 and data["dados"][i][0]=="id":
-                    pass
-                else:
+            
+            if retorno["operacao"] in[3,4,6] :
+                for i in data["adicionais"]:
                     retorno["adicionais_colunas"].append(i)
-                    retorno["adicionais_valores"].append(data["adicionais"][i])
+            else:
+                for i in data["adicionais"].keys():
+                    if retorno["operacao"] ==5 and self.json_loaded[data["nomeBD"]][i][0]=="id":
+                        pass
+                    else:
+                        retorno["adicionais_colunas"].append(i)
+                        retorno["adicionais_valores"].append(data["adicionais"][i])
             
             if lib or sql:
                 tmp=[0,0]#transformar no metodo base de geração de elementos generate_lib_insertion_from_data,passar parametro para seleção de qual usar
@@ -953,14 +963,14 @@ class GeradorDeSql:
                 elif retorno["operacao"] in [2,3]:#leitura completa,#busca
                     command+="SELECT * FROM "
                 elif retorno["operacao"] == 4:#busca filtrada
-                    command+="SELECT ("
-                    for i in retorno['dados_colunas']:
+                    command+="SELECT "
+                    for i in retorno['adicionais_colunas']:
                         command+= "%s"
-                        if command != retorno['dados_colunas'][-1]:
+                        if i != retorno['adicionais_colunas'][-1]:
                             command+= ","
-                    command+=") FROM "
+                    command+=" FROM "
                 elif retorno["operacao"]==5:#edicao
-                    command+=" UPDATE "
+                    command+="UPDATE "
                 elif retorno["operacao"]==6:#delecao
                     command+="DELETE FROM "
 
@@ -969,23 +979,17 @@ class GeradorDeSql:
                 if retorno["operacao"] == 1:#insercao
                     command+=" ("
                     for coluna in retorno["dados_colunas"]:
-                        if type(data["dados"][coluna])==type(None):
-                            pass
-                        else:
                             command+="%s"
                             if coluna != retorno["dados_colunas"][-1]:
                                 command+=","
                     command+=") VALUES ("
                     for coluna in retorno["dados_valores"]:
-                        if type(coluna)==type(None):
-                            pass
+                        if type(coluna)==type("") or type(coluna)==type([]):
+                            command+="\'%s\'"
                         else:
-                            if type(coluna)==type("") or type(coluna)==type([]):
-                                command+="\'%s\'"
-                            else:
-                                command+="%s"
-                            if coluna != retorno["dados_valores"][-1]:
-                                command+=","
+                            command+="%s"
+                        if coluna != retorno["dados_valores"][-1]:
+                            command+=","
                     command+=")"
                 elif retorno["operacao"] == 5:#edicao
                     command+=" SET "
@@ -996,19 +1000,27 @@ class GeradorDeSql:
                             command+="%s = %s"
                         if coluna != retorno["dados_colunas"][-1]:
                             command+=" , "
-                if retorno["operacao"] in [3,4,6,5]:# busca #busca filtrada #remocao
                     command+=" WHERE "
                     for coluna in retorno["adicionais_colunas"]:
                         if type(data["adicionais"][coluna])==type("") or type(data["adicionais"][coluna])==type([]):
-                            command+="%s IS \'%s\'"
+                            command+="%s = \'%s\'"
                         else:
-                            command+="%s IS %s"
+                            command+="%s = %s"
                         if coluna != retorno["adicionais_colunas"][-1]:
+                            command+=" AND "
+                if retorno["operacao"] in [3,4,6]:# busca #busca filtrada #remocao
+                    command+=" WHERE "
+                    for coluna in retorno["dados_colunas"]:
+                        if type(data["dados"][coluna])==type("") or type(data["dados"][coluna])==type([]):
+                            command+="%s = \'%s\'"
+                        else:
+                            command+="%s = %s"
+                        if coluna != retorno["dados_colunas"][-1]:
                             command+=" AND "
                 command+="; "
                 tmp[0]=command
                 tmp[1]=[]
-                if retorno["operacao"] in [1,3,4,6]:
+                if retorno["operacao"] in [1]:
                     for i in retorno["dados_colunas"]:
                         tmp[1].append(i)
                     for i in retorno["dados_valores"]:
@@ -1026,13 +1038,25 @@ class GeradorDeSql:
                             tmp[1].append(vetor_processado)
                         else:
                             tmp[1].append(retorno["dados_valores"][i])
-                if retorno["operacao"] in [1,3,4,5,6]:
+                if retorno["operacao"] in [1,5]:#separar o 1 e 5 ,funcionam obrigatoriamente difwerente
                     for i in range(0, len(retorno["adicionais_colunas"])):
                         tmp[1].append(retorno["adicionais_colunas"][i])
                         if type(retorno["adicionais_valores"][i])==type([]):
                             tmp[1].append(str(retorno["adicionais_valores"][i]).replace("[","").replace("]",""))
                         else:
                             tmp[1].append(retorno["adicionais_valores"][i])
+                elif retorno["operacao"] in [3,4,6]:#separar o 1 e 5 ,funcionam obrigatoriamente difwerente
+                    for i in range(0, len(retorno["adicionais_colunas"])):
+                        tmp[1].append(retorno["adicionais_colunas"][i])
+                    for i in range(len(retorno["dados_colunas"])):
+                        tmp[1].append(retorno["dados_colunas"][i])
+                        if type(retorno["dados_valores"][i])==type([]):
+                            vetor_processado=""
+                            for j in retorno["dados_valores"][i]:
+                                vetor_processado+=str(j)
+                            tmp[1].append(vetor_processado)
+                        else:
+                            tmp[1].append(retorno["dados_valores"][i])
                 retorno=tmp
                 if sql:
                     newtmp=str(tmp[0]).replace('%s',"{}")
@@ -1147,6 +1171,7 @@ class GeradorDeSql:
             data=self.create_select(table=table,values_pesquisa=dados_pesquisados["dados"],id=id,filtro_pesquisa=filtro,pattern=pattern,select_country=select_country)
         if all_filter:
             data["tipoOperacao"]=3
+            data["adicionais"]=[]
         self.logging.debug("dado gerado gerar_dado_busca",extra=self.dict_all_string(data))
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
@@ -1653,8 +1678,10 @@ class InteracaoSqlite(ProcessamentoSqlite):
             is_dict (boolean): defini se o retorno é um dictionary ou um array
         Returns:
             (dict,list): dictionary ou array com o conteudo usavel do retorno de uma consulta no sqlite
-        """        
+        """
         self.logging.info("string_to_dict",extra=locals())
+        if text == None:
+            return {}
         text=text.replace("'",'"')
         text=text.replace("None","null")
         text=text.replace("True","true")

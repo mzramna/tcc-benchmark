@@ -47,8 +47,14 @@ gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts
 #reset
 executeScriptsFromFile("containers_build/mysql default exemple.sql" , mycursor)
 
-for i in gerador.gernerate_lib_insertion_from_sqlite_range(50,sql=True):
+for i in gerador.gernerate_lib_insertion_from_sqlite_range(2000,sql=True):
     print(i)
     #mycursor.execute(i[0],i[1])#usando o lib não funciona no momento,algo a ver com sintaxe sql incompativel
     mycursor.execute(i)
-    mydb.commit()
+    try:
+      mydb.commit()
+    except:
+      try:
+        mycursor.fetchall()
+      except:
+        pass
