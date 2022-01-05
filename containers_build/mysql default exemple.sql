@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS `address` (
   `address_id` SERIAL ,
   `address` VARCHAR(50) NOT NULL,
   `address2` VARCHAR(50) NULL DEFAULT NULL,
+  `district` varchar(50) NOT NULL,
   `city_id` BIGINT unsigned NOT NULL,
   `postal_code` VARCHAR(10) NULL DEFAULT NULL,
   `phone` VARCHAR(20) NOT NULL,
@@ -70,12 +71,13 @@ CREATE TABLE IF NOT EXISTS `staff` (
   `email` VARCHAR(50) NULL DEFAULT NULL,
   `store_id` BIGINT unsigned NOT NULL,
   `active` smallint NOT NULL DEFAULT TRUE,
-  `username` VARCHAR(16) NOT NULL,
+  `username` VARCHAR(30) NOT NULL,
   `password` VARCHAR(40) BINARY NULL DEFAULT NULL,
   `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`staff_id`))ENGINE=InnoDB;
-ALTER TABLE `staff` ADD CONSTRAINT `fk_staff_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE;
-ALTER TABLE `staff` ADD CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE;
+
+ 
+ ALTER TABLE `staff` ADD CONSTRAINT `fk_staff_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE;
 
 
 CREATE TABLE IF NOT EXISTS `store` (
@@ -84,9 +86,11 @@ CREATE TABLE IF NOT EXISTS `store` (
   `address_id` BIGINT unsigned NOT NULL,
   `last_update` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`store_id`))ENGINE=InnoDB;
+
 ALTER TABLE `store` ADD CONSTRAINT  `idx_unique_manager` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE;
 ALTER TABLE `store` ADD CONSTRAINT `fk_store_address` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`) ON UPDATE CASCADE;
 ALTER TABLE `store` ADD CONSTRAINT `fk_store_staff` FOREIGN KEY (`manager_staff_id`) REFERENCES `staff` (`staff_id`) ON UPDATE CASCADE;
+ALTER TABLE `staff` ADD CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON UPDATE CASCADE;
 
 
 

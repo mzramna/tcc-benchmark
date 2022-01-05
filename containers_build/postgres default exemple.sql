@@ -50,7 +50,7 @@ CREATE TABLE "address" (
   "address_id" BIGSERIAL,
   "address" varchar(50) NOT NULL,
   "address2" varchar(50) DEFAULT NULL,
-  "district" varchar(20) NOT NULL,
+  "district" varchar(50) NOT NULL,
   "city_id" BIGINT ,
   "postal_code" varchar(10) DEFAULT NULL,
   "phone" varchar(20) NOT NULL,
@@ -77,18 +77,15 @@ CREATE TABLE "staff" (
   "staff_id" BIGSERIAL,
   "first_name" varchar(45) NOT NULL,
   "last_name" varchar(45) NOT NULL,
-  "address_id" BIGINT ,
-  "picture" bytea NULL,
+  "address_id" BIGINT not NULL,
   "email" varchar(50) DEFAULT NULL,
-  "store_id" BIGINT ,
-  "active" smallint NOT NULL DEFAULT '1',
-  "username" varchar(16) NOT NULL,
+  "store_id" BIGINT not NULL,
+  "active" boolean DEFAULT true,
+  "username" varchar(30) NOT NULL,
   "password" varchar(40) DEFAULT NULL,
   "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY ("staff_id")  
-  
+  PRIMARY KEY ("staff_id") 
 );
-
 
 ALTER TABLE "staff" ADD CONSTRAINT "fk_staff_address" FOREIGN KEY ("address_id") REFERENCES "address" ("address_id") ON UPDATE CASCADE;
 
@@ -96,8 +93,8 @@ DROP TABLE IF EXISTS "store" CASCADE;
 
 CREATE TABLE "store" (
   "store_id" BIGSERIAL,
-  "manager_staff_id" smallint UNIQUE NOT NULL,
-  "address_id" BIGINT ,
+  "manager_staff_id" BIGINT NULL,
+  "address_id" BIGINT not NULL,
   "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("store_id")
 );
@@ -117,7 +114,7 @@ CREATE TABLE "customer" (
   "last_name" varchar(45) NOT NULL,
   "email" varchar(50) DEFAULT NULL,
   "address_id" BIGINT ,
-  "active" smallint NOT NULL DEFAULT '1',
+  "active" boolean NOT NULL DEFAULT true,
   "create_date" timestamp NOT NULL,
   "last_update" timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("customer_id") 
@@ -139,7 +136,7 @@ CREATE TABLE "film" (
   "film_id" BIGSERIAL,
   "title" varchar(255) NOT NULL,
   "description" text,
-  "release_year" date DEFAULT NULL,
+  "release_year" INT DEFAULT NULL,
   "language_id" BIGINT ,
   "original_language_id" BIGINT ,
   "rental_duration" INTEGER DEFAULT '3',
@@ -160,8 +157,8 @@ DROP TABLE IF EXISTS "film_actor" CASCADE;
 CREATE TABLE "film_actor" (
   "actor_id" BIGINT ,
   "film_id" BIGINT ,
-  "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY ("actor_id","film_id")  
+  "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  --PRIMARY KEY ("actor_id","film_id")  
   
 );
 ALTER TABLE "film_actor" ADD CONSTRAINT "fk_film_actor_actor" FOREIGN KEY ("actor_id") REFERENCES "actor" ("actor_id") ON UPDATE CASCADE;
@@ -172,8 +169,8 @@ DROP TABLE IF EXISTS "film_category" CASCADE;
 CREATE TABLE "film_category" (
   "film_id" BIGSERIAL,
   "category_id" BIGSERIAL,
-  "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY ("film_id","category_id")  
+  "last_update" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  --PRIMARY KEY ("film_id","category_id")  
   
 );
 ALTER TABLE "film_category" ADD CONSTRAINT "fk_film_category_category" FOREIGN KEY ("category_id") REFERENCES "category" ("category_id") ON UPDATE CASCADE;

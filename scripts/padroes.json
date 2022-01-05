@@ -20,6 +20,7 @@
         "address_id":["id"],
         "address":["endereco"],
         "address2":["endereco"],
+        "district":["bairro"],
         "city_id":["associacao","city"],
         "postal_code":["cep"],
         "phone":["telefone"],

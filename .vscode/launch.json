@@ -39,5 +39,12 @@
             "program": "scripts/teste_script_mariadb.py",
             "console": "internalConsole"
         },
+        {
+            "name": "Python: teste inserção postgre",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/teste_script_postgre.py",
+            "console": "internalConsole"
+        },
     ]
 }
