@@ -1,6 +1,6 @@
 import logging,logstash,inspect
 class loggingSystem:
-    def __init__(self,  arquivo='./arquivo.log', format:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="",logstash_data:dict={}):
+    def __init__(self,  arquivo='./arquivo.log', formato:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="",logstash_data:dict={}):
         """
         :param name: nome do log a ser escrito no arquivo
         :param arquivo: nome do arquivo a ser utilizado
@@ -16,7 +16,10 @@ class loggingSystem:
         NOTSET	0
         """
         self.logger = logging
-        
+        self.logging_pattern=formato
+        self.level=level
+        self.logstash_data=logstash_data
+        self.log_file=arquivo
         if  set(["port","host"]).issubset(logstash_data):
             if name !="":
                 self.logger = self.logger.getLogger(name)
@@ -26,7 +29,7 @@ class loggingSystem:
             else:
                 self.logger.addHandler(logstash.TCPLogstashHandler(logstash_data["host"], logstash_data["port"], version=1))
         else:
-            self.logger.basicConfig(filename=arquivo, level=level,format=format,)
+            self.logger.basicConfig(filename=arquivo, level=level,format=formato,)
             if name !="":
                 self.logger = self.logger.getLogger(name)
         #self.logger.addHandler(handler)

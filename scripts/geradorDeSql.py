@@ -8,178 +8,9 @@ from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 import sys,re,sqlite3,json,logging,csv
 from typing import Union
-
+from tratamentoErro import *
+from interacaoSqlite import InteracaoSqlite
 class GeradorDeSql:
-#tratamento de erro
-    class ValorInvalido(Exception):
-        """classe de exceção customizada base,feita de forma a dar mensagem de erro base para a classe,essa mensagem de erro é genérica, e é usado para avisar se alguma variavel foi preenchida de forma que o algoritimo não aceita,essa mensagem de erro é altamente customizável
-        """        
-        def __init__(self, valor_inserido="",mensagem_principal_replace=False,mensage_adicional="",campo="",valor_possivel="") :
-            """
-                    construtor 
-            Args:
-                valor_inserido (str, optional):valor que foi passado que gerou o erro. Defaults to "".
-                mensagem_principal_replace (bool, optional): se verdadeiro substitui todos os dados da mensagem de erro pelo conteudo do parametro mensagem adicional. Defaults to False.
-                mensage_adicional (str, optional): mensagem adicional a ser inserida no final da mensagem de erro. Defaults to "".
-                campo (str, optional): nome do campo que foi preenchido de forma errada. Defaults to "".
-                valor_possivel ({str , array}, optional): valores possiveis de serem inseridos na variavel,podendo ser tipo ou valor mesmo no caso de ser algum valor dinamico. Defaults to "".
-            """            
-            self.valor_inserido=valor_inserido
-            self.valor_possivel=valor_possivel
-            self.mensage_adicional=mensage_adicional
-            self.mensagem_principal_replace=mensagem_principal_replace
-            self.campo=campo
-            self.construir_mensagem()
-            super().__init__(self.message)
-
-        def listagem_valores_possiveis(self,valores_possiveis="",campo=""):
-            """ formata a entrada de valores possiveis para uma forma mais legivel os valores possiveis caso seja um array e se for um string ele será inserido direto no campo de valor inserido,também adiciona o nome do campo que foi inserido e faz a formulação do nome do campo se ele existir
-
-            Args:
-                valores_possiveis ({str , array}, optional): valores possiveis de serem inseridos na variavel,podendo ser tipo ou valor mesmo no caso de ser algum valor dinamico. Defaults to ""
-                campo (str, optional): nome do campo que foi preenchido de forma errada. Defaults to "".
-
-            Returns:
-                string: mensagem parcialmente formatada da mensagem de erro
-            """            
-            retorno=""
-            if valores_possiveis !="":
-                if  type("")==type(valores_possiveis):
-                    retorno+="o valor possivel "
-                    if campo!="":
-                        retorno+="no campo "+str(campo)+" "
-                    retorno+="é "
-                elif  type("")==type(valores_possiveis):
-                    retorno+=" os valores possiveis "
-                    if campo!="":
-                        retorno+="no campo "+str(campo)+" "
-                    retorno+="são "+str(valores_possiveis)
-                retorno+= self.valores_possiveis(valores_possiveis)
-                return retorno
-
-        def valores_possiveis(self,valores_possiveis=""):
-            """formata a entrada de valores possiveis para uma forma mais legivel os valores possiveis caso seja um array e se for um string ele será inserido direto no campo de valor inserido
-
-            Args:
-                valores_possiveis ({str , array}, optional): valores possiveis de serem inseridos na variavel,podendo ser tipo ou valor mesmo no caso de ser algum valor dinamico. Defaults to ""
-
-            Returns:
-                string: string formatado de forma mais legivel o conteudo da variavel valores possiveis
-            """            
-            retorno=""
-            if type(valores_possiveis)==type([]) or type(valores_possiveis)==type({}):
-                for valor in valores_possiveis:
-                    if type(valor)==type(""):
-                        retorno+=valor
-                    else:
-                        retorno+=str(valor) 
-                    if valor == valores_possiveis[-2]:
-                        retorno+=" ou "
-                    elif valor not in valores_possiveis[-2:]:
-                        retorno+=","
-            elif type(valores_possiveis)==type(""):
-                    retorno+=valores_possiveis
-            else:
-                retorno+=str(valores_possiveis)
-            return retorno
-
-        def tratamento_input(self,valor,adicional:str="") -> str:
-            """processa o dado inserido para formular melhor a mensagem de erro
-
-            Args:
-                valor ([str,list]): lista de valores ou valor que serão formatados
-                adicional (str, optional): valores adicionais para um campo. Defaults to
-
-            Returns:
-                str: texto formatado para usar na construção da resposta
-            """
-            retorno=""
-            if adicional!="":
-                if type(valor) == type(""):
-                    retorno+=" no  "+adicional+" "
-                elif type(valor) == type([]):
-                    retorno+=" nos "+adicional+" "
-                else:
-                    retorno+=" no  "+adicional+" "
-            if type(valor) == type(""):
-                retorno+= valor
-            elif type(valor) == type([]):
-                retorno+= self.valores_possiveis(valores_possiveis=valor)
-            else:
-                retorno+= str(valor)
-            return retorno
-
-        def construir_mensagem(self,mensage_adicional=""):
-            """ gera a mensagem de erro e formata com o uso das outras funções a classe
-            e se substitui a mensagem de erro pela mensagem adicional caso a seja passada a variavel mensagem_principal_replace como verdadeira na construção da classe
-
-            Args:
-                mensage_adicional (str, optional): mensagem de erro adicional a ser inserido no final ou ssubstituir a mensagem completa. Defaults to "".
-            """            
-            if not self.mensagem_principal_replace:
-                self.message="um valor inserido foi inserido de forma errada\no valor "
-                self.message+=self.tratamento_input(self.valor_inserido)
-                self.message+=" é invalido ou foi inserido de forma errada"
-                self.message+=self.tratamento_input(self.campo,"campo")
-                self.message+="\n"
-                self.message+=self.listagem_valores_possiveis(valores_possiveis=self.valor_possivel)
-                self.message+="\n"
-            if mensage_adicional == "":
-                self.message+=str(self.mensage_adicional)
-            else:
-                self.message+=mensage_adicional
-
-        def __str__(self):
-            return self.message
-    
-    class TamanhoArrayErrado(ValorInvalido):
-        def __init__(self,valor_inserido,valor_possivel="",campo="") :
-            super(GeradorDeSql.ValorInvalido, self).__init__()
-            self.valor_inserido=str(valor_inserido)
-            self.valor_possivel=valor_possivel
-            self.campo=campo
-            self.valor_inserido=valor_inserido
-            self.mensagem_principal_replace=True
-            self.construir_mensagem()
-
-        def construir_mensagem(self):
-            self.message="o tamanho para o array passado "
-            self.message+=self.tratamento_input(self.campo,"campo")
-            self.message+="é invalido\n"
-            if self.valor_possivel != "":
-                self.message+=" o tamanho esperado era de "
-                self.message+=self.valores_possiveis(self.valor_inserido)
-                self.message+=" programa não pode continuar"
-            
-            #super(GeradorDeSql.TamanhoArrayErrado, self).construir_mensagem(self.message)
-
-        def __str__(self):
-            return self.message
-
-    class TipoDeDadoIncompativel(ValorInvalido):
-        def __init__(self,valor_inserido,tipo_possivel="",campo="") :
-            super(GeradorDeSql.ValorInvalido, self).__init__()
-            self.valor_inserido=valor_inserido
-            self.tipo_possivel=tipo_possivel
-            self.mensagem_principal_replace=True
-            self.campo=campo
-            self.construir_mensagem()
-
-        def construir_mensagem(self):
-            self.message="o tipo da variavel passada "
-            self.message+=self.tratamento_input(self.campo,"campo")
-            self.message+="é invalido\n"
-            if self.tipo_possivel != "":
-                self.message+=" o tipo esperado era de "
-                self.message+=self.valores_possiveis(self.tipo_possivel)
-                self.message+=" programa não pode continuar"
-                self.message+=" mas foi inserido"
-                self.message+=str(self.valor_inserido)
-            #self.construir_mensagem(self.message)
-
-        def __str__(self):
-            return self.message
-
 #inicialização
     def __init__(self,sqlite_db:str="./initial_db.db",sql_file_pattern:str="./sqlitePattern.sql",json_file:str="./scripts/padroes.json", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
         """
@@ -192,7 +23,6 @@ class GeradorDeSql:
         self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,format=logging_pattern,logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
-        self.conn = sqlite3.connect(sqlite_db)
         
         file=open(json_file)
         self.json_loaded=json.loads(file.read())
@@ -252,16 +82,16 @@ class GeradorDeSql:
             lista_restritiva (list, optional): lista que define os dados que serão gerados dentro do padrão inserido. Defaults to [].
 
         Raises:
-            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
-            self.TamanhoArrayErrado: caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
-            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
-            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
-            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
-            self.TamanhoArrayErrado: caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
-            self.TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
-            self.ValorInvalido: [description]
-            self.ValorInvalido: [description]
-            self.ValorInvalido: [description]
+            TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            TamanhoArrayErrado : caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
+            TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            TamanhoArrayErrado : caso o array dentro do padrão não possua o tamanho necessario para a geração deste dado o erro sera chamado
+            TipoDeDadoIncompativel: caso o dado não tenha o tipo necessário esse erro será chamado
+            ValorInvalido: [description]
+            ValorInvalido: [description]
+            ValorInvalido: [description]
 
         Returns:
             dict: dado gerado seguindo o padrão inserido
@@ -288,7 +118,7 @@ class GeradorDeSql:
                         
             for dado in dados_geraveis:
                 if type(pattern[dado][0]) != type(""):
-                        raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][0],tipo_possivel="string",campo="nome do campo")
+                        raise TipoDeDadoIncompativel(valor_inserido=pattern[dado][0],tipo_possivel="string",campo="nome do campo")
                 if pattern[dado][0] == "nomeCompleto":
                     '''supoe-se que qualquer pessoa pode ter nascido em qq lugar e morar em qualquer outro lugar,nomes são dados pelo gerador de qualquer idioma,por isso nao foi definido um pais para a geracao'''
                     dados_gerados[dado]=fake.name()
@@ -304,7 +134,7 @@ class GeradorDeSql:
                     o 3 parametro deve ser passado como o 2,mas não se limita apenas ao token de tempo anterior,sendo possivel um intervalo do futuro
                     '''
                     if len(pattern[dado])<2:
-                        raise self.TamanhoArrayErrado(valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="timestamp")
+                        raise TamanhoArrayErrado (valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="timestamp")
                     regex1=r'[\+,\-][0-9]*[d,m,y]'
                     regex2=r'[0-9]{4}[\/,\-][0-9]{2}[\/,\-][0-9]{2}'
                     if len(pattern[dado])>=2:
@@ -319,12 +149,12 @@ class GeradorDeSql:
                                 print(match2)
                             if pattern[dado][1]!="agora":
                                 print("string especial")
-                            raise self.TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string com padrão -30y ou 1999-02-02 ou 1999/02/02",campo="campo 1 adicional em timestamp")
+                            raise TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string com padrão -30y ou 1999-02-02 ou 1999/02/02",campo="campo 1 adicional em timestamp")
                     if len(pattern[dado])>=3:
                         match1=re.match(regex1,pattern[dado][2])
                         match2=re.match(regex2,pattern[dado][2])
                         if type(pattern[dado][2] )!=type("") or ((not match1 and not match2 and (match1 != None or match2 != None)) and pattern[dado][2] != "agora") :
-                            raise self.TipoDeDadoIncompativel(pattern[dado][2],tipo_possivel="string com padrão -30y ou 1999-02-02 ou 1999/02/02",campo="campo 2 adicional em timestamp")
+                            raise TipoDeDadoIncompativel(pattern[dado][2],tipo_possivel="string com padrão -30y ou 1999-02-02 ou 1999/02/02",campo="campo 2 adicional em timestamp")
                     start_date=""
                     end_date=""
                     if pattern[dado][1] == "agora" :#se true é tudo randomico
@@ -386,7 +216,7 @@ class GeradorDeSql:
                     dados_gerados[dado]=uniform(0.0,4.0)
                 elif pattern[dado][0] == "naLista":
                     if not all(isinstance(n, str) for n in list(pattern[dado][0])):
-                        raise self.TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string",campo="variaveis adicionais da variavel naLista")
+                        raise TipoDeDadoIncompativel(pattern[dado][1],tipo_possivel="string",campo="variaveis adicionais da variavel naLista")
                     dados_gerados[dado]=fake.word(ext_word_list=pattern[dado][1:] )
                 elif pattern[dado][0] == "valorPago":
                     dados_gerados[dado]=uniform(0.0,50.0)
@@ -397,9 +227,9 @@ class GeradorDeSql:
                     may_be_null=False
                     defined=False
                     if len(pattern[dado])<2:
-                        raise self.TamanhoArrayErrado(valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="associacao")
+                        raise TamanhoArrayErrado (valor_possivel=[2,3],valor_inserido=len(pattern[dado]),campo="associacao")
                     if type(pattern[dado][1]) != type(""):
-                        raise self.TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
+                        raise TipoDeDadoIncompativel(valor_inserido=pattern[dado][1],tipo_possivel=["string","array"],campo="associacao")
                     if len(pattern[dado])>2:
                         
                         if pattern[dado][2]=="random":
@@ -407,7 +237,7 @@ class GeradorDeSql:
                             if total_cadastrado>1:
                                 dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                             else:
-                                raise self.ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela")
+                                raise ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela")
                         elif pattern[dado][2] == "null":
                             may_be_null=True
                         elif type(0)==type(pattern[dado][2]):
@@ -422,7 +252,7 @@ class GeradorDeSql:
                             if may_be_null:
                                 dados_gerados[dado]=None
                             else:
-                                raise self.ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
+                                raise ValorInvalido(valor_inserido=pattern[dado][1],campo="associacao",valor_possivel="maior que 0",mensage_adicional="não existe dado cadastrado nessa tabela") # arrumar forma de criar a tabela necessária
                                 
                                 #dados_gerados[dado]=fake.random_int(min=1,max=self.processamento_sqlite.buscar_ultimo_id_cadastrado(pattern[dado][1]))
                 elif pattern[dado][0] == "id" :
@@ -431,12 +261,12 @@ class GeradorDeSql:
                     elif len(dados_geraveis) <2 and  lista_restritiva[0] == dado :
                         dados_gerados[dado]=id
             if dados_gerados=={}:
-                raise self.ValorInvalido(valor_inserido=dados_gerados,mensage_adicional="o valor não pode ser vazio",campo="dados_gerados")
+                raise ValorInvalido(valor_inserido=dados_gerados,mensage_adicional="o valor não pode ser vazio",campo="dados_gerados")
             self.logging.debug("dado gerado por create_data",extra=dados_gerados)
             return dados_gerados
-        except self.TamanhoArrayErrado as e :
+        except TamanhoArrayErrado  as e :
             self.logging.exception(e)
-        except self.ValorInvalido as e:
+        except ValorInvalido as e:
             self.logging.exception(e)
             if e.campo== "dados_gerados":
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
@@ -446,7 +276,7 @@ class GeradorDeSql:
                     return None
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
-        except self.TipoDeDadoIncompativel as e:
+        except TipoDeDadoIncompativel as e:
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
@@ -472,28 +302,28 @@ class GeradorDeSql:
         try:
             if len(list(pattern.keys()))-len(pesquisa_pre)-len(retorno_pre)<= 0 :
                 if list(pattern.keys())==pesquisa_pre:
-                    raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser igual a pattern",campo="pesquisa_pre")
+                    raise ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser igual a pattern",campo="pesquisa_pre")
                 elif list(pattern.keys())==retorno_pre:
-                    raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser igual a pattern",campo="retorno_pre")
+                    raise ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser igual a pattern",campo="retorno_pre")
                 elif list(pattern.keys())>pesquisa_pre:
-                    raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser maior que o total de elementos de pattern",campo="pesquisa_pre")
+                    raise ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser maior que o total de elementos de pattern",campo="pesquisa_pre")
                 elif list(pattern.keys())>retorno_pre:
-                    raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser maior que o total de elementos de pattern",campo="retorno_pre")
+                    raise ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser maior que o total de elementos de pattern",campo="retorno_pre")
             elif len(list(pattern.keys()))-len(pesquisa_pre)<1:
-                raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser tão grande",campo="pesquisa_pre")
+                raise ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre não pode ser tão grande",campo="pesquisa_pre")
             elif len(list(pattern.keys()))-len(retorno_pre)<1:
-                raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser tão grande",campo="retorno_pre")
+                raise ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre não pode ser tão grande",campo="retorno_pre")
             array_para_trabalho=list(pattern.keys())
             retorno = self.dividir_array(array=array_para_trabalho,max=max,pesquisa_pre=pesquisa_pre,retorno_pre=retorno_pre)
             
             if retorno == None :
-                raise self.TamanhoArrayErrado(valor_inserido=retorno,valor_possivel="maior que 1",campo="retorno")
+                raise TamanhoArrayErrado (valor_inserido=retorno,valor_possivel="maior que 1",campo="retorno")
             
             if not completo:
                 retorno = retorno[0]
-        except self.ValorInvalido as e:
+        except ValorInvalido as e:
             self.logging.exception(e)
-        except self.TamanhoArrayErrado as e:
+        except TamanhoArrayErrado  as e:
             self.logging.exception(e)
             retorno = self.gerador_filtro(pattern=pattern,pesquisa_pre=pesquisa_pre,retorno_pre=retorno_pre,max=max,completo=completo)
         finally:
@@ -553,9 +383,9 @@ class GeradorDeSql:
             
         try:
             if len(set(retorno_pre).difference(array))>0 and retorno_pre !=[]:
-                raise self.ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre precisa estar contido no array",campo="retorno_pre")
+                raise ValorInvalido(valor_inserido=retorno_pre,mensage_adicional="retorno_pre precisa estar contido no array",campo="retorno_pre")
             elif len(set(pesquisa_pre).difference(array))>0 and pesquisa_pre !=[] :
-                raise self.ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre precisa estar contido no array",campo="pesquisa_pre")
+                raise ValorInvalido(valor_inserido=pesquisa_pre,mensage_adicional="pesquisa_pre precisa estar contido no array",campo="pesquisa_pre")
             tamanhos=tamanhos_arrays(len(array),max_first=max,pesquisa_pre=pesquisa_pre,retorno_pre=retorno_pre)
             if tamanhos==None:
                 return None
@@ -573,9 +403,9 @@ class GeradorDeSql:
                     array_tmp.remove(y)
 
             return retorno
-        except self.ValorInvalido as e:
+        except ValorInvalido as e:
             self.logging.exception(e)
-        except self.TamanhoArrayErrado as e:
+        except TamanhoArrayErrado  as e:
             self.logging.exception(e)
 
 #relacionado com o processamento/geração de dados
@@ -592,8 +422,8 @@ class GeradorDeSql:
             not_define_id (bool, optional): define se o id ira existir na saida do dado,caso ele seja verdadeiro o id não será nem gerado nem passado para a saida de dado. Defaults to False.
 
         Raises:
-            self.TamanhoArrayErrado: array usado no pattern não possui o tamanho correto de acordo com o 
-            self.TipoDeDadoIncompativel: dado inserido atravez do pattern não é compativel com o necessário para o funcionamento
+            TamanhoArrayErrado : array usado no pattern não possui o tamanho correto de acordo com o 
+            TipoDeDadoIncompativel: dado inserido atravez do pattern não é compativel com o necessário para o funcionamento
         Returns:
             [dict]: dados gerados usando faker para corresponder ao padrão necessário
         """        
@@ -682,9 +512,9 @@ class GeradorDeSql:
             
             dados_gerados["dados"]=values_pesquisa
             if  dados_gerados["dados"]== {} or dados_gerados["dados"]== None or "dados" not in list(dados_gerados.keys()):
-                raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
+                raise ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
             
-        except self.ValorInvalido as e:
+        except ValorInvalido as e:
             self.logging.exception(e)
             chamadas=loggingSystem.full_inspect_caller()
             if chamadas.count(chamadas[0])>5:
@@ -754,12 +584,12 @@ class GeradorDeSql:
             self.logging.debug("dado gerado por create_select",extra=self.dict_all_string(dados_gerados))
 
             if  dados_gerados["dados"]== {} or dados_gerados["dados"]== None or "dados" not in list(dados_gerados.keys()): # pesquisa
-                raise self.TamanhoArrayErrado(valor_inserido=dados_gerados["dados"],valor_possivel="não vazio",campo="pesquisa")
+                raise TamanhoArrayErrado (valor_inserido=dados_gerados["dados"],valor_possivel="não vazio",campo="pesquisa")
             if  dados_gerados["adicionais"]== {} or dados_gerados["adicionais"] == None or "adicionais" not in list(dados_gerados.keys()): # update
-                raise self.TamanhoArrayErrado(valor_inserido=dados_gerados["adicionais"],valor_possivel="não vazio",campo="update")
+                raise TamanhoArrayErrado (valor_inserido=dados_gerados["adicionais"],valor_possivel="não vazio",campo="update")
 
             self.logging.debug("dado gerado por create_update",extra=self.dict_all_string(dados_gerados))
-        except self.TamanhoArrayErrado as e:
+        except TamanhoArrayErrado  as e:
             self.logging.exception(e)
             chamadas=loggingSystem.full_inspect_caller()
             if chamadas.count(chamadas[0])>5:
@@ -810,8 +640,8 @@ class GeradorDeSql:
                 dados_gerados["idNoBD"]=_id
 
             if  len(dados_gerados["dados"]) == 0 or "dados" not in list(dados_gerados.keys()):
-                raise self.ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
-        except self.ValorInvalido as e:
+                raise ValorInvalido(valor_inserido=dados_gerados["dados"],campo="dados",valor_possivel="não ser vazio")
+        except ValorInvalido as e:
             self.logging.exception(e)
             chamadas=loggingSystem.full_inspect_caller()
             if chamadas.count(chamadas[0])>5:
@@ -821,298 +651,6 @@ class GeradorDeSql:
         finally:
             self.logging.debug("dado gerado por create_delete",extra=dados_gerados)
             return dados_gerados
-
-#relacionado com a geração do sql final
-    def generate_SQL_command_from_data(self,data:dict):
-        '''
-                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
-                bd:string # banco de dados en que será inserido
-                os dados a baixo estão definidos para uma insercao:
-                    associações: #text  IGNORADO
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
-                    }
-
-                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
-                os dados a baixo estão definidos para uma busca:
-                    associações: #text     IGNORADO
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
-                    }
-                os dados a baixo são associados com uma busca fitrada
-                    associações: #text    
-                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
-                    }
-            '''
-        self.logging.info("generate_SQL_command_from_data",extra=locals())
-        try:
-            command=self.generate_lib_insertion_from_data(data=data,sql=True)
-        except self.ValorInvalido as e :
-            self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-        finally:
-            return command
-
-    def generate_SQL_from_sqlite_id(self,id:int)->str:
-        """retorna um comando sql a partir de um id de operação do sqlite
-
-        Args:
-            id (int): id de operação do sqlite
-
-        Raises:
-            self.ValorInvalido: se o valor de id inserido for maior que o total de operações cadastradas no sqlite
-
-        Returns:
-            str: comando sql gerado a partir do elemento cadastrado no sqlite
-        """        
-        max_id=self.processamento_sqlite.total_operacoes()
-        try:
-            if id>max_id:
-                raise self.ValorInvalido(valor_inserido=id,campo="id",valor_possivel="não pode ser maior que "+max_id)
-            return self.generate_SQL_command_from_data(data=self.processamento_sqlite.get_operacao_by_id(id))
-
-        except self.ValorInvalido as e:
-            self.logging.exception(e)
-            return None
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-            return None
-
-    def gernerate_SQL_from_sqlite_range(self,amount:int)->list:
-        """gera um raio de elementos,a partir do primeiro até o informado,de comandos sql a partir do sqlite
-
-        Args:
-            amount (int): total de elementos que serão gerados a partir do sqlite
-
-        Returns:
-            list: comandos sql gerados a partir do sqlite
-        """
-        retorno=[]
-        for i in range(1,amount+1):
-            elemento=self.generate_SQL_from_sqlite_id(i)
-            if elemento == None:
-                break
-            else:
-                retorno.append(elemento)
-        return retorno
-
-#relacionado com execução da lib python
-
-    def generate_lib_insertion_from_data(self,data:dict,sql:bool=False,lib:bool=False):
-        '''
-                tipo de operação:int #1:insersão,2:leitura,3:busca,4:edição,5:deleção
-                bd:string # banco de dados en que será inserido
-                os dados a baixo estão definidos para uma insercao:
-                    associações: #text  IGNORADO
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome do tipo da variavel do bd e o conteudo dela
-                    }
-
-                os dados para uma leitura completa apenas são os basicos,todo o restante será ignorado,quando uma leitura é feita 
-                os dados a baixo estão definidos para uma busca:
-                    associações: #text     IGNORADO
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
-                    }
-                os dados a baixo são associados com uma busca fitrada
-                    associações: #text    
-                    [{variavelRetornada:variavel}]  # inserir o termo"variavelRetornada"(nome pode ser alterado,apenas serve para referencia,mas deve ser editado no codigo também) seguido pelo nome da coluna que deseja realmente retornar,cada variavel deve ser colocada em um dictionary com apenas ela,devido a necessidade para compatibilidade com todos os outros comandos
-                    outros dados do bd: #text
-                    {
-                        nome da variavel:conteudo da variavel #string:string  #nome da coluna e valor a ser pesquisado,podem ser multiplos
-                    }
-            '''
-        self.logging.info("generate_SQL_command_from_data",extra=locals())
-        try:
-            retorno={"dados_colunas":[],"dados_valores":[],"operacao":0,"adicionais_colunas":[],"adicionais_valores":[],"nomeBD":""}
-            retorno["operacao"]=data["tipoOperacao"]
-            retorno["nomeBD"]=data["nomeBD"]
-            for i in data["dados"].keys():
-                if data["tipoOperacao"] ==1 and self.json_loaded[data["nomeBD"]][i][0]=="id":
-                    pass
-                elif  type(data["dados"][i])==type(None):
-                    pass
-                else:
-                    retorno["dados_colunas"].append(i)
-                    retorno["dados_valores"].append(data["dados"][i])
-            
-            if retorno["operacao"] in[3,4,6] :
-                for i in data["adicionais"]:
-                    retorno["adicionais_colunas"].append(i)
-            else:
-                for i in data["adicionais"].keys():
-                    if retorno["operacao"] ==5 and self.json_loaded[data["nomeBD"]][i][0]=="id":
-                        pass
-                    else:
-                        retorno["adicionais_colunas"].append(i)
-                        retorno["adicionais_valores"].append(data["adicionais"][i])
-            
-            if lib or sql:
-                tmp=[0,0]#transformar no metodo base de geração de elementos generate_lib_insertion_from_data,passar parametro para seleção de qual usar
-                command=""
-                if retorno["operacao"]==1:#insercao
-                    command+="INSERT INTO "
-                elif retorno["operacao"] in [2,3]:#leitura completa,#busca
-                    command+="SELECT * FROM "
-                elif retorno["operacao"] == 4:#busca filtrada
-                    command+="SELECT "
-                    for i in retorno['adicionais_colunas']:
-                        command+= "%s"
-                        if i != retorno['adicionais_colunas'][-1]:
-                            command+= ","
-                    command+=" FROM "
-                elif retorno["operacao"]==5:#edicao
-                    command+="UPDATE "
-                elif retorno["operacao"]==6:#delecao
-                    command+="DELETE FROM "
-
-                command+=str(retorno["nomeBD"])
-
-                if retorno["operacao"] == 1:#insercao
-                    command+=" ("
-                    for coluna in retorno["dados_colunas"]:
-                            command+="%s"
-                            if coluna != retorno["dados_colunas"][-1]:
-                                command+=","
-                    command+=") VALUES ("
-                    for coluna in retorno["dados_valores"]:
-                        if type(coluna)==type("") or type(coluna)==type([]):
-                            command+="\'%s\'"
-                        else:
-                            command+="%s"
-                        if coluna != retorno["dados_valores"][-1]:
-                            command+=","
-                    command+=")"
-                elif retorno["operacao"] == 5:#edicao
-                    command+=" SET "
-                    for coluna in retorno["dados_colunas"]:
-                        if type(data["dados"][coluna])==type(""):
-                            command+="%s = \'%s\'"
-                        else:
-                            command+="%s = %s"
-                        if coluna != retorno["dados_colunas"][-1]:
-                            command+=" , "
-                    command+=" WHERE "
-                    for coluna in retorno["adicionais_colunas"]:
-                        if type(data["adicionais"][coluna])==type("") or type(data["adicionais"][coluna])==type([]):
-                            command+="%s = \'%s\'"
-                        else:
-                            command+="%s = %s"
-                        if coluna != retorno["adicionais_colunas"][-1]:
-                            command+=" AND "
-                if retorno["operacao"] in [3,4,6]:# busca #busca filtrada #remocao
-                    command+=" WHERE "
-                    for coluna in retorno["dados_colunas"]:
-                        if type(data["dados"][coluna])==type("") or type(data["dados"][coluna])==type([]):
-                            command+="%s = \'%s\'"
-                        else:
-                            command+="%s = %s"
-                        if coluna != retorno["dados_colunas"][-1]:
-                            command+=" AND "
-                command+="; "
-                tmp[0]=command
-                tmp[1]=[]
-                if retorno["operacao"] in [1]:
-                    for i in retorno["dados_colunas"]:
-                        tmp[1].append(i)
-                    for i in retorno["dados_valores"]:
-                        if type(i)==type([]):
-                            tmp[1].append(str(i).replace("[","").replace("]","").replace("'",""))
-                        else:
-                            tmp[1].append(i)
-                elif retorno["operacao"] == 5:
-                    for i in range(0, len(retorno["dados_colunas"])):
-                        tmp[1].append(retorno["dados_colunas"][i])
-                        if type(retorno["dados_valores"][i])==type([]):
-                            vetor_processado=""
-                            for i in retorno["dados_valores"][i]:
-                                vetor_processado+=str(i)
-                            tmp[1].append(vetor_processado)
-                        else:
-                            tmp[1].append(retorno["dados_valores"][i])
-                if retorno["operacao"] in [1,5]:#separar o 1 e 5 ,funcionam obrigatoriamente difwerente
-                    for i in range(0, len(retorno["adicionais_colunas"])):
-                        tmp[1].append(retorno["adicionais_colunas"][i])
-                        if type(retorno["adicionais_valores"][i])==type([]):
-                            tmp[1].append(str(retorno["adicionais_valores"][i]).replace("[","").replace("]",""))
-                        else:
-                            tmp[1].append(retorno["adicionais_valores"][i])
-                elif retorno["operacao"] in [3,4,6]:#separar o 1 e 5 ,funcionam obrigatoriamente difwerente
-                    for i in range(0, len(retorno["adicionais_colunas"])):
-                        tmp[1].append(retorno["adicionais_colunas"][i])
-                    for i in range(len(retorno["dados_colunas"])):
-                        tmp[1].append(retorno["dados_colunas"][i])
-                        if type(retorno["dados_valores"][i])==type([]):
-                            vetor_processado=""
-                            for j in retorno["dados_valores"][i]:
-                                vetor_processado+=str(j)
-                            tmp[1].append(vetor_processado)
-                        else:
-                            tmp[1].append(retorno["dados_valores"][i])
-                retorno=tmp
-                if sql:
-                    newtmp=str(tmp[0]).replace('%s',"{}")
-                    retorno = newtmp.format(*tmp[1])
-                else:
-                    retorno[0]=retorno[0].replace("\'","")
-        except self.ValorInvalido as e :
-            self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-        finally:
-            return retorno
-
-    def generate_lib_insertion_from_sqlite_id(self,id:int,sql:bool=False)->str:
-        """retorna um comando sql a partir de um id de operação do sqlite
-
-        Args:
-            id (int): id de operação do sqlite
-
-        Raises:
-            self.ValorInvalido: se o valor de id inserido for maior que o total de operações cadastradas no sqlite
-
-        Returns:
-            str: comando sql gerado a partir do elemento cadastrado no sqlite
-        """        
-        max_id=self.processamento_sqlite.total_operacoes()
-        try:
-            if id>max_id:
-                raise self.ValorInvalido(valor_inserido=id,campo="id",valor_possivel="não pode ser maior que "+max_id)
-            return self.generate_lib_insertion_from_data(data=self.processamento_sqlite.get_operacao_by_id(id),lib=True,sql=sql)
-
-        except self.ValorInvalido as e:
-            self.logging.exception(e)
-            return None
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-            return None
-
-    def gernerate_lib_insertion_from_sqlite_range(self,amount:int,sql:bool=False)->list:
-        """gera um raio de elementos,a partir do primeiro até o informado,de comandos sql a partir do sqlite
-
-        Args:
-            amount (int): total de elementos que serão gerados a partir do sqlite
-
-        Returns:
-            list: comandos sql gerados a partir do sqlite
-        """
-        retorno=[]
-        for i in range(1,amount+1):
-            elemento=self.generate_lib_insertion_from_sqlite_id(i,sql=sql)
-            if elemento == None:
-                break
-            else:
-                retorno.append(elemento)
-
-        return retorno
 
 #geradores sqlite
 
@@ -1317,7 +855,7 @@ class GeradorDeSql:
         except sqliteError as e:
             print("erro desconhecido no sqlite")
             self.logging.exception(e)
-        except self.ValorInvalido as e :
+        except ValorInvalido as e :
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
@@ -1350,7 +888,7 @@ class GeradorDeSql:
             else:
                 for i in tipos:
                     if i>6 or i<=0:
-                        raise self.ValorInvalido(valor_inserido=tipos,campo="tipos",valor_possivel="não ser nem maior que 6 nem menor que 1")
+                        raise ValorInvalido(valor_inserido=tipos,campo="tipos",valor_possivel="não ser nem maior que 6 nem menor que 1")
                 dados_separados=[[] for x in tipos]
             for i in dados_retornados:
                 dados_separados[i["tipoOperacao"]].append(i)
@@ -1359,7 +897,7 @@ class GeradorDeSql:
                 #pprint(dados_separados[i])
                 arquivo=str(file_path+default_name_pre+"_"+str(i)+"."+default_file_type)
                 self.generate_dbbench_file_from_datas(datas=dados_separados[i],file_path=arquivo)
-        except self.ValorInvalido:
+        except ValorInvalido:
             self.logging.exception(e)
         except:
             self.logging.error("Unexpected error:", sys.exc_info()[0])
@@ -1436,17 +974,17 @@ class GeradorDeSql:
                 elif _tipo_execucao == 6 and ultimo_id != 0:#delecao
                     self.gerar_dado_delecao(table=table,pattern=self.json_loaded[table],dado_existente=dado_existente,select_country=select_country,not_define_id=random_bool())
                 elif ultimo_id == 0:
-                    raise self.ValorInvalido(campo="quantidade de valores cadastrados",valor_inserido=tipo,valor_possivel="maior que 0")
+                    raise ValorInvalido(campo="quantidade de valores cadastrados",valor_inserido=tipo,valor_possivel="maior que 0")
                 else:
-                    raise self.ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
-        except self.TamanhoArrayErrado as e :
+                    raise ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
+        except TamanhoArrayErrado  as e :
             self.logging.exception(e)
-        except self.ValorInvalido as e:
+        except ValorInvalido as e:
             self.logging.exception(e)
             if e.campo =="quantidade de valores cadastrados" and tipo == 0:
                 self.ciclo_geracao_dados_json(tipo=1,select_country=select_country,table=table,dado_existente=dado_existente)
                 self.ciclo_geracao_dados_json(tipo=tipo_execucao,select_country=select_country,table=table,dado_existente=dado_existente)
-        except self.TipoDeDadoIncompativel as e:
+        except TipoDeDadoIncompativel as e:
             self.logging.exception(e)
 
     def gerar_todos_dados_por_json(self,tipo:list=[],select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
@@ -1480,210 +1018,3 @@ class GeradorDeSql:
                 table = choice(list(self.json_loaded.keys()))
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
 
-class InteracaoSqlite(ProcessamentoSqlite):
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
-        """
-        classe para gerenciar arquivos csv
-        :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
-        :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
-        """
-        
-        super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite",logstash_data=logstash_data)
-        #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
-        
-    def buscar_ultimo_id_cadastrado(self,table:str)->int:
-        """musca o ultimo id cadastrado de uma tabela expecifica
-
-        Args:
-            table (str): [nome da tabela que sera pesquisada]
-
-        Returns:
-            int:ultimo id cadastrado da tabela informada
-        """        
-        self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
-        query={"nomeBD":table}
-        filtro=["numeroDDadosCadastrados"]
-        self.certify_if_contador_exists(table)
-        retorno=self.read_data_sqlite(table="contadores",query=query,filtro=filtro)
-        self.logging.debug("ultimo id cadastrado",extra={"retorno":retorno[0][0]})
-        return int(retorno[0][0])
-
-    def random_id_cadastrado(self,table:str) -> int:
-        """um id aleatorio dentre os cadastrados numa tabela definida
-
-        Args:
-            table (str): nome da tabela que sera usada
-
-        Returns:
-            int: um id aleatorio de um bd
-        """        
-        self.logging.info("random_id_cadastrado",extra=locals())
-        tmp=self.buscar_ultimo_id_cadastrado(table=table)
-        tmp2=randint(1,tmp)
-        self.logging.debug("",extra={"ultimo id":str(tmp),"valor escolhido":str(tmp2)})
-        return tmp2
-
-    def add_contador_sqlite(self,table:str):
-        """aumenta em um o total de elementos cadastrados em uma tabela expecifica
-
-        Args:
-            table (str): nome da tabela
-        """        
-        self.logging.info("add_contador_sqlite",extra=locals())
-        try:
-            cursor = self.conn.cursor()
-            self.certify_if_contador_exists(table)
-            cursor.execute("UPDATE contadores SET numeroDDadosCadastrados = numeroDDadosCadastrados+1 WHERE nomeBD='"+table+"';")
-            self.conn.commit()
-            self.logging.debug("adicionado contador")
-        except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
-            self.logging.exception(e)
-            quit()
-        except sqliteError as e:
-            print("erro desconhecido no sqlite")
-            self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-
-    def total_operacoes(self)->int:
-        """total de elementos cadastrados na tabela de operações
-
-        Returns:
-            int: total de elementos cadastrados na tabela de operações
-        """        
-        self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
-        read_command="SELECT id FROM operacoes ORDER BY id DESC LIMIT 1;"
-        cursor = self.conn.cursor()
-        self.logging.info(read_command)
-        cursor.execute(read_command)
-        self.conn.commit()
-        saida=cursor.fetchall()
-        
-        if saida == []:
-            self.logging.debug("total de operacoes",extra={"total":saida})
-            return 0
-        else:
-            self.logging.debug("total de operacoes",extra={"total":saida[0][0]})
-            return int(saida[0][0])
-        
-    def certify_if_contador_exists(self,table:str):
-        """verifica e corrige se um contador não existir na tabela de contadores
-
-        Args:
-            table (str): nome da tabela que será verificada se existe o contador
-        """        
-        self.logging.info("certify_if_contador_exists",extra=locals())
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM contadores WHERE nomeBD is '"+table+"';")
-        listagem=cursor.fetchall() 
-        if listagem == []:
-            cursor.execute("INSERT INTO contadores(nomeBD,numeroDDadosCadastrados) VALUES ('"+table+"',0);")
-
-    def read_contadores(self,filtro:dict={},query:Union[str,dict]="*")->list:
-        """consulta e le um elemento ou varios da tabela de contadores
-
-        Args:
-            filtro (dict, optional): elementos que serão retornados dos elementos . Defaults to {}.
-            query (str, optional): elementos de pesquisa que serão usados . Defaults to "*".
-
-        Returns:
-            list: lista de todos elementos que foram reconhecidos pela query
-        """        
-        self.logging.info("read_contadores",extra=locals())
-        return self.read_data_sqlite("contadores",filtro=filtro,query=query)
-
-    def read_operacoes(self,filtro:Union[str,dict]="*",query:Union[str,dict]="*")->list:
-        """consulta e le um elemento ou varios da tabela de operações
-
-        Args:
-            filtro (dict, optional): elementos que serão retornados dos elementos . Defaults to {}.
-            query (str, optional): elementos de pesquisa que serão usados . Defaults to "*".
-
-        Returns:
-            list: lista de todos elementos que foram reconhecidos pela query
-        """        
-        self.logging.info("read_operacoes",extra=locals())
-        tmp=self.read_data_sqlite("operacoes",filtro=filtro,query=query)
-        self.logging.debug(tmp)
-        retorno=[]
-        for i in tmp:
-            tmp2=self.process_data_generated(data=i,with_id=True)
-            tmp2.pop("id")
-            retorno.append(tmp2)
-        return retorno
-
-    def get_operacao_by_id(self,id:int)->dict:
-        """pesquisa um elemento na tabela de operações pelo id
-
-        Args:
-            id (int): id que será pesquisado
-
-        Returns:
-            dict: elemento retornado
-        """        
-        retornos=self.read_operacoes(query={"id":id})
-        for i in retornos:
-            return i
-
-    def process_data_generated(self,data:list,tipo_adicional:str="dict",with_id:bool=False) -> dict:
-        """processa o dado lido do sqlite para um formato de dict usavel 
-
-        Args:
-            text (str): texto gerado pelo comando de leitura do sqlite
-
-        Returns:
-            dict: dict usavel e processado do que foi lido do sqlite
-        """        
-        self.logging.info("process_data_generated",extra=locals())
-        etapa1_operacoes=data
-        self.logging.debug(etapa1_operacoes)
-        output={}
-        if with_id:
-            output["id"]=etapa1_operacoes[0]
-            output["tipoOperacao"]=etapa1_operacoes[1]
-            output["nomeBD"]=etapa1_operacoes[2]
-            output["idNoBD"]=etapa1_operacoes[3]
-            output["adicionais"]=etapa1_operacoes[4]
-            output["dados"]=etapa1_operacoes[5]
-        else:
-            output["tipoOperacao"]=etapa1_operacoes[0]
-            output["nomeBD"]=etapa1_operacoes[1]
-            output["idNoBD"]=etapa1_operacoes[2]
-            output["adicionais"]=etapa1_operacoes[3]
-            output["dados"]=etapa1_operacoes[4]
-        self.logging.debug(output)
-        if tipo_adicional=="dict":
-            adicionais=self.string_to_dict(output["adicionais"])
-        elif tipo_adicional=="dict_array":
-            pattern_adicionais=r"\[\{(.*)\}\]"
-            adicionais=[]
-            for dado in re.findall(pattern_adicionais, output["adicionais"])[0].split("},{"):
-                adicionais.append(self.string_to_dict(dado,patter_externo=r"(.*)"))
-        elif tipo_adicional == "array":
-            adicionais=self.string_to_dict(output["adicionais"],is_dict=False)
-        self.logging.debug(adicionais)
-        output["adicionais"]=adicionais
-        output["dados"]=self.string_to_dict(output["dados"])
-        return output
-    
-    def string_to_dict(self,text:str) -> dict:
-        """converte string legivel em dict usavel a partir de um string
-
-        Args:
-            text (str): texto de entrada
-            patter_externo (regexp, optional): expressão regular usado para processar os dados inseridos,para separar a parte mais externa do string. Defaults to r"\{(.*)}".
-            pattern_interno (regexp, optional): expressão regular usado para processar os dados inseridos,para processar a parte mais interna do string. Defaults to r"([^:]*)\:(.*)".
-            external_header_list (list, optional): header do dict final. Defaults to [].
-            is_dict (boolean): defini se o retorno é um dictionary ou um array
-        Returns:
-            (dict,list): dictionary ou array com o conteudo usavel do retorno de uma consulta no sqlite
-        """
-        self.logging.info("string_to_dict",extra=locals())
-        if text == None:
-            return {}
-        text=text.replace("'",'"')
-        text=text.replace("None","null")
-        text=text.replace("True","true")
-        text=text.replace("False","false")
-        return json.loads(text)
