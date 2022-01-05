@@ -1,5 +1,9 @@
 from processamentosqlite import ProcessamentoSqlite 
 from typing import Union
+import json
+from random import randint, random,uniform,choice,sample
+from sqlite3 import Error as sqliteError
+from sqlite3 import OperationalError as sqliteOperationalError
 
 class InteracaoSqlite(ProcessamentoSqlite):
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
@@ -58,11 +62,11 @@ class InteracaoSqlite(ProcessamentoSqlite):
             self.conn.commit()
             self.logging.debug("adicionado contador")
         except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
+           #print("erro operacional no sqlite")
             self.logging.exception(e)
             quit()
         except sqliteError as e:
-            print("erro desconhecido no sqlite")
+            #print("erro desconhecido no sqlite")
             self.logging.exception(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])

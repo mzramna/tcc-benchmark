@@ -4,12 +4,11 @@ from loggingSystem import loggingSystem
 from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
 from random import randint, random,uniform,choice,sample
-from sqlite3 import Error as sqliteError
-from sqlite3 import OperationalError as sqliteOperationalError
 import sys,re,sqlite3,json,logging,csv
 from typing import Union
 from tratamentoErro import *
 from interacaoSqlite import InteracaoSqlite
+
 class GeradorDeSql:
 #inicialização
     def __init__(self,sqlite_db:str="./initial_db.db",sql_file_pattern:str="./sqlitePattern.sql",json_file:str="./scripts/padroes.json", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
@@ -20,12 +19,11 @@ class GeradorDeSql:
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
 
-        self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,format=logging_pattern,logstash_data=logstash_data)
+        self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
         
-        file=open(json_file)
-        self.json_loaded=json.loads(file.read())
+        self.json_loaded=json.loads(open(json_file).read())
         self.logging.debug(self.json_loaded)
         logging.getLogger('faker').setLevel(logging.ERROR)
         #self.logging = self.logging.logger.getLogger("gerador sql")

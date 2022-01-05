@@ -1,29 +1,39 @@
-import psycopg2, mysql.connector, sys,traceback
+import psycopg2, mysql.connector, sys,traceback,json
 from loggingSystem import loggingSystem
 from os import DirEntry
 from tratamentoErro import *
 from interacaoSqlite import InteracaoSqlite
 class GerenciadorDeBD:
     
-    def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:bool=True,sql_file_pattern:str="./sqlPattern.sql", log_file="./geradorSQL.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={}):
-        if tipo:#true=mariadb,false=postgres
-            self.mydb = mysql.connector.connect(
-                    host=host,
-                    user=user,
-                    password=password,
-                    database=database,
-                    port=port
-                    )
-        else:
-            self.mydb = psycopg2.connect(
-                    host=host,
-                    user=user,
-                    password=password,
-                    database=database,
-                    port=port
-                    )
-        self.cursor=self.mydb.cursor()
-        self.logging = loggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
+    def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql", log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
+        try:
+            if tipo==0:#0=mariadb,1=postgres
+                self.mydb = mysql.connector.connect(
+                        host=host,
+                        user=user,
+                        password=password,
+                        database=database,
+                        port=port
+                        )
+                self.type="mysql"
+            elif tipo==1:
+                self.mydb = psycopg2.connect(
+                        host=host,
+                        user=user,
+                        password=password,
+                        database=database,
+                        port=port
+                        )
+                self.type="postgres"
+            else:
+                raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
+            self.cursor=self.mydb.cursor()
+            
+            self.json_loaded=json.loads(open(json_path,"r").read())
+            self.logging = loggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
+            self.sql_file_pattern=sql_file_pattern
+        except ValorInvalido:
+            traceback.print_exc()
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict):
@@ -284,12 +294,12 @@ class GerenciadorDeBD:
 
         Returns:
             str: comando sql gerado a partir do elemento cadastrado no sqlite
-        """        
-        max_id=self.processamento_sqlite.total_operacoes()
+        """    
+        processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,log_file=self.logging.log_file,logging_pattern=self.logging.logging_pattern,level=self.logging.level,logstash_data=self.logging.logstash_data)    
+        max_id=processamento_sqlite.total_operacoes()
         try:
             if id>max_id:
                 raise ValorInvalido(valor_inserido=id,campo="id",valor_possivel="não pode ser maior que "+max_id)
-            processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,log_file=self.logging.log_file,logging_pattern=self.logging.formato,level=self.logging.level,logstash_data=self.logging.logstash_data)
             return self.generate_lib_insertion_from_data(data=processamento_sqlite.get_operacao_by_id(id),lib=True,sql=sql)
         except ValorInvalido as e:
             self.logging.exception(e)
@@ -316,3 +326,80 @@ class GerenciadorDeBD:
                 retorno.append(elemento)
 
         return retorno
+
+#operações
+
+    def execute_sql_file(self,file:DirEntry):
+        if self.type == "mysql":
+            fd = open(file, 'r')
+            sqlFile = fd.read()
+            fd.close()
+            sqlCommands = sqlFile.split(';')
+
+            for command in sqlCommands:
+                try:
+                    if command.strip() != '':
+                        self.cursor.execute(command)
+                except IOError as msg:
+                    self.logging.error("Command skipped: ", msg)
+        elif self.type == "postgres":
+            self.cursor.execute(open("containers_build/postgres default exemple.sql","r").read())
+        self.mydb.commit()
+    
+    def reset_database(self):
+        self.execute_sql_file(self.sql_file_pattern)
+
+    def execute_operation_array_no_return(self,operations:list):
+        for i in operations:
+            self.logging.debug(i)
+            if self.type=="mysql":
+                try:
+                    self.cursor.execute(i)
+                    try:
+                        self.mydb.commit()
+                    except:
+                        try:
+                            self.cursor.fetchall()
+                        except:
+                            pass
+                except mysql.connector.Error as e:
+                    self.logging.exception(e)
+            elif self.type=="postgres":
+                try:
+                    self.cursor.execute(i)
+                    try:
+                        self.mydb.commit()
+                    except:
+                        try:
+                            self.cursor.fetchall()
+                        except:
+                            pass
+                except psycopg2.errors.ForeignKeyViolation as e:
+                    self.logging.exception(e)
+                except psycopg2.OperationalError as e:
+                    #self.cursor.execute("ROLLBACK")
+                    #self.mydb.commit()
+                    self.logging.exception(e)
+                except psycopg2.errors.InFailedSqlTransaction as e :
+                    self.mydb.rollback()
+                    self.logging.exception(e)
+                #except:
+                 #   self.logging.error("Unexpected error:", sys.exc_info()[0])
+
+            
+
+    def execute_operation_array_return(self,operations:list)->list:
+        retorno=[]
+        for i in operations:
+            self.logging.debug(i)
+            self.cursor.execute(i)
+            try:
+                retorno.append(self.cursor.fetchall())
+            except:
+                retorno.append([])
+
+    def execute_operation_from_sqlite_no_return(self,amount:int,sqlite_file:DirEntry):
+        self.execute_operation_array_no_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True))
+
+    def execute_operation_from_sqlite_return(self,amount:int,sqlite_file:DirEntry):
+        return self.execute_operation_array_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True))

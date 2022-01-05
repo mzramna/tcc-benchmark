@@ -1,17 +1,17 @@
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 from loggingSystem import loggingSystem
-import sqlite3,sys
+import sqlite3,sys,json,os
 from typing import Union
 
 class ProcessamentoSqlite:
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="./sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={}):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={}):
         """
         classe para gerenciar arquivos sqlite
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(name=log_name, arquivo=log_file,level=level,format=logging_pattern,logstash_data=logstash_data)
+        self.logging = loggingSystem(name=log_name, arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.conn = sqlite3.connect(sqlite_db)
     
@@ -23,19 +23,22 @@ class ProcessamentoSqlite:
             pattern (path): local onde o arquivo sql está salvo
         """
         try:
-            f = open(local, "a")
-            f.write("")
-            f.close()
-            conn = sqlite3.connect(local)
-            self.execute_sqlfile_sqlite(pattern,conn)
-            conn.close()
-            self.logging.info("bd gerado com sucesso")
+            if not os.path.isfile(local):
+                f = open(local, "a")
+                f.write("")
+                f.close()
+                conn = sqlite3.connect(local)
+                self.execute_sqlfile_sqlite(pattern,conn)
+                conn.close()
+                self.logging.info("bd gerado com sucesso")
+            else:
+                self.logging.info("bd já existe")
         except sqliteOperationalError as e:
             print("erro operacional no sqlite")
             self.logging.error(e)
             quit()
         except sqliteError as e:
-            print("erro desconhecido no sqlite")
+            #print("erro desconhecido no sqlite")
             self.logging.error(e)
         except :
             self.logging.error("Unexpected error:", str(sys.exc_info()[0]))
@@ -78,7 +81,7 @@ class ProcessamentoSqlite:
             self.logging.error(e)
             quit()
         except sqliteError as e:
-            print("erro desconhecido no sqlite")
+            #print("erro desconhecido no sqlite")
             self.logging.error(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
@@ -122,7 +125,7 @@ class ProcessamentoSqlite:
             self.logging.error(e)
             quit()
         except sqliteError as e:
-            print("erro desconhecido no sqlite")
+            #print("erro desconhecido no sqlite")
             self.logging.error(e)
         except :
             self.logging.error("Unexpected error:", sys.exc_info()[0])
