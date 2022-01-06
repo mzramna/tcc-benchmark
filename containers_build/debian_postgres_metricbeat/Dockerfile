@@ -1,15 +1,16 @@
 FROM alpine:latest
 
-ENV PGDATA /var/lib/postgresql/data
-
 #RUN echo "@edge http://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
 #    apk update && \
-RUN apk add su-exec wget tzdata libpq postgresql-client postgresql postgresql-contrib && \
+RUN apt update && apt install sudo wget tzdata libpq postgresql-client postgresql postgresql-contrib -y && \
+    wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add - && \
+    apt install apt-transport-https -y && \
+    echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list && \
+    apt update && sudo apt-get install metricbeat && \
     mkdir /docker-entrypoint-initdb.d && \
-    rm -rf /var/cache/apk/*
+    apt clean
 
 VOLUME /var/lib/postgresql/data
-
 VOLUME /var/log/postgresql
 
 ENV PGDATA /var/lib/postgresql/data
