@@ -22,7 +22,7 @@ class GeradorDeSql:
         self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
-        
+        self.stack_overflow_max=10
         self.json_loaded=json.loads(open(json_file).read())
         self.logging.debug(self.json_loaded)
         logging.getLogger('faker').setLevel(logging.ERROR)
@@ -270,7 +270,7 @@ class GeradorDeSql:
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
             elif e.campo=="associacao":
                 chamadas=loggingSystem.full_inspect_caller()
-                if chamadas.count(chamadas[0])>5:
+                if chamadas.count(chamadas[0])>self.stack_overflow_max:
                     return None
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country)
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
@@ -515,7 +515,7 @@ class GeradorDeSql:
         except ValorInvalido as e:
             self.logging.exception(e)
             chamadas=loggingSystem.full_inspect_caller()
-            if chamadas.count(chamadas[0])>5:
+            if chamadas.count(chamadas[0])>self.stack_overflow_max:
                 return None
             filtro_pesquisa=self.gerador_filtro(pattern,completo=True)[0]
             dados_gerados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro_pesquisa,values_pesquisa=values_pesquisa,not_define_id=not_define_id)
@@ -590,7 +590,7 @@ class GeradorDeSql:
         except TamanhoArrayErrado  as e:
             self.logging.exception(e)
             chamadas=loggingSystem.full_inspect_caller()
-            if chamadas.count(chamadas[0])>5:
+            if chamadas.count(chamadas[0])>self.stack_overflow_max:
                 return None
             elif e.campo== "pesquisa":
                 filtro_pesquisa=self.gerador_filtro(pattern,completo=True,retorno_pre=filtro_update)[0]
@@ -642,7 +642,7 @@ class GeradorDeSql:
         except ValorInvalido as e:
             self.logging.exception(e)
             chamadas=loggingSystem.full_inspect_caller()
-            if chamadas.count(chamadas[0])>5:
+            if chamadas.count(chamadas[0])>self.stack_overflow_max:
                 return None
             filtro=self.gerador_filtro(pattern,completo=True)[0]
             dados_gerados=self.create_delete(table=table,pattern=pattern,select_country=select_country,id=id,filtro=filtro,values=values,not_define_id=not_define_id)
