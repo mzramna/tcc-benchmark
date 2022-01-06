@@ -33,17 +33,10 @@
             "console": "internalConsole"
         },
         {
-            "name": "Python: teste inserção mariadb",
+            "name": "Python: teste inserção bd",
             "type": "python",
             "request": "launch",
-            "program": "scripts/teste_script_mariadb.py",
-            "console": "internalConsole"
-        },
-        {
-            "name": "Python: teste inserção postgre",
-            "type": "python",
-            "request": "launch",
-            "program": "scripts/teste_script_postgre.py",
+            "program": "scripts/teste_script_bd_completo.py",
             "console": "internalConsole"
         },
     ]

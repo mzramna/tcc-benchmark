@@ -9,3 +9,8 @@ gerenciador=GerenciadorDeBD(host="192.168.0.100", user="mzramna", password="safe
 #reset
 gerenciador.reset_database()
 gerenciador.execute_operation_from_sqlite_no_return(2000, "scripts/initial_db.db")
+
+gerenciador=GerenciadorDeBD(host="192.168.0.100", user="mzramna", password="safePassword", database="sakila", port=5432,tipo=1,sql_file_pattern="containers_build/postgres default exemple.sql",logstash_data=logstash_data)
+#reset
+gerenciador.reset_database()
+gerenciador.execute_operation_from_sqlite_no_return(2000, "scripts/initial_db.db")

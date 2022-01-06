@@ -341,11 +341,7 @@ class GerenciadorDeBD:
                     if command.strip() != '':
                         self.cursor.execute(command)
                 except IOError as msg:
-<<<<<<< HEAD
                     self.logging.error("Command skipped: ", msg)
-=======
-                    print ("Command skipped: ", msg)
->>>>>>> c7a5d4e0a971809aa4523765b2751122444f6434
         elif self.type == "postgres":
             self.cursor.execute(open("containers_build/postgres default exemple.sql","r").read())
         self.mydb.commit()
