@@ -2,7 +2,7 @@ version: "3"
 
 services:
     postgres:
-        build: ./alpine_postgres
+        build: ./debian_postgres_metricbeat
         environment:
             POSTGRES_DB: sakila
             POSTGRES_USER: mzramna
@@ -19,7 +19,7 @@ services:
 #               cpus: 2
 #               memory: 1G
     mariadb:
-        build: ./alpine_mariadb
+        build: ./debian_mariadb_metricbeat
         environment:
             MYSQL_ROOT_PASSWORD: SafestRootPassword
             MYSQL_DATABASE: sakila
