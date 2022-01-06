@@ -12,7 +12,7 @@ services:
         volumes:
             - $config_folder/postgres/data:/var/lib/postgresql/data
             - $config_folder/postgres/logs:/var/log/postgresql
-            - ./postgres\ default\ exemple.sql:/docker-entrypoint-initdb.d/postgres\ default\ exemple.sql
+            - ../postgres\ default\ exemple.sql:/docker-entrypoint-initdb.d/postgres\ default\ exemple.sql
         restart: unless-stopped
 #        resources:
 #            limits:
@@ -30,7 +30,7 @@ services:
         volumes:
             - $config_folder/mariadb/data:/var/lib/mysql
             - $config_folder/mariadb/logs:/var/log/mysql/
-            - ./mysql\ default\ exemple.sql:/docker-entrypoint-initdb.d/mysql\ default\ exemple.sql
+            - ../mysql\ default\ exemple.sql:/docker-entrypoint-initdb.d/mysql\ default\ exemple.sql
         restart: unless-stopped
 #        resources:
 #	     limits:

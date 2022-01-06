@@ -1,0 +1,40 @@
+version: "3"
+
+services:
+    postgres:
+        build: ./alpine_postgres
+        environment:
+            POSTGRES_DB: sakila
+            POSTGRES_USER: mzramna
+            POSTGRES_PASSWORD: safePassword
+        ports:
+            - "5432:5432"
+        volumes:
+            - $config_folder/postgres/data:/var/lib/postgresql/data
+            - $config_folder/postgres/logs:/var/log/postgresql
+            - ../postgres\ default\ exemple.sql:/docker-entrypoint-initdb.d/postgres\ default\ exemple.sql
+        restart: unless-stopped
+#        resources:
+#            limits:
+#               cpus: 2
+#               memory: 1G
+    mariadb:
+        build: ./alpine_mariadb
+        environment:
+            MYSQL_ROOT_PASSWORD: SafestRootPassword
+            MYSQL_DATABASE: sakila
+            MYSQL_USER: mzramna
+            MYSQL_PASSWORD: safePassword
+        ports:
+            - "3306:3306"
+        volumes:
+            - $config_folder/mariadb/data:/var/lib/mysql
+            - $config_folder/mariadb/logs:/var/log/mysql/
+            - ../mysql\ default\ exemple.sql:/docker-entrypoint-initdb.d/mysql\ default\ exemple.sql
+        restart: unless-stopped
+#        resources:
+#	     limits:
+#               cpus: 2
+#               memory: 1G
+networks:
+    benchmarks_db:  
