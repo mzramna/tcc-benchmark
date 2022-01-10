@@ -276,12 +276,13 @@ class GerenciadorDeBD:
                     retorno = newtmp.format(*tmp[1])
                 else:
                     retorno[0]=retorno[0].replace("\'","")
+            return retorno
         except ValorInvalido as e :
             self.logging.exception(e)
+        except TypeError as e:
+            self.logging.exception(e)
         except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
-        finally:
-            return retorno
+            self.logging.error("Unexpected error:", sys.exc_info()[0])            
 
     def generate_lib_insertion_from_sqlite_id(self,id:int,sqlite_db:DirEntry,sql:bool=False)->str:
         """retorna um comando sql a partir de um id de operação do sqlite
@@ -299,7 +300,7 @@ class GerenciadorDeBD:
         max_id=processamento_sqlite.total_operacoes()
         try:
             if id>max_id:
-                raise ValorInvalido(valor_inserido=id,campo="id",valor_possivel="não pode ser maior que "+max_id)
+                raise ValorInvalido(valor_inserido=str(id),campo="id",valor_possivel="não pode ser maior que "+str(max_id))
             return self.generate_lib_insertion_from_data(data=processamento_sqlite.get_operacao_by_id(id),lib=True,sql=sql)
         except ValorInvalido as e:
             self.logging.exception(e)
@@ -403,4 +404,4 @@ class GerenciadorDeBD:
         return self.execute_operation_array_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True))
 
     def execute_operation_from_sqlite_no_return_with_id(self,id:int,sqlite_file:DirEntry):
-        self.execute_operation_array_no_return([self.generate_lib_insertion_from_sqlite_id(id=amount,sqlite_db=sqlite_file,sql=True)])
+        self.execute_operation_array_no_return([self.generate_lib_insertion_from_sqlite_id(id=id,sqlite_db=sqlite_file,sql=True)])
