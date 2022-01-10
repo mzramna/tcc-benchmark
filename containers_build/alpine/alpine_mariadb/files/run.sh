@@ -86,7 +86,7 @@ EOF
 	echo 'MySQL init process done. Ready for start up.'
 	echo
 
-	echo "exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0" "$@"
+	echo "exec /usr/bin/mysqld --user=mysql --general-log=1 --general-log-file=/var/log/mysql/general-log.log --console --skip-name-resolve --skip-networking=0" "$@"
 fi
 
 # execute any pre-exec scripts
@@ -98,4 +98,4 @@ do
 	fi
 done
 
-exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 $@
+exec /usr/bin/mysqld --user=mysql --general-log=1 --console --skip-name-resolve --skip-networking=0 $@
