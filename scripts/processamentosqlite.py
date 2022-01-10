@@ -79,7 +79,7 @@ class ProcessamentoSqlite:
         except sqliteOperationalError as e:
             print("erro operacional no sqlite")
             self.logging.error(e)
-            quit()
+            self.insert_data_sqlite(data=data,table=table)
         except sqliteError as e:
             #print("erro desconhecido no sqlite")
             self.logging.error(e)
@@ -123,7 +123,7 @@ class ProcessamentoSqlite:
         except sqliteOperationalError as e:
             print("erro operacional no sqlite")
             self.logging.error(e)
-            quit()
+            return self.read_data_sqlite(table,filtro,query)
         except sqliteError as e:
             #print("erro desconhecido no sqlite")
             self.logging.error(e)
@@ -132,17 +132,27 @@ class ProcessamentoSqlite:
 
     def execute_sqlfile_sqlite(self,pattern:dict,conn=None):
         self.logging.info("executar arquivo sql em sqlite")
-        if conn != None:
-            cursor = conn.cursor()
-        else:
-            cursor=self.conn.cursor()
-        sqlfile=open(pattern).read().split(";\n")
-        for sqlstatement in sqlfile:
-            if sqlstatement[-1] != ";":
-                sqlstatement+=";"
-            self.logging.debug(sqlstatement)
-            cursor.execute(sqlstatement)
-            conn.commit()
+        try:
+            if conn != None:
+                cursor = conn.cursor()
+            else:
+                cursor=self.conn.cursor()
+            sqlfile=open(pattern).read().split(";\n")
+            for sqlstatement in sqlfile:
+                if sqlstatement[-1] != ";":
+                    sqlstatement+=";"
+                self.logging.debug(sqlstatement)
+                cursor.execute(sqlstatement)
+                conn.commit()
+        except sqliteOperationalError as e:
+            print("erro operacional no sqlite")
+            self.logging.error(e)
+            return self.execute_sqlfile_sqlite(pattern,conn)
+        except sqliteError as e:
+            #print("erro desconhecido no sqlite")
+            self.logging.error(e)
+        except :
+            self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def dict_all_string(self,entrada:dict)-> dict:
         retorno={}
