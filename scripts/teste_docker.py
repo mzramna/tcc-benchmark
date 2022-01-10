@@ -1,10 +1,6 @@
 import docker
 from datetime import datetime
-# ssh = paramiko.SSHClient()
-# ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-# ssh.connect("192.168.0.100",22, "root", "lzxb398211")
-#client = docker.DockerClient(base_url="192.168.0.246:2375",version="auto")#usando docker sock
-#client = docker.DockerClient(base_url="ssh://192.168.0.100:22",version="auto",use_ssh_client=True,user_agent="root")#usando ssh
+client = docker.DockerClient(base_url="192.168.0.100:2375",version="auto")#usando docker sock
 show_log=False
 for i in client.containers.list():
     print(i.name)
