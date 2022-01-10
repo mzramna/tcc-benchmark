@@ -1,6 +1,7 @@
+from time import sleep,perf_counter
 from queue import Queue
 from threading import Thread
-from time import sleep,perf_counter
+
 
 class Worker(Thread):
     def __init__(self, q,  *args, **kwargs):
@@ -34,7 +35,7 @@ class Worker(Thread):
                 work = self.q.get()  # 3s timeout
                 if self.retroativo!="":
                     work[self.retroativo]=self.retorno[self.index_retorno]
-                result=self.function(args=work)
+                result=self.function(**work)
                 if self.function_array:
                     self.retorno[self.index_retorno].append(result)
                 else:
@@ -108,10 +109,9 @@ class Timer:
             print(f"Elapsed time: {elapsed_time:0.4f} seconds")
         return float(f"{elapsed_time:0.6f}")
 
-def soma(**args):
-    args=args["args"]
-    c=args["a"]+args["b"]
-    print(args["a"],args["b"],c)
+def soma(a,b):
+    c=a+b
+    print(a,b,c)
     return c
 
 array=[]
@@ -152,7 +152,7 @@ print(resultados)
 timer.inicio()
 resultado_correto=0
 for i in range(total_elementos):
-    resultado_correto+=soma(args={"a":i,"b":0})
+    resultado_correto+=soma(a=i,b=0)
 tempos["sequencial"]=timer.fim()
 print(tempos)
 print("resultado encontrado",sum(resultados))

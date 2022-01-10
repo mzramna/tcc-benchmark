@@ -386,8 +386,6 @@ class GerenciadorDeBD:
                 #except:
                  #   self.logging.error("Unexpected error:", sys.exc_info()[0])
 
-            
-
     def execute_operation_array_return(self,operations:list)->list:
         retorno=[]
         for i in operations:
@@ -403,3 +401,6 @@ class GerenciadorDeBD:
 
     def execute_operation_from_sqlite_return(self,amount:int,sqlite_file:DirEntry):
         return self.execute_operation_array_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True))
+
+    def execute_operation_from_sqlite_no_return_with_id(self,id:int,sqlite_file:DirEntry):
+        self.execute_operation_array_no_return([self.generate_lib_insertion_from_sqlite_id(id=amount,sqlite_db=sqlite_file,sql=True)])
