@@ -7,26 +7,12 @@ class GerenciadorDeBD:
     
     def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql", log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
         try:
-            if tipo==0:#0=mariadb,1=postgres
-                self.mydb = mysql.connector.connect(
-                        host=host,
-                        user=user,
-                        password=password,
-                        database=database,
-                        port=port
-                        )
-                self.type="mysql"
-            elif tipo==1:
-                self.mydb = psycopg2.connect(
-                        host=host,
-                        user=user,
-                        password=password,
-                        database=database,
-                        port=port
-                        )
-                self.type="postgres"
-            else:
-                raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
+            self.host=host
+            self.user=user
+            self.password=password
+            self.database=database
+            self.port=port
+            self.mydb,self.tipo=self.create_connector(tipo=tipo,user=self.user,password= self.password,database=self.database)
             self.cursor=self.mydb.cursor()
             
             self.json_loaded=json.loads(open(json_path,"r").read())
@@ -331,7 +317,7 @@ class GerenciadorDeBD:
 #operações
 
     def execute_sql_file(self,file:DirEntry):
-        if self.type == "mysql":
+        if self.tipo == "mysql":
             fd = open(file, 'r')
             sqlFile = fd.read()
             fd.close()
@@ -343,36 +329,102 @@ class GerenciadorDeBD:
                         self.cursor.execute(command)
                 except IOError as msg:
                     self.logging.error("Command skipped: ", msg)
-        elif self.type == "postgres":
+        elif self.tipo == "postgres":
             self.cursor.execute(open("containers_build/postgres default exemple.sql","r").read())
         self.mydb.commit()
     
     def reset_database(self):
         self.execute_sql_file(self.sql_file_pattern)
 
-    def execute_operation_array_no_return(self,operations:list):
+    def process_connector(self,connector=None):
+        if connector ==None:
+            cursor=self.cursor
+            mydb=self.mydb
+        else:
+            mydb=connector
+            cursor=mydb.cursor()
+        return cursor,mydb
+
+    def create_connector(self,tipo:int,user:str,password:str,database:str=None):
+        try:
+            if database!=None:
+                if tipo==0 or tipo=="mysql":#0=mariadb,1=postgres
+                    mydb = mysql.connector.connect(
+                            host=self.host,
+                            user=user,
+                            password=password,
+                            database=database,
+                            port=self.port
+                            )
+                    tipo="mysql"
+                elif tipo==1 or tipo=="postgres":
+                    mydb = psycopg2.connect(
+                            host=self.host,
+                            user=user,
+                            password=password,
+                            database=database,
+                            port=self.port
+                            )
+                    tipo="postgres"
+                else:
+                    raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
+            else:
+                if tipo==0 or tipo=="mysql":#0=mariadb,1=postgres
+                    mydb = mysql.connector.connect(
+                            host=self.host,
+                            user=user,
+                            password=password,
+                            port=self.port
+                            )
+                    tipo="mysql"
+                elif tipo==1 or tipo == "postgres":
+                    mydb = psycopg2.connect(
+                            host=self.host,
+                            user=user,
+                            password=password,
+                            port=self.port
+                            )
+                    tipo="postgres"
+                else:
+                    raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
+            return mydb , tipo
+        except:
+            traceback.print_exc()
+
+    def creat_user(self,root_pass:str,user:str,password:str,database:str):
+        operation=[
+            "CREATE USER '{user}'@'%' IDENTIFIED BY '{password}';".format({"user":user,"password":password}),
+            "GRANT ALL ON '{database}'.* to '{user}'@'%' IDENTIFIED BY '{password}';" .format({"user":user,"database":database,"password":password})
+            ]
+
+        con,tipo=self.create_connector(self.tipo, user="root",password= root_pass)
+        self.execute_operation_array_no_return(operation,con)
+
+    def execute_operation_array_no_return(self,operations:list,connector=None):
+        cursor,mydb=self.process_connector(connector)
+
         for i in operations:
             self.logging.debug(i)
-            if self.type=="mysql":
+            if self.tipo=="mysql":
                 try:
-                    self.cursor.execute(i)
+                    cursor.execute(i)
                     try:
-                        self.mydb.commit()
+                        mydb.commit()
                     except:
                         try:
-                            self.cursor.fetchall()
+                            cursor.fetchall()
                         except:
                             pass
                 except mysql.connector.Error as e:
                     self.logging.exception(e)
-            elif self.type=="postgres":
+            elif self.tipo=="postgres":
                 try:
-                    self.cursor.execute(i)
+                    cursor.execute(i)
                     try:
-                        self.mydb.commit()
+                        mydb.commit()
                     except:
                         try:
-                            self.cursor.fetchall()
+                            cursor.fetchall()
                         except:
                             pass
                 except psycopg2.errors.ForeignKeyViolation as e:
@@ -382,7 +434,7 @@ class GerenciadorDeBD:
                     #self.mydb.commit()
                     self.logging.exception(e)
                 except psycopg2.errors.InFailedSqlTransaction as e :
-                    self.mydb.rollback()
+                    mydb.rollback()
                     self.logging.exception(e)
                 #except:
                  #   self.logging.error("Unexpected error:", sys.exc_info()[0])
