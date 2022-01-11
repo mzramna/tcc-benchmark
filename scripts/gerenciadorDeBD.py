@@ -309,7 +309,7 @@ class GerenciadorDeBD:
             self.logging.error("Unexpected error:", sys.exc_info()[0])
             return None
 
-    def gernerate_lib_insertion_from_sqlite_range(self,amount:int,sqlite_db:DirEntry,sql:bool=False)->list:
+    def gernerate_lib_insertion_from_sqlite_range(self,amount:int,sqlite_db:DirEntry,initial:int=1,sql:bool=False)->list:
         """gera um raio de elementos,a partir do primeiro até o informado,de comandos sql a partir do sqlite
 
         Args:
@@ -319,7 +319,7 @@ class GerenciadorDeBD:
             list: comandos sql gerados a partir do sqlite
         """
         retorno=[]
-        for i in range(1,amount+1):
+        for i in range(initial,amount+1):
             elemento=self.generate_lib_insertion_from_sqlite_id(i,sql=sql,sqlite_db=sqlite_db)
             if elemento == None:
                 break
@@ -397,11 +397,11 @@ class GerenciadorDeBD:
             except:
                 retorno.append([])
 
-    def execute_operation_from_sqlite_no_return(self,amount:int,sqlite_file:DirEntry):
-        self.execute_operation_array_no_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True))
+    def execute_operation_from_sqlite_no_return(self,amount:int,sqlite_file:DirEntry,initial:int=1):
+        self.execute_operation_array_no_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True,initial=initial))
 
-    def execute_operation_from_sqlite_return(self,amount:int,sqlite_file:DirEntry):
-        return self.execute_operation_array_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True))
+    def execute_operation_from_sqlite_return(self,amount:int,sqlite_file:DirEntry,initial:int=1):
+        return self.execute_operation_array_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True,initial=initial))
 
     def execute_operation_from_sqlite_no_return_with_id(self,id:int,sqlite_file:DirEntry):
         self.execute_operation_array_no_return([self.generate_lib_insertion_from_sqlite_id(id=id,sqlite_db=sqlite_file,sql=True)])
