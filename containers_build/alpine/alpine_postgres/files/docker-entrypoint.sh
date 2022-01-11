@@ -1,4 +1,12 @@
 #!/bin/sh
+# execute any pre-init scripts
+for i in /scripts/pre-init.d/*sh
+do
+	if [ -e "${i}" ]; then
+		echo "[i] pre-init.d - processing $i"
+		. "${i}"
+	fi
+done
 chown -R postgres "$PGDATA"
 
 if [ -z "$(ls -A "$PGDATA")" ]; then

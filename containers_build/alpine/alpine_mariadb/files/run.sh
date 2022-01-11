@@ -1,5 +1,4 @@
 #!/bin/sh
-
 # execute any pre-init scripts
 for i in /scripts/pre-init.d/*sh
 do
@@ -16,6 +15,17 @@ else
 	echo "[i] mysqld not found, creating...."
 	mkdir -p /run/mysqld
 	chown -R mysql:mysql /run/mysqld
+fi
+
+if [ -d /var/log/mysql ]; then
+	echo "[i] MySQL log directory already present, skipping creation"
+	chown -R mysql:mysql /var/lib/mysql
+	touch /var/log/mysql/general-log.log
+	chown -R mysql:mysql /var/log/mysql/general-log.log
+else
+	echo "[i] MySQL log directory not found, creating initial DBs"
+	chown -R mysql:mysql  /var/log/mysql
+	touch /var/log/mysql/general-log.log
 fi
 
 if [ -d /var/lib/mysql/mysql ]; then
@@ -49,7 +59,9 @@ GRANT ALL ON *.* TO 'root'@'%' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT O
 GRANT ALL ON *.* TO 'root'@'localhost' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
 SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}') ;
 SET GLOBAL general_log=1;
-SET GLOBAL general_log_file='mariadb.log';
+SET GLOBAL general_log_file='/var/log/mysql/general-log.log';
+SHOW VARIABLES LIKE "general_log%";
+SET GLOBAL log_output = 'FILE';
 DROP DATABASE IF EXISTS test ;
 FLUSH PRIVILEGES ;
 EOF
@@ -66,10 +78,12 @@ EOF
 
 	 if [ "$MYSQL_USER" != "" ]; then
 		echo "[i] Creating user: $MYSQL_USER with password $MYSQL_PASSWORD"
+		echo "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD';"
 		echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* to '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD';" >> $tfile
+		echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* to '$MYSQL_USER'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';" >> $tfile
 	    fi
 	fi
-
+	cat $tfile
 	/usr/bin/mysqld --user=mysql --bootstrap --verbose=0 --skip-name-resolve --skip-networking=0 < $tfile
 	rm -f $tfile
 
@@ -86,7 +100,7 @@ EOF
 	echo 'MySQL init process done. Ready for start up.'
 	echo
 
-	echo "exec /usr/bin/mysqld --user=mysql --general-log=1 --general-log-file=/var/log/mysql/general-log.log --console --skip-name-resolve --skip-networking=0" "$@"
+	echo "exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0" "$@"
 fi
 
 # execute any pre-exec scripts
@@ -98,4 +112,4 @@ do
 	fi
 done
 
-exec /usr/bin/mysqld --user=mysql --general-log=1 --console --skip-name-resolve --skip-networking=0 $@
+exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 $@
