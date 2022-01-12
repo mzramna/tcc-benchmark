@@ -1,0 +1,45 @@
+{
+    "dados_log":{
+
+    },
+    "monitor_data":{
+        "cpu_times":{
+            "columns":[],
+            "parameters":{
+
+            }
+            },
+            "cpu_percent":{
+                "parameters":{"percpu":true},
+                "columns":[]
+            },
+            "virtual_memory":{
+                "parameters":{},
+                "columns":["available","used","free"]
+            },
+            "swap_memory":{
+                "parameters":{},
+                "columns":["used","free","percent"]
+            },
+            "disk_usage":{
+                "parameters":{
+                    "path":"/"
+                    },
+                    "columns":["total","used","free","percent"]
+                },
+            "disk_io_counters":{
+                "parameters":{
+                    "perdisk":true
+                    ,"nowrap":false
+                    },
+                    "columns":["read_time","write_time","busy_time","read_bytes","write_bytes"],
+                    "array":["sda","sdb","sdc"]
+                },
+            "net_io_counters":{
+                "parameters":{
+                    "pernic":false,
+                    "nowrap":false},
+                    "columns":["bytes_sent","bytes_recv","packets_sent","packets_recv"]
+                }
+        }
+}

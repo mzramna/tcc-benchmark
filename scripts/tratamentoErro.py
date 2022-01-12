@@ -1,17 +1,19 @@
 #tratamento de erro
 class ValorInvalido(Exception):
-    """classe de exceção customizada base,feita de forma a dar mensagem de erro base para a classe,essa mensagem de erro é genérica, e é usado para avisar se alguma variavel foi preenchida de forma que o algoritimo não aceita,essa mensagem de erro é altamente customizável
-    """        
+    """classe de exceção customizada base,feita de forma a dar mensagem de erro base para a classe,
+    essa mensagem de erro é genérica, e é usado para avisar se alguma variavel foi preenchida de forma que o algoritimo não aceita,
+    essa mensagem de erro é altamente customizável
+    """
     def __init__(self, valor_inserido="",mensagem_principal_replace=False,mensage_adicional="",campo="",valor_possivel="") :
         """
-                construtor 
+                construtor
         Args:
             valor_inserido (str, optional):valor que foi passado que gerou o erro. Defaults to "".
             mensagem_principal_replace (bool, optional): se verdadeiro substitui todos os dados da mensagem de erro pelo conteudo do parametro mensagem adicional. Defaults to False.
             mensage_adicional (str, optional): mensagem adicional a ser inserida no final da mensagem de erro. Defaults to "".
             campo (str, optional): nome do campo que foi preenchido de forma errada. Defaults to "".
             valor_possivel ({str , array}, optional): valores possiveis de serem inseridos na variavel,podendo ser tipo ou valor mesmo no caso de ser algum valor dinamico. Defaults to "".
-        """            
+        """
         self.valor_inserido=valor_inserido
         self.valor_possivel=valor_possivel
         self.mensage_adicional=mensage_adicional
@@ -29,7 +31,7 @@ class ValorInvalido(Exception):
 
         Returns:
             string: mensagem parcialmente formatada da mensagem de erro
-        """            
+        """
         retorno=""
         if valores_possiveis !="":
             if  type("")==type(valores_possiveis):
@@ -66,7 +68,7 @@ class ValorInvalido(Exception):
                 elif valor not in valores_possiveis[-2:]:
                     retorno+=","
         elif type(valores_possiveis)==type(""):
-                retorno+=valores_possiveis
+            retorno+=valores_possiveis
         else:
             retorno+=str(valores_possiveis)
         return retorno
@@ -122,7 +124,7 @@ class ValorInvalido(Exception):
 
 class TamanhoArrayErrado(ValorInvalido):
     def __init__(self,valor_inserido,valor_possivel="",campo="") :
-        super(GeradorDeSql.ValorInvalido, self).__init__()
+        super(TamanhoArrayErrado, self).__init__()
         self.valor_inserido=str(valor_inserido)
         self.valor_possivel=valor_possivel
         self.campo=campo
@@ -139,14 +141,14 @@ class TamanhoArrayErrado(ValorInvalido):
             self.message+=self.valores_possiveis(self.valor_inserido)
             self.message+=" programa não pode continuar"
         
-        #super(GeradorDeSql.TamanhoArrayErrado, self).construir_mensagem(self.message)
+        #super(TamanhoArrayErrado, self).construir_mensagem(self.message)
 
     def __str__(self):
         return self.message
 
 class TipoDeDadoIncompativel(ValorInvalido):
     def __init__(self,valor_inserido,tipo_possivel="",campo="") :
-        super(GeradorDeSql.ValorInvalido, self).__init__()
+        super(TipoDeDadoIncompativel, self).__init__()
         self.valor_inserido=valor_inserido
         self.tipo_possivel=tipo_possivel
         self.mensagem_principal_replace=True

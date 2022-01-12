@@ -25,6 +25,7 @@ services:
             MYSQL_DATABASE: sakila
             MYSQL_USER: mzramna
             MYSQL_PASSWORD: safePassword
+            LOG_LOCAL: /var/log/mysql/general-log.log
         ports:
             - "3306:3306"
         volumes:

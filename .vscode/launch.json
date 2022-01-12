@@ -47,5 +47,12 @@
             "program": "scripts/teste_script_bd_completo_paralel.py",
             "console": "internalConsole"
         },
+        {
+            "name": "Python: teste monitor container",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/teste_monitor_container.py",
+            "console": "internalConsole"
+        },
     ]
 }

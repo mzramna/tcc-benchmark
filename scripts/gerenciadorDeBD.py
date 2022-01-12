@@ -457,3 +457,10 @@ class GerenciadorDeBD:
 
     def execute_operation_from_sqlite_no_return_with_id(self,id:int,sqlite_file:DirEntry):
         self.execute_operation_array_no_return([self.generate_lib_insertion_from_sqlite_id(id=id,sqlite_db=sqlite_file,sql=True)])
+
+#gerencia
+    def get_status(self):
+        if self.tipo=="mysql":
+            return self.mydb.cmd_statistics()
+        elif self.tipo == "postgre":
+            return None

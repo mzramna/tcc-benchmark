@@ -60,39 +60,3 @@ class loggingSystem:
         for i in list(inspect.stack(context=1))[1:-9]:
             retorno.append(i[3])
         return retorno
-    
-    def send_data_to_log(self,message,level="info"):
-        '''
-        CRITICAL	50
-        ERROR	40
-        WARNING	30
-        INFO	20
-        DEBUG	10
-        '''
-        if level in["debug",10]:
-            self.debug(message)
-            return True
-        elif level in ["info",20]:
-            self.info(message)
-            return True
-        elif level in ["warning",30]:
-            self.warning(message)
-            return True
-        elif level in ["error",40]:
-            self.error(message)
-            return True
-        elif level in ["critical",50]:
-            self.critical(message)
-            return True
-        elif level == "exception":
-            self.exception(message)
-            return True
-        elif level == "fatal":
-            self.fatal(message)
-            return True
-        elif level == "log":
-            self.log(message)
-            return True
-        else:
-            return False
-        
