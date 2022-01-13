@@ -5,6 +5,7 @@ from os.path import exists as exists
 from tratamentoErro import ValorInvalido
 class HardwareMonitor():
     def __init__(self,log_data:DirEntry="dados.json"):
+        ##por um name diferente para cada container no arquivo de configuração
         if exists(log_data):
             dados=json.loads(open(log_data).read())
         else:

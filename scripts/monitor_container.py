@@ -1,4 +1,4 @@
-import psutil,json
+import psutil,json,time
 from loggingSystem import loggingSystem 
 from os import name,DirEntry
 from os.path import exists as exists
@@ -67,6 +67,10 @@ class HardwareMonitor():
             else:
                 if len(monitoring_columns)<1:
                     if type(message[dado]) is type([]):
+                        # tmp={}
+                        # for i in range(len( message[dado])):
+                        #     tmp[i]=message[dado][i]
+                        # message[dado]=tmp
                         message[dado]=message[dado]
                     else:
                         message[dado]={ your_key: message[dado].__getattribute__(your_key) for your_key in message[dado]._fields }
@@ -86,10 +90,12 @@ class HardwareMonitor():
             monitoring = self.monitoring
         self.send_data_to_log(level=level,message="",extra=self.get_data(monitoring=monitoring))
 
-    def monitor(self,iterations=True,level="info",monitoring=None):
+    def monitor(self,iterations=True,delay:float=0,level="info",monitoring=None):
         if iterations is True:
             while True:
+                time.sleep(delay)
                 self.send_data_to_log(level=level,message="",extra=self.get_data(monitoring))
         else:
             for _ in range(iterations):
+                time.sleep(delay)
                 self.send_data_to_log(level=level,message="",extra=self.get_data(monitoring))

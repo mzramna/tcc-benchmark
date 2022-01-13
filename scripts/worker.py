@@ -12,7 +12,7 @@ class Worker(Thread):
             try:
                 work = self.q.get()  # 3s timeout
                 print(work)
-            except queue.Empty:
+            except Empty:
                 return
             # do whatever work you have to do on work
             self.q.task_done()
@@ -22,7 +22,7 @@ class Worker(Thread):
             try:
                 work = self.q.get()  # 3s timeout
                 self.retorno[self.index_retorno]+=work
-            except queue.Empty:
+            except Empty:
                 return 
             # do whatever work you have to do on work
             self.q.task_done()
