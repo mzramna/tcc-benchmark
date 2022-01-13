@@ -75,21 +75,21 @@ class Worker(Thread):
             self.retorno[self.index_retorno]=[]
 
 class Paralel:
-    def __init__(self,total_threads:int,elementos:list,function,max_size:int=0):
+    def __init__(self,total_threads:int,max_size:int=0):
         self.q=Queue(maxsize=max_size)
         self.threads=[]
         self.resultados=[]
-        self.function=function
         for _ in range(total_threads):
             self.threads.append([])
             self.resultados.append(0)
-        for i in elementos:
-            self.q.put(i)
         
-    def execute(self,retorno=None):
+        
+    def execute(self,elementos,function,retorno=None):
         for i in range(len(self.threads)):
+            for i in range(len(elementos)):
+                self.q.put(elementos[i])
             self.threads[i]=Worker(self.q)
-            self.threads[i].exec_function(function=self.function,index_retorno=i,retorno=retorno)
+            self.threads[i].exec_function(function=function,index_retorno=i,retorno=retorno)
             self.threads[i].setDaemon(True)
             self.threads[i].start()
         self.q.join()

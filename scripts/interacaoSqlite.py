@@ -12,7 +12,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
         
-        super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite",logstash_data=logstash_data)
+        super().__init__(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,log_name="gerador sql interacao sqlite",logstash_data=logstash_data,thread=True)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         
     def buscar_ultimo_id_cadastrado(self,table:str)->int:
@@ -77,20 +77,23 @@ class InteracaoSqlite(ProcessamentoSqlite):
         Returns:
             int: total de elementos cadastrados na tabela de operações
         """        
-        self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
-        read_command="SELECT id FROM operacoes ORDER BY id DESC LIMIT 1;"
-        cursor = self.conn.cursor()
-        self.logging.info(read_command)
-        cursor.execute(read_command)
-        self.conn.commit()
-        saida=cursor.fetchall()
-        
-        if saida == []:
-            self.logging.debug("total de operacoes",extra={"total":saida})
+        try:
+            self.logging.info("buscar_ultimo_id_cadastrado",extra=locals())
+            read_command="SELECT id FROM operacoes ORDER BY id DESC LIMIT 1;"
+            cursor = self.conn.cursor()
+            self.logging.info(read_command)
+            cursor.execute(read_command)
+            self.conn.commit()
+            saida=cursor.fetchall()
+            
+            if saida == []:
+                self.logging.debug("total de operacoes",extra={"total":saida})
+                return 0
+            else:
+                self.logging.debug("total de operacoes",extra={"total":saida[0][0]})
+                return int(saida[0][0])
+        except:
             return 0
-        else:
-            self.logging.debug("total de operacoes",extra={"total":saida[0][0]})
-            return int(saida[0][0])
         
     def certify_if_contador_exists(self,table:str):
         """verifica e corrige se um contador não existir na tabela de contadores

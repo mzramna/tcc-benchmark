@@ -18,7 +18,13 @@ class GeradorDeSql:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-
+        self.sqlite_db=sqlite_db
+        self.sql_file_pattern=sql_file_pattern
+        self.json_file=json_file
+        self.log_file=log_file
+        self.level=level
+        self.logging_pattern=logging_pattern
+        self.logstash_data=logstash_data
         self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
@@ -1015,4 +1021,38 @@ class GeradorDeSql:
                 self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
                 table = choice(list(self.json_loaded.keys()))
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
+
+    def gerar_todos_dados_por_json_paralel(self,threads=2,tipo:list=[],select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
+        """gera os dados de acordo com o arquivo json e quantidades definidas
+
+        Args:
+            json_file ([type]): arquivo do qual os dados de padrão serão carregados
+            tipo (int, optional): tipo de dado  que será gerado,se é uma inserção,listagem,busca,busca filtrada,atualização ou deleção,se default será escolhido randomicamente. Defaults to 1.
+            select_country (str, optional): pais do qual o padrão do faker será usado. Defaults to "random".
+            quantidade_ciclo (str, optional): quantidade de dados que serão gerados a cada ciclo. Defaults to "random".
+            total_ciclos (str, optional): quantidade de ciclos de dados que serão gerados. Defaults to "random".
+            quantidade_final (int, optional): se definido os dados serão gerados de forma automática até atingir a quantidade de dados cadastrados ,ignorando o total de ciclos. Defaults to 0.
+        """
+        from worker import Paralel
+        self.logging.info("gerar_todos_dados_por_json",extra=locals())
+        if quantidade_ciclo == "random":
+            quantidade_ciclo=randint(0, 20)
+        if total_ciclos == "random":
+            total_ciclos=randint(0, 20)
+        paralel=Paralel(total_threads=threads)
+        parametros=[]
+        if quantidade_final==0:
+            
+            for i in range(0,total_ciclos):
+                cadastrados=self.processamento_sqlite.total_operacoes()
+                self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
+                table = choice(list(self.json_loaded.keys()))
+                parametros.append({"select_country":select_country,"table":table,"quantidade":quantidade_ciclo,"tipo":tipo})
+            #self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
+            paralel.execute(elementos=parametros,function=self.gerar_dados_validos_por_json)
+        elif quantidade_final>0:
+            total=threads#quantidade_final-self.processamento_sqlite.total_operacoes()
+            for _ in range(total):
+                parametros.append({"tipo":tipo,"select_country":select_country,"quantidade_ciclo":quantidade_ciclo,"total_ciclos":total_ciclos,"quantidade_final":quantidade_final})
+            paralel.execute(elementos=parametros,function=GeradorDeSql(sqlite_db=self.sqlite_db,sql_file_pattern=self.sql_file_pattern,json_file=self.json_file,level=self.level,logging_pattern=self.logging_pattern,logstash_data=self.logstash_data).gerar_todos_dados_por_json)
 

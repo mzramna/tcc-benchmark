@@ -1,11 +1,11 @@
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 from loggingSystem import loggingSystem
-import sqlite3,sys,json,os
+import sqlite3,sys,json,os,time
 from typing import Union
 
 class ProcessamentoSqlite:
-    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={}):
+    def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={},thread=False):
         """
         classe para gerenciar arquivos sqlite
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
@@ -13,7 +13,11 @@ class ProcessamentoSqlite:
         """
         self.logging = loggingSystem(name=log_name, arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
-        self.conn = sqlite3.connect(sqlite_db)
+        if thread is True:
+            self.conn = sqlite3.connect(sqlite_db,check_same_thread=False)
+        else:
+            self.conn = sqlite3.connect(sqlite_db)
+        self.stack_overflow_max=5
     
     def create_temporary_DB(self,local,pattern):
         """verifica a integridade do db caso ele n exista 
@@ -34,7 +38,7 @@ class ProcessamentoSqlite:
             else:
                 self.logging.info("bd já existe")
         except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
+            #print("erro operacional no sqlite")
             self.logging.error(e)
             quit()
         except sqliteError as e:
@@ -77,9 +81,12 @@ class ProcessamentoSqlite:
             cursor.execute(insert_command)
             self.conn.commit()
         except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
+            #print("erro operacional no sqlite")
             self.logging.error(e)
-            self.insert_data_sqlite(data=data,table=table)
+            time.sleep(0.001)
+            chamadas=loggingSystem.full_inspect_caller()
+            if chamadas.count(chamadas[0])<self.stack_overflow_max:
+                self.insert_data_sqlite(data=data,table=table)
         except sqliteError as e:
             #print("erro desconhecido no sqlite")
             self.logging.error(e)
@@ -121,7 +128,7 @@ class ProcessamentoSqlite:
             saida=cursor.fetchall()
             return saida 
         except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
+            #print("erro operacional no sqlite")
             self.logging.error(e)
             return self.read_data_sqlite(table,filtro,query)
         except sqliteError as e:
@@ -145,7 +152,7 @@ class ProcessamentoSqlite:
                 cursor.execute(sqlstatement)
                 conn.commit()
         except sqliteOperationalError as e:
-            print("erro operacional no sqlite")
+            #print("erro operacional no sqlite")
             self.logging.error(e)
             return self.execute_sqlfile_sqlite(pattern,conn)
         except sqliteError as e:
