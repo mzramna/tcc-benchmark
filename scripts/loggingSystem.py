@@ -29,7 +29,7 @@ class loggingSystem:
             else:
                 self.logger.addHandler(logstash.TCPLogstashHandler(logstash_data["host"], logstash_data["port"], version=1))
         else:
-            self.logger.basicConfig(filename=arquivo, level=level,format=formato,)
+            self.logger.basicConfig(filename=arquivo, level=level,format=formato,datefmt='%Y-%m-%d %H:%M:%S')
             if name !="":
                 self.logger = self.logger.getLogger(name)
         #self.logger.addHandler(handler)
@@ -61,7 +61,7 @@ class loggingSystem:
             retorno.append(i[3])
         return retorno
     
-    def send_data_to_log(self,message,level="info"):
+    def send_data_to_log(self,message,level="info",extra={}):
         '''
         CRITICAL	50
         ERROR	40
@@ -70,28 +70,28 @@ class loggingSystem:
         DEBUG	10
         '''
         if level in["debug",10]:
-            self.debug(message)
+            self.debug(message,extra=extra)
             return True
         elif level in ["info",20]:
-            self.info(message)
+            self.info(message,extra=extra)
             return True
         elif level in ["warning",30]:
-            self.warning(message)
+            self.warning(message,extra=extra)
             return True
         elif level in ["error",40]:
-            self.error(message)
+            self.error(message,extra=extra)
             return True
         elif level in ["critical",50]:
-            self.critical(message)
+            self.critical(message,extra=extra)
             return True
         elif level == "exception":
-            self.exception(message)
+            self.exception(message,extra=extra)
             return True
         elif level == "fatal":
-            self.fatal(message)
+            self.fatal(message,extra=extra)
             return True
         elif level == "log":
-            self.log(message)
+            self.log(message,extra=extra)
             return True
         else:
             return False

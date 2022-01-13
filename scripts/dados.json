@@ -1,6 +1,12 @@
 {
     "dados_log":{
-
+        "level":10,
+        "name":"monitoramento_dados",
+        "logstash_data":{
+            "host":"192.168.0.116",
+            "port":5000
+            
+    }
     },
     "monitor_data":{
         "cpu_times":{

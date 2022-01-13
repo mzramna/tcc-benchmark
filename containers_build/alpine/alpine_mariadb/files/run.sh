@@ -16,12 +16,13 @@ else
 	mkdir -p /run/mysqld
 	chown -R mysql:mysql /run/mysqld
 fi
-
+LOG_LOCAL=${LOG_LOCAL:-"/var/log/mysql/general-log.log"}
 if [ -d /var/log/mysql ]; then
 	echo "[i] MySQL log directory already present, skipping creation"
-	chown -R mysql:mysql /var/lib/mysql
-	touch /var/log/mysql/general-log.log
-	chown -R mysql:mysql /var/log/mysql/general-log.log
+	mkdir -p /var/log/mysql
+	chown -R mysql:mysql /var/log/mysql
+	touch $LOG_LOCAL
+	chown -R mysql:mysql $LOG_LOCAL
 else
 	echo "[i] MySQL log directory not found, creating initial DBs"
 	chown -R mysql:mysql  /var/log/mysql
@@ -46,7 +47,7 @@ else
 	MYSQL_DATABASE=${MYSQL_DATABASE:-""}
 	MYSQL_USER=${MYSQL_USER:-""}
 	MYSQL_PASSWORD=${MYSQL_PASSWORD:-""}
-
+	
 	tfile=`mktemp`
 	if [ ! -f "$tfile" ]; then
 	    return 1
@@ -57,9 +58,9 @@ USE mysql;
 FLUSH PRIVILEGES ;
 GRANT ALL ON *.* TO 'root'@'%' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
 GRANT ALL ON *.* TO 'root'@'localhost' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
-SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}') ;
+SET PASSWORD FOR 'root'@'localhost'=PASSWORD('$MYSQL_ROOT_PASSWORD') ;
 SET GLOBAL general_log=1;
-SET GLOBAL general_log_file='/var/log/mysql/general-log.log';
+SET GLOBAL general_log_file='$LOG_LOCAL';
 SET GLOBAL log_warnings=4;
 SHOW VARIABLES LIKE "general_log%";
 SET GLOBAL log_output = 'FILE';
@@ -85,13 +86,13 @@ EOF
 	    fi
 	fi
 	cat $tfile
-	/usr/bin/mysqld --user=mysql --bootstrap --verbose --skip-name-resolve --skip-networking=0 < $tfile
+	/usr/bin/mysqld --user=mysql --bootstrap --verbose=2 --skip-name-resolve --skip-networking=0 < $tfile
 	rm -f $tfile
 
 	for f in /docker-entrypoint-initdb.d/*; do
 		case "$f" in
-			*.sql)    echo "$0: running $f"; /usr/bin/mysqld --user=mysql --bootstrap --verbose --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
-			*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | /usr/bin/mysqld --user=mysql --bootstrap --verbose --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
+			*.sql)    echo "$0: running $f"; /usr/bin/mysqld --user=mysql --bootstrap --verbose=2 --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
+			*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | /usr/bin/mysqld --user=mysql --bootstrap --verbose=2 --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
 			*)        echo "$0: ignoring or entrypoint initdb empty $f" ;;
 		esac
 		echo
@@ -113,4 +114,4 @@ do
 	fi
 done
 
-exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 --verbose $@
+exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 --verbose=1  $@
