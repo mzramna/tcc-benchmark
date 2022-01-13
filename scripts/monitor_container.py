@@ -87,7 +87,7 @@ class HardwareMonitor():
         self.send_data_to_log(level=level,message="",extra=self.get_data(monitoring=monitoring))
 
     def monitor(self,iterations=True,level="info",monitoring=None):
-        if iterations:
+        if iterations is True:
             while True:
                 self.send_data_to_log(level=level,message="",extra=self.get_data(monitoring))
         else:
