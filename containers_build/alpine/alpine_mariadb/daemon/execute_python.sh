@@ -1,17 +1,19 @@
 #!/bin/sh
-if ! command -v python3 &> /dev/null;then
-    if [[$( grep '^VERSION' /etc/os-release) == "ID=alpine" ]];then
-        apk add py3-setuptools py3-pip python3 py3-virtualenv --no-cache
+if ! command -v python3 &> /dev/null ; then
+    if [[ $( grep '^ID' /etc/os-release) == "ID=alpine" ]] ; then
+        apk add py3-setuptools py3-pip py3-virtualenv py3-psutil --no-cache --upgrade python3-dev
 
-    elif [[$( grep '^VERSION' /etc/os-release) == "ID=debian" ]];then
-        apt install python3-venv python3 python3-pip python3-setuptools -y
+    elif [[ $( grep '^ID' /etc/os-release) == "ID=debian" ]] ; then
+        apt install python3-venv python3-pip python3-setuptools -y python3-dev
         apt clean
     fi
 fi
-if [[ -d "./venv" ]];then
-    python3 -m venv ./venv
-    source ./venv/bin/activate
-    pip install -r requirements.txt
+if ! [[ -d "/daemon/venv" ]] ; then
+    python3 -m venv /daemon/venv
+    source /daemon/venv/bin/activate
+    pip install -r /daemon/requiriments.txt
+    
 fi
-source ./venv/bin/activate
-python3 ./daemon_monitor.py
+cd /daemon
+source /daemon/venv/bin/activate
+python3 /daemon/daemon_monitor.py &

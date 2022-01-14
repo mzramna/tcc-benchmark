@@ -4,7 +4,7 @@ ENV PGDATA /var/lib/postgresql/data
 
 #RUN echo "@edge http://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
 #    apk update && \
-RUN apk add su-exec wget tzdata libpq postgresql-client postgresql postgresql-contrib && \
+RUN apk add --upgrade --update su-exec wget tzdata libpq postgresql-client postgresql postgresql-contrib gcc libc-dev linux-headers && \
     mkdir /docker-entrypoint-initdb.d && \
     rm -rf /var/cache/apk/*
 

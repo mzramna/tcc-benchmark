@@ -1,7 +1,7 @@
 {
     "dados_log":{
         "level":10,
-        "name":"monitoramento_dados",
+        "name":"container_mariadb",
         "logstash_data":{
             "host":"192.168.0.116",
             "port":5000
@@ -37,9 +37,7 @@
                 "parameters":{
                     "perdisk":true
                     ,"nowrap":false
-                    },
-                    "columns":["read_time","write_time","busy_time","read_bytes","write_bytes"],
-                    "array":["sda","sdb","sdc"]
+                    }
                 },
             "net_io_counters":{
                 "parameters":{

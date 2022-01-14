@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk add --no-cache mariadb mariadb-client mariadb-server-utils pwgen && \
+RUN apk add --upgrade --update --no-cache mariadb mariadb-client mariadb-server-utils pwgen gcc libc-dev  linux-headers && \
     rm -f /var/cache/apk/*
 
 ADD files/run.sh /scripts/run.sh

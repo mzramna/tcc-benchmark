@@ -4,7 +4,8 @@ from os import name,DirEntry
 from os.path import exists as exists
 from tratamentoErro import ValorInvalido
 class HardwareMonitor():
-    def __init__(self,log_data:DirEntry="dados.json"):
+    def __init__(self,log_data:DirEntry="dados.json",PROCFS_PATH="/proc/"):
+        psutil.PROCFS_PATH = PROCFS_PATH
         if exists(log_data):
             dados=json.loads(open(log_data).read())
         else:
@@ -72,6 +73,8 @@ class HardwareMonitor():
                             tmp[dado+"_"+str(i)]=message[dado][i]
                         message[dado]=tmp
                         # message[dado]=message[dado]
+                    elif type(message[dado]) is type({}):
+                        pass
                     else:
                         message[dado]={ your_key: message[dado].__getattribute__(your_key) for your_key in message[dado]._fields }
                 else:

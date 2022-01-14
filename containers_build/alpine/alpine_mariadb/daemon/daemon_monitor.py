@@ -1,3 +1,4 @@
 from monitor_container import HardwareMonitor
 
-HardwareMonitor("./dados.json").monitor(iterations=True,delay=0.1)
+print(HardwareMonitor("/config/dados.json",PROCFS_PATH="/proc/").get_data())
+HardwareMonitor("/config/dados.json",PROCFS_PATH="/proc/").monitor(iterations=True,delay=0.1)
