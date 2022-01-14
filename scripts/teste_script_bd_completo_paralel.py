@@ -1,5 +1,5 @@
 from gerenciadorDeBD import GerenciadorDeBD
-from worker import Worker,Paralel
+from worker import Paralel
 
 
 array=[]

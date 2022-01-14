@@ -84,7 +84,7 @@ class Paralel:
             self.resultados.append(0)
         
         
-    def execute(self,elementos,function,retorno=None):
+    def execute(self,elementos,function,retorno=None,not_join:bool=False):
         for i in range(len(self.threads)):
             for i in range(len(elementos)):
                 self.q.put(elementos[i])
@@ -92,4 +92,5 @@ class Paralel:
             self.threads[i].exec_function(function=function,index_retorno=i,retorno=retorno)
             self.threads[i].setDaemon(True)
             self.threads[i].start()
-        self.q.join()
+        if not_join is False:
+            self.q.join()
