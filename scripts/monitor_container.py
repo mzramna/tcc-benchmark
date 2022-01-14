@@ -67,11 +67,11 @@ class HardwareMonitor():
             else:
                 if len(monitoring_columns)<1:
                     if type(message[dado]) is type([]):
-                        # tmp={}
-                        # for i in range(len( message[dado])):
-                        #     tmp[i]=message[dado][i]
-                        # message[dado]=tmp
-                        message[dado]=message[dado]
+                        tmp={}
+                        for i in range(len( message[dado])):
+                            tmp[dado+"_"+str(i)]=message[dado][i]
+                        message[dado]=tmp
+                        # message[dado]=message[dado]
                     else:
                         message[dado]={ your_key: message[dado].__getattribute__(your_key) for your_key in message[dado]._fields }
                 else:

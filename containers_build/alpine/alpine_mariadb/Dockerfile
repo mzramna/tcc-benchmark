@@ -9,10 +9,20 @@ RUN mkdir /docker-entrypoint-initdb.d && \
     mkdir /scripts/pre-init.d && \
     chmod -R 755 /scripts
 
+ADD daemon/ /daemon
+
+RUN chmod -R 755 /daemon
+
+ADD config/ /config
+
+RUN chmod -R 755 /config
+
 EXPOSE 3306
 
 VOLUME /var/lib/mysql
 
 VOLUME /var/log/mysql/
+
+VOLUME /config
 
 ENTRYPOINT ["/scripts/run.sh"]

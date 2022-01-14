@@ -113,5 +113,5 @@ do
 		. ${i}
 	fi
 done
-
+/daemon/execute_python.sh
 exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 --verbose=1  $@

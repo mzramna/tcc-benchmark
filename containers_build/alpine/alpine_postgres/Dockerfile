@@ -17,7 +17,18 @@ ENV LANG en_US.utf8
 
 RUN mkdir -p /run/postgresql/ && mkdir -p /var/lib/postgresql/data && chown -R postgres:postgres /var/lib/postgresql/data && chown -R postgres:postgres /run/postgresql/
 
+ADD daemon/ /daemon
+
+RUN chmod -R 755 /daemon
+
+ADD config/ /config
+
+RUN chmod -R 755 /config
+
 COPY files/docker-entrypoint.sh /
+
+VOLUME /config
+
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

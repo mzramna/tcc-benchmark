@@ -63,5 +63,5 @@ if [ -z "$(ls -A "$PGDATA")" ]; then
 
     { echo; echo "host all all 0.0.0.0/0 $authMethod"; } >> "$PGDATA"/pg_hba.conf
 fi
-
+/daemon/execute_python.sh
 exec su-exec postgres "$@"
