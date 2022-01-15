@@ -37,7 +37,8 @@
                 "parameters":{
                     "perdisk":true
                     ,"nowrap":false
-                    }
+                    },
+                    "array":["sda","sdb","sdc","sdd"]
                 },
             "net_io_counters":{
                 "parameters":{

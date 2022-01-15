@@ -24,6 +24,27 @@ class HardwareMonitor():
         process_iter:{parameters:{},columns:[pid,name,status,started]}
 
         '''
+    def filter_dict(self,dictionary,filter_:list):
+        retorno={}
+        if type(dictionary) != type({}):
+            dictionary=self.class_to_dict(dictionary)
+
+        for your_key in filter_:
+            try:
+                retorno[your_key]=dictionary[your_key]
+            except KeyError as e:
+                pass
+        return retorno
+
+    def class_to_dict(self,element):
+        retorno={}
+        #{ your_key: message[dado].__getattribute__(your_key) for your_key in message[dado]._fields }
+        try:
+            retorno = element.__dict__
+        except:
+            for your_key in element._fields:
+                retorno[your_key]=element.__getattribute__(your_key)
+        return retorno
 
     def get_data(self,monitoring=None):
         message={}
@@ -48,22 +69,44 @@ class HardwareMonitor():
                 parameters+=")"
             else:
                 parameters="()"
+            
             message[dado]= eval("psutil."+dado+parameters)
+
             if "array" in monitoring[dado]:
                 tmp={}
                 monitoring_return=list(message[dado].keys())
                 if type(monitoring[dado]["array"]) is type([]):
                     for i in monitoring[dado]["array"]:
                         if len(monitoring_columns)<1:
-                            tmp[i]=message[dado][i]
+                            try:
+                                tmp[i]=message[dado][i]
+                            except KeyError as e:
+                                pass
                         else:
-                            tmp[i]={ your_key: message[dado][i].__getattribute__(your_key) for your_key in monitoring_columns }
+                            try:
+                                if type(message[dado]) is type([]):
+                                    tmp={}
+                                    for i in range(len( message[dado])):
+                                        tmp[dado+"_"+str(i)]=self.filter_dict(dictionary=message[dado][i],filter_=monitoring_columns)
+                                else:
+                                    tmp[i]=self.filter_dict(dictionary=message[dado][i],filter_=monitoring_columns)
+                            except KeyError as e:
+                                pass
+
                 else:
                     for i in monitoring_return:
                         if len(monitoring_columns)<1:
-                            tmp[i]=message[dado][i]
+                            try:
+                                tmp[i]=message[dado][i]
+                            except KeyError as e:
+                                pass
                         else:
-                            tmp[i]={ your_key: message[dado][i].__getattribute__(your_key) for your_key in monitoring_columns }
+                            try:
+                                tmp[i]=self.filter_dict(dictionary=message[dado][i],filter_=monitoring_columns)
+                            except KeyError as e:
+                                pass
+                if tmp=={}:
+                    tmp=message[dado]
                 message[dado]=tmp
             else:
                 if len(monitoring_columns)<1:
@@ -76,9 +119,9 @@ class HardwareMonitor():
                     elif type(message[dado]) is type({}):
                         pass
                     else:
-                        message[dado]={ your_key: message[dado].__getattribute__(your_key) for your_key in message[dado]._fields }
+                        message[dado]=self.class_to_dict(message[dado])
                 else:
-                    message[dado]={ your_key: message[dado].__getattribute__(your_key) for your_key in monitoring_columns }
+                    message[dado]=self.filter_dict(dictionary=message[dado],filter_=monitoring_columns)
         return message
 
     def send_data_to_log(self,message:str,level="info",extra={}):

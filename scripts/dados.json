@@ -16,7 +16,7 @@
             }
             },
             "cpu_percent":{
-                "parameters":{"percpu":true},
+                "parameters":{"percpu":true,"interval":0.0},
                 "columns":[]
             },
             "virtual_memory":{
@@ -39,7 +39,7 @@
                     ,"nowrap":false
                     },
                     "columns":["read_time","write_time","busy_time","read_bytes","write_bytes"],
-                    "array":["sda","sdb","sdc"]
+                    "array":["sda","sdb","sdc","sdd"]
                 },
             "net_io_counters":{
                 "parameters":{
