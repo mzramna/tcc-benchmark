@@ -90,18 +90,21 @@ def start_container(ip:str="",port:int=0,id:str="",compiled:dict={},id_key=""):
         client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
         client.start(id)
 
+def start_test(tipo_bd:str,paralel=False):
+    start_container(compiled=infos_docker["maquina_1"],id_key=tipo_bd+"_id")
+    start_container(compiled=infos_docker["maquina_2"],id_key=tipo_bd+"_id")
+    if paralel is True:
+        dados={infos_docker["maquina_1"][tipo_bd+"_connect"],infos_docker["maquina_2"][tipo_bd+"_connect"]}
+        p=Paralel(total_threads=2)
+        p.execute(elementos=dados,function=executar_teste)
+    else:
+        executar_teste(**infos_docker["maquina_1"][tipo_bd+"_connect"])
+        executar_teste(**infos_docker["maquina_2"][tipo_bd+"_connect"])
+    stop_container(compiled=infos_docker["maquina_1"],id_key=tipo_bd+"_id")
+    stop_container(compiled=infos_docker["maquina_2"],id_key=tipo_bd+"_id")
+
 #executar testes no bd mariadb
-start_container(compiled=infos_docker["maquina_1"],id_key="mariadb_id")
-start_container(compiled=infos_docker["maquina_2"],id_key="mariadb_id")
-executar_teste(**infos_docker["maquina_1"]["mariadb_connect"])
-executar_teste(**infos_docker["maquina_2"]["mariadb_connect"])
-stop_container(compiled=infos_docker["maquina_1"],id_key="mariadb_id")
-stop_container(compiled=infos_docker["maquina_2"],id_key="mariadb_id")
+start_test("mariadb")
 
 #executar testes no bd postgres
-start_container(compiled=infos_docker["maquina_1"],id_key="postgres_id")
-start_container(compiled=infos_docker["maquina_2"],id_key="postgres_id")
-executar_teste(**infos_docker["maquina_1"]["postgres_connect"])
-executar_teste(**infos_docker["maquina_2"]["postgres_connect"])
-stop_container(compiled=infos_docker["maquina_1"],id_key="postgres_id")
-stop_container(compiled=infos_docker["maquina_2"],id_key="postgres_id")
+start_test("postgres")
