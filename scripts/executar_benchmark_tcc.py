@@ -5,7 +5,56 @@ from datetime import datetime
 
 
 logstash_data={"host":"192.168.0.116","port":5000}
-
+infos_docker={
+    "maquina_1":{
+        "url":"192.168.0.100",
+        "port_docker_sock":2375,
+        "mariadb_id":"",
+        "mariadb_connect":{
+            "ip":"192.168.0.100",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":3306,
+            "tipo":0,
+            "sql_file":"containers_build/mysql default exemple.sql"
+        },
+        "postgres_id":"",
+        "postgres_connect":{
+            "ip":"192.168.0.100",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":5432,
+            "tipo":1,
+            "sql_file":"containers_build/postgres default exemple.sql"
+        },
+        },
+    "maquina_2":{
+        "url":"192.168.0.100",
+        "port_docker_sock":2375,
+        "mariadb_id":"",
+        "mariadb_connect":{
+            "ip":"192.168.0.100",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":3306,
+            "tipo":0,
+            "sql_file":"containers_build/mysql default exemple.sql"
+        },
+        "postgres_id":"",
+        "postgres_connect":{
+            "ip":"192.168.0.100",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":5432,
+            "tipo":1,
+            "sql_file":"containers_build/postgres default exemple.sql"
+        },
+        }
+    }
 def executar_teste(ip,user,password,database,port,tipo,sql_file,total_elementos=10000,total_threads=5):
     array=[]
     threads=[]
@@ -21,10 +70,38 @@ def executar_teste(ip,user,password,database,port,tipo,sql_file,total_elementos=
 
     p.execute(elementos=array,function=gerenciador.execute_operation_from_sqlite_no_return_with_id)
 
-#executar testes no bd mariadb
-executar_teste(ip="192.168.0.100",user="mzramna",password="safePassword",database="sakila",port=3306,tipo=0,sql_file="containers_build/mysql default exemple.sql",)
-#executar testes no bd postgres
-executar_teste(ip="192.168.0.100",user="mzramna",password="safePassword",database="sakila",port=5432,tipo=1,sql_file="containers_build/postgres default exemple.sql")
+def stop_container(ip:str="",port:int=0,id:str="",compiled:dict={},id_key=""):
+    if compiled != {}:
+        client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
+        client.stop(compiled[id_key])
+    else:
+        if ip is "" or port is 0 or id is "":
+            return None
+        client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
+        client.stop(id)
 
-##criar metodos para alternar os containers ligados
-client = docker.DockerClient(base_url="192.168.0.100:2375",version="auto")
+def start_container(ip:str="",port:int=0,id:str="",compiled:dict={},id_key=""):
+    if compiled != {}:
+        client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
+        client.start(compiled[id_key])
+    else:
+        if ip is "" or port is 0 or id is "":
+            return None
+        client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
+        client.start(id)
+
+#executar testes no bd mariadb
+start_container(compiled=infos_docker["maquina_1"],id_key="mariadb_id")
+start_container(compiled=infos_docker["maquina_2"],id_key="mariadb_id")
+executar_teste(**infos_docker["maquina_1"]["mariadb_connect"])
+executar_teste(**infos_docker["maquina_2"]["mariadb_connect"])
+stop_container(compiled=infos_docker["maquina_1"],id_key="mariadb_id")
+stop_container(compiled=infos_docker["maquina_2"],id_key="mariadb_id")
+
+#executar testes no bd postgres
+start_container(compiled=infos_docker["maquina_1"],id_key="postgres_id")
+start_container(compiled=infos_docker["maquina_2"],id_key="postgres_id")
+executar_teste(**infos_docker["maquina_1"]["postgres_connect"])
+executar_teste(**infos_docker["maquina_2"]["postgres_connect"])
+stop_container(compiled=infos_docker["maquina_1"],id_key="postgres_id")
+stop_container(compiled=infos_docker["maquina_2"],id_key="postgres_id")
