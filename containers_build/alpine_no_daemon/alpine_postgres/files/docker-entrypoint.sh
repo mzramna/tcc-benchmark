@@ -7,8 +7,7 @@ do
 		. "${i}"
 	fi
 done
-chown -R postgres "$PGDATA"
-
+chown -R postgres:postgres "$PGDATA"
 if [ -z "$(ls -A "$PGDATA")" ]; then
     su-exec postgres initdb
     sed -ri "s/^#(listen_addresses\s*=\s*)\S+/\1'*'/" "$PGDATA"/postgresql.conf
@@ -63,4 +62,5 @@ if [ -z "$(ls -A "$PGDATA")" ]; then
 
     { echo; echo "host all all 0.0.0.0/0 $authMethod"; } >> "$PGDATA"/pg_hba.conf
 fi
+
 exec su-exec postgres "$@"

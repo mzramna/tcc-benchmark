@@ -13,6 +13,7 @@ services:
             - $config_folder/postgres/data:/var/lib/postgresql/data
             - $config_folder/postgres/logs:/var/log/postgresql
             - ../postgres\ default\ exemple.sql:/docker-entrypoint-initdb.d/postgres\ default\ exemple.sql
+
         restart: unless-stopped
 #        resources:
 #            limits:
@@ -28,14 +29,15 @@ services:
             LOG_LOCAL: /var/log/mysql/general-log.log
         ports:
             - "3306:3306"
-            - "5000:5000"
         volumes:
             - $config_folder/mariadb/data:/var/lib/mysql
             - $config_folder/mariadb/logs:/var/log/mysql/
             - ../mysql\ default\ exemple.sql:/docker-entrypoint-initdb.d/mysql\ default\ exemple.sql
+
+
         restart: unless-stopped
 #        resources:
-#	     limits:
+#        limits:
 #               cpus: 2
 #               memory: 1G
 networks:

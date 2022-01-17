@@ -26,3 +26,7 @@ VOLUME /var/log/mysql/
 VOLUME /config
 
 ENTRYPOINT ["/scripts/run.sh"]
+
+COPY files/docker-healthcheck /usr/local/bin/
+
+HEALTHCHECK CMD ["docker-healthcheck"]

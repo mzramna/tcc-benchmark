@@ -34,3 +34,7 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 
 EXPOSE 5432
 CMD ["postgres", "-c", "log_statement=all"]
+
+COPY files/docker-healthcheck /usr/local/bin/
+
+HEALTHCHECK CMD ["docker-healthcheck"]
