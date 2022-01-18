@@ -47,5 +47,15 @@
                     "nowrap":false},
                     "columns":["bytes_sent","bytes_recv","packets_sent","packets_recv"]
                 }
-        }
+        },
+    "docker_data":{
+        "client_connect":{
+        "base_url":"tcp://127.0.0.1:2375",
+        "version":"auto"
+        },
+        "containers":[
+            "alpine_no_daemon-mariadb-1",
+            "alpine_no_daemon-postgres-1"
+        ]
+    }
 }

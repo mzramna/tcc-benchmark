@@ -1,7 +1,7 @@
 #!/bin/sh
 if ! command -v python3 &> /dev/null ; then
     if [[ $( grep '^ID' /etc/os-release) == "ID=alpine" ]] ; then
-        apk add py3-setuptools py3-pip py3-virtualenv py3-psutil --no-cache --upgrade python3-dev
+        apk add py3-setuptools py3-pip py3-virtualenv --no-cache --upgrade python3-dev
 
     elif [[ $( grep '^ID' /etc/os-release) == "ID=debian" ]] ; then
         apt install python3-venv python3-pip python3-setuptools -y python3-dev

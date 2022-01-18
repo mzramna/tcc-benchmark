@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.12
 
 RUN apk add --upgrade --update --no-cache mariadb mariadb-client mariadb-server-utils pwgen && \
     rm -f /var/cache/apk/* && mkdir /scripts
