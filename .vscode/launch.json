@@ -54,5 +54,12 @@
             "program": "scripts/teste_monitor_container.py",
             "console": "internalConsole"
         },
+        {
+            "name": "Python: executar benchmark",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/executar_benchmark_tcc.py",
+            "console": "internalConsole"
+        },
     ]
 }

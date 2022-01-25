@@ -5,6 +5,7 @@ class Worker(Thread):
     def __init__(self, q,  *args, **kwargs):
         self.q = q
         self.operacao=0
+        self.index=0
         super().__init__(*args, **kwargs)
 
     def print_element(self):
@@ -27,13 +28,24 @@ class Worker(Thread):
             # do whatever work you have to do on work
             self.q.task_done()
 
+    def function_treat(self,work:dict):
+        if type(self.function)==type([]):
+            if self.index<len(self.function):
+                self.index+=1
+                return self.function[self.index-1](**work)
+            else:
+                self.index=0
+                return self.function[self.index](**work)
+        elif type(self.function)==type(self.__init__):
+            return self.function(**work)
+
     def function_element(self):
         while True:
             try:
                 work = self.q.get()  # 3s timeout
                 if self.retroativo!="":
                     work[self.retroativo]=self.retorno[self.index_retorno]
-                result=self.function(**work)
+                result=self.function_treat(work)
                 if self.retorno != None:
                     if self.function_array:
                         self.retorno[self.index_retorno].append(result)
@@ -83,7 +95,6 @@ class Paralel:
             self.threads.append([])
             self.resultados.append(0)
         
-        
     def execute(self,elementos,function,retorno=None,not_join:bool=False):
         for i in range(len(self.threads)):
             for j in range(len(elementos)):
@@ -93,4 +104,4 @@ class Paralel:
             self.threads[i].setDaemon(True)
             self.threads[i].start()
         if not_join is False:
-            self.q.join()
+            return self.q.join()

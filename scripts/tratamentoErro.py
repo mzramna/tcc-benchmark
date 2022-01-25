@@ -45,7 +45,7 @@ class ValorInvalido(Exception):
                     retorno+="no campo "+str(campo)+" "
                 retorno+="são "+str(valores_possiveis)
             retorno+= self.valores_possiveis(valores_possiveis)
-            return retorno
+        return retorno
 
     def valores_possiveis(self,valores_possiveis=""):
         """formata a entrada de valores possiveis para uma forma mais legivel os valores possiveis caso seja um array e se for um string ele será inserido direto no campo de valor inserido

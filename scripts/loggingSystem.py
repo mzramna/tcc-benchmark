@@ -95,4 +95,3 @@ class loggingSystem:
             return True
         else:
             return False
-        

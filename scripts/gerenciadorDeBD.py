@@ -1,7 +1,7 @@
 import psycopg2, mysql.connector, sys,traceback,json
 from loggingSystem import loggingSystem
 from os import DirEntry
-from tratamentoErro import *
+from tratamentoErro import ValorInvalido
 from interacaoSqlite import InteracaoSqlite
 class GerenciadorDeBD:
     
@@ -12,14 +12,22 @@ class GerenciadorDeBD:
             self.password=password
             self.database=database
             self.port=port
+            self.logging = loggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
             self.mydb,self.tipo=self.create_connector(tipo=tipo,user=self.user,password= self.password,database=self.database)
+            if self.mydb == None:
+                raise ValorInvalido(valor_inserido=str(locals().values()),campo="algum parametro de conexão é inválido")
             self.cursor=self.mydb.cursor()
             
             self.json_loaded=json.loads(open(json_path,"r").read())
-            self.logging = loggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
+            
             self.sql_file_pattern=sql_file_pattern
-        except ValorInvalido:
+            
+        except ValorInvalido as e:
             traceback.print_exc()
+            try:
+                self.logging.error(e)
+            except:
+                pass
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict):
@@ -388,17 +396,36 @@ class GerenciadorDeBD:
                 else:
                     raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
             return mydb , tipo
+        except mysql.connector.errors.ProgrammingError as e:
+            self.logging.error(e)
+            return None,None
+        except psycopg2.OperationalError as e:
+            self.logging.error(e)
+            return None,None
         except:
             traceback.print_exc()
 
-    def creat_user(self,root_pass:str,user:str,password:str,database:str):
-        operation=[
-            "CREATE USER '{user}'@'%' IDENTIFIED BY '{password}';".format({"user":user,"password":password}),
-            "GRANT ALL ON '{database}'.* to '{user}'@'%' IDENTIFIED BY '{password}';" .format({"user":user,"database":database,"password":password})
-            ]
-
-        con,tipo=self.create_connector(self.tipo, user="root",password= root_pass)
-        self.execute_operation_array_no_return(operation,con)
+    def creat_user(self,user:str,password:str,database:str,root_pass:str=""):
+        try:
+            if self.tipo==0 or self.tipo=="mysql":
+                operation=[
+                "CREATE USER IF NOT EXISTS `{user}`@`%` IDENTIFIED BY '{password}';".format(user=user,password=password),
+                "GRANT ALL ON `{database}`.* to `{user}`@`%` IDENTIFIED BY '{password}';" .format(database=database,user=user,password=password)
+                ]
+                if root_pass=="":
+                    raise ValorInvalido(campo="root_pass",valor_inserido=root_pass)
+                con,tipo=self.create_connector(self.tipo, user="root",password=root_pass)
+                self.execute_operation_array_no_return(operation,con)
+                # self.execute_operation_array_no_return(operation,self.mydb)
+            elif self.tipo==1 or self.tipo == "postgres":
+                operation=[
+                #"CREATE USER `{user}` PASSWORD '{password}';".format(user=user,password=password),
+                "CREATE USER '{user}' password '{password}';".format(user=user,password=password),
+                'GRANT ALL PRIVILEGES ON DATABASE "{database}" to {user};' .format(user=user,database=database)
+                ]
+                self.execute_operation_array_no_return(operation,self.mydb)
+        except:
+            pass
 
     def execute_operation_array_no_return(self,operations:list,connector=None):
         cursor,mydb=self.process_connector(connector)
@@ -435,6 +462,8 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
                 except psycopg2.errors.InFailedSqlTransaction as e :
                     mydb.rollback()
+                    self.logging.exception(e)
+                except psycopg2.errors.InsufficientPrivilege as e:
                     self.logging.exception(e)
                 #except:
                  #   self.logging.error("Unexpected error:", sys.exc_info()[0])
