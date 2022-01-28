@@ -1,3 +1,6 @@
+GRANT Create user,Event,File,Process,Reload,Replication client,Replication slave,Show databases,Shutdown,Super,Create tablespace ON *.* TO 'mzramna'@'%';
+
+
 CREATE USER IF NOT EXISTS `ibd4bhkjpyi4hx`@`%` IDENTIFIED BY 'mls83mfbsdnvte';
 GRANT ALL ON `sakila`.* to `ibd4bhkjpyi4hx`@`%` IDENTIFIED BY 'mls83mfbsdnvte';
 CREATE USER IF NOT EXISTS `fhabpsyubkgo7`@`%` IDENTIFIED BY 'chv9jtnv2r98zw';
