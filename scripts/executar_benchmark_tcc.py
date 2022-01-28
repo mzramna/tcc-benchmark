@@ -1,10 +1,13 @@
 import time, docker
 from gerenciadorDeBD import GerenciadorDeBD
-from worker import Paralel
+from worker import Paralel_thread
+from multiprocessing_lib import Paralel_pool,Paralel_subprocess
 #from datetime import datetime
 
 logstash_data={"host":"192.168.0.116","port":5000}
 total_elementos=10000
+pre_exec=1000
+threads_paralel_lv2=3
 usuarios_bd={
    "usuario1":{
        "usuario":"ibd4bhkjpyi4hx",
@@ -57,7 +60,6 @@ infos_docker={
             "host":"192.168.0.10",
             "user":"mzramna",
             "password":"safePassword",
-            "compiled_users":usuarios_bd,
             "database":"sakila",
             "port":3306,
             "tipo":0,
@@ -69,7 +71,6 @@ infos_docker={
             "user":"mzramna",
             "password":"safePassword",
             "database":"sakila",
-            "compiled_users":usuarios_bd,
             "port":5432,
             "tipo":1,
             "sql_file_pattern":"containers_build/postgres default exemple.sql"
@@ -80,10 +81,9 @@ infos_docker={
         "port_docker_sock":2375,
         "mariadb_id":"alpine-mariadb-1",
         "mariadb_connect":{
-            "host":"192.168.0.10",
+            "host":"192.168.0.20",
             "user":"mzramna",
             "password":"safePassword",
-            "compiled_users":usuarios_bd,
             "database":"sakila",
             "port":3306,
             "tipo":0,
@@ -94,7 +94,6 @@ infos_docker={
             "host":"192.168.0.20",
             "user":"mzramna",
             "password":"safePassword",
-            "compiled_users":usuarios_bd,
             "database":"sakila",
             "port":5432,
             "tipo":1,
@@ -102,6 +101,8 @@ infos_docker={
         },
         }
     }
+
+ordem_executar_teste=["host","database","port","tipo","sql_file_pattern","pre_execucao","total_elementos","total_threads","user","password","compiled_users"]
 
 def criar_usuarios(connect:dict,usuarios:dict,bd:str,root:str,quantidade:int=1):
     gerenciador=GerenciadorDeBD(**connect)
@@ -132,20 +133,21 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         elif ( len(user) == len(password) ) and user!="" and password!="":
             for i in range(len(user)):
                 gerenciador.append(GerenciadorDeBD(host=host, user=user[i], password=password[i], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40))
-        
-        gerenciador[0].reset_database()
+        if pre_execucao>0:
+            gerenciador[0].execute_operation_from_sqlite_no_return(pre_execucao, "scripts/initial_db.db") 
         #criar_usuarios(connect={"host":host, "user":user, "password":password, "database":database, "port":port,"tipo":tipo,"sql_file_pattern":sql_file_pattern,"logstash_data":logstash_data,"level":40}, usuarios=compiled_users, bd=database, root="SafestRootPassword",quantidade=total_threads)
-        p=Paralel(total_threads=total_threads)
+        p=Paralel_subprocess(total_threads=total_threads)
         functions=[]
         for i in gerenciador:
             functions.append(i.execute_operation_from_sqlite_no_return_with_id)
-        p.execute(elementos=array,function=functions)
+        p.execute(elementos=array,function=functions,daemon=True)
     elif (isinstance(user, str)  and isinstance(password, str) )and (user != "" and password != ""):
         gerenciador=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40)
          #reset
         gerenciador.reset_database()
-        #gerenciador.execute_operation_from_sqlite_no_return(pre_execucao, "scripts/initial_db.db") 
-        p=Paralel(total_threads=total_threads)
+        if pre_execucao>0:
+            gerenciador.execute_operation_from_sqlite_no_return(pre_execucao, "scripts/initial_db.db") 
+        p=Paralel_thread(total_threads=total_threads)
         p.execute(elementos=array,function=gerenciador.execute_operation_from_sqlite_no_return_with_id)
     else:
         return 0
@@ -170,17 +172,29 @@ def start_container(ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
         client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
         client.containers.get(id_).start()
 
-def start_test(tipo_bd:str,paralel=False):
+def start_test(tipo_bd:str,paralel=False,recreate=True):
     start_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
     start_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
-    time.sleep(10)
+    if recreate:
+        reset=GerenciadorDeBD(**infos_docker["maquina_arm"][tipo_bd+"_connect"])
+        reset.reset_database()
+        reset=GerenciadorDeBD(**infos_docker["maquina_amd"][tipo_bd+"_connect"])
+        reset.reset_database()
+        del reset
+    # time.sleep(10)
     if paralel == True:
         arm=infos_docker["maquina_arm"][tipo_bd+"_connect"]
         arm["total_elementos"]=total_elementos
+        arm["total_threads"]=threads_paralel_lv2
+        arm["pre_execucao"]=pre_exec
+        arm["compiled_users"]=usuarios_bd
         amd=infos_docker["maquina_amd"][tipo_bd+"_connect"]
         amd["total_elementos"]=total_elementos
-        dados=[arm,amd]
-        p=Paralel(total_threads=2)
+        amd["total_threads"]=threads_paralel_lv2
+        amd["pre_execucao"]=pre_exec
+        amd["compiled_users"]=usuarios_bd
+        dados=[amd,arm]
+        p=Paralel_subprocess(total_threads=2)
         p.execute(elementos=dados,function=executar_teste)
     else:
         executar_teste(**infos_docker["maquina_arm"][tipo_bd+"_connect"],total_elementos=total_elementos)
@@ -189,7 +203,7 @@ def start_test(tipo_bd:str,paralel=False):
     stop_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
 
 #executar testes no bd mariadb
-start_test("mariadb",paralel=False)
+start_test("mariadb",paralel=True,recreate=False)
 
 #executar testes no bd postgres
-start_test("postgres",paralel=False)
+#start_test("postgres",paralel=True)
