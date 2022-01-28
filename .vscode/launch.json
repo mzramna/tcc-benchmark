@@ -30,7 +30,7 @@
             "name": "Python: gerar db para testes",
             "type": "python",
             "request": "launch",
-            "program": "scripts/teste_geracao_sql.py",
+            "program": "scripts/geração_bd_testes.py",
             "console": "internalConsole"
         },
         {

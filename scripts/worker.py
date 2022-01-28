@@ -1,7 +1,6 @@
 from queue import Queue,Empty
 from threading import Thread
-
-class Worker(Thread):
+class Worker_thread(Thread):
     def __init__(self, q,  *args, **kwargs):
         self.q = q
         self.operacao=0
@@ -36,13 +35,13 @@ class Worker(Thread):
             else:
                 self.index=0
                 return self.function[self.index](**work)
-        elif type(self.function)==type(self.__init__):
+        else:
             return self.function(**work)
 
     def function_element(self):
         while True:
             try:
-                work = self.q.get()  # 3s timeout
+                work = self.q.get()
                 if self.retroativo!="":
                     work[self.retroativo]=self.retorno[self.index_retorno]
                 result=self.function_treat(work)
@@ -53,8 +52,9 @@ class Worker(Thread):
                         self.retorno[self.index_retorno]+=result
             except Empty:
                 return 
+            finally:
             # do whatever work you have to do on work
-            self.q.task_done()
+                self.q.task_done()
 
     def run(self):
         if self.operacao==1:
@@ -86,7 +86,7 @@ class Worker(Thread):
         if function_array:
             self.retorno[self.index_retorno]=[]
 
-class Paralel:
+class Paralel_thread:
     def __init__(self,total_threads:int,max_size:int=0):
         self.q=Queue(maxsize=max_size)
         self.threads=[]
@@ -95,13 +95,13 @@ class Paralel:
             self.threads.append([])
             self.resultados.append(0)
         
-    def execute(self,elementos,function,retorno=None,not_join:bool=False):
+    def execute(self,elementos,function,retorno=None,join:bool=False):
+        for j in elementos:
+                self.q.put(j)
         for i in range(len(self.threads)):
-            for j in range(len(elementos)):
-                self.q.put(elementos[j])
-            self.threads[i]=Worker(self.q)
+            self.threads[i]=Worker_thread(self.q)
             self.threads[i].exec_function(function=function,index_retorno=i,retorno=retorno)
             self.threads[i].setDaemon(True)
             self.threads[i].start()
-        if not_join is False:
+        if join is True:
             return self.q.join()

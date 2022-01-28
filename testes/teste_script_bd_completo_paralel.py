@@ -1,5 +1,5 @@
 from gerenciadorDeBD import GerenciadorDeBD
-from worker import Paralel
+from worker import Paralel_thread
 
 
 array=[]
@@ -19,7 +19,7 @@ gerenciador=GerenciadorDeBD(host="192.168.0.100", user="mzramna", password="safe
 #reset
 gerenciador.reset_database()
 
-p=Paralel(total_threads=total_threads,elementos=array,function=gerenciador.execute_operation_from_sqlite_no_return_with_id)
+p=Paralel_thread(total_threads=total_threads,elementos=array,function=gerenciador.execute_operation_from_sqlite_no_return_with_id)
 p.execute()
 
 # gerenciador=GerenciadorDeBD(host="192.168.0.100", user="mzramna", password="safePassword", database="sakila", port=5432,tipo=1,sql_file_pattern="containers_build/postgres default exemple.sql",logstash_data=logstash_data)
