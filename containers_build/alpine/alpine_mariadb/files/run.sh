@@ -56,6 +56,7 @@ else
 	cat << EOF > $tfile
 USE mysql;
 FLUSH PRIVILEGES ;
+GRANT Create user,Event,File,Process,Reload,Replication client,Replication slave,Show databases,Shutdown,Super,Create tablespace ON *.* TO '$MYSQL_USER'@'%';
 CREATE USER 'root'@'%' IDENTIFIED BY '$MYSQL_ROOT_PASSWORD';
 GRANT ALL ON *.* TO 'root'@'%' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
 GRANT ALL ON *.* TO 'root'@'localhost' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
