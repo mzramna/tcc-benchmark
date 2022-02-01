@@ -1,0 +1,50 @@
+{
+    "maquina_arm":{
+        "url":"192.168.0.10",
+        "port_docker_sock":2375,
+        "mariadb_id":"alpine-mariadb-1",
+        "mariadb_connect":{
+            "host":"192.168.0.10",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":3306,
+            "tipo":0,
+            "sql_file_pattern":"containers_build/mysql default exemple.sql"
+            },
+        "postgres_id":"alpine-postgres-1",
+        "postgres_connect":{
+            "host":"192.168.0.10",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":5432,
+            "tipo":1,
+            "sql_file_pattern":"containers_build/postgres default exemple.sql"
+            }
+        },
+    "maquina_amd":{
+        "url":"192.168.0.20",
+        "port_docker_sock":2375,
+        "mariadb_id":"alpine-mariadb-1",
+        "mariadb_connect":{
+            "host":"192.168.0.20",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":3306,
+            "tipo":0,
+            "sql_file_pattern":"containers_build/mysql default exemple.sql"
+        },
+        "postgres_id":"alpine-postgres-1",
+        "postgres_connect":{
+            "host":"192.168.0.20",
+            "user":"mzramna",
+            "password":"safePassword",
+            "database":"sakila",
+            "port":5432,
+            "tipo":1,
+            "sql_file_pattern":"containers_build/postgres default exemple.sql"
+        }
+    }
+}

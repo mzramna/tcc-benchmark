@@ -1,106 +1,16 @@
-import time, docker
+import time, docker,json
 from gerenciadorDeBD import GerenciadorDeBD
 from worker import Paralel_thread
-from multiprocessing_lib import Paralel_pool,Paralel_subprocess
+from paralel_lib import Paralel_pool,Paralel_subprocess
 #from datetime import datetime
 
 logstash_data={"host":"192.168.0.116","port":5000}
 total_elementos=10000
 pre_exec=1000
-threads_paralel_lv2=3
-usuarios_bd={
-   "usuario1":{
-       "usuario":"ibd4bhkjpyi4hx",
-       "senha":"mls83mfbsdnvte"
-   },
-   "usuario2":{
-       "usuario":"fhabpsyubkgo7",
-       "senha":"chv9jtnv2r98zw"
-   },
-   "usuario3":{
-       "usuario":"rg2dsvhc6ahajz",
-       "senha":"vpzg49u3qaeckl"
-   },
-   "usuario4":{
-       "usuario":"cu9c5qycens55v",
-       "senha":"lqr9zrhste5ve6"
-   },
-   "usuario5":{
-       "usuario":"vaddpet2mh7hiq",
-       "senha":"p3vqtklfgpnver"
-   },
-   "usuario6":{
-       "usuario":"nyq9kedfwus9d",
-       "senha":"tcf6mwpy2ixeex"
-   },
-   "usuario7":{
-       "usuario":"loymzy83yf9kub",
-       "senha":"jrffhw8kcpxgzg"
-   },
-   "usuario8":{
-       "usuario":"dvjr3ef9uwukby",
-       "senha":"wwz54szihhwmie"
-   },
-   "usuario9":{
-       "usuario":"b2cr7y3twxkfzn",
-       "senha":"qxeu6hkv9craqb"
-   },
-   "usuario10":{
-       "usuario":"c7f5w3xj54poop",
-       "senha":"nwgtnbwup9pltj"
-   },
-}
+threads_paralel_lv2=40
+usuarios_bd=json.loads(open("scripts/usuarios.json").read())
 
-infos_docker={
-    "maquina_arm":{
-        "url":"192.168.0.10",
-        "port_docker_sock":2375,
-        "mariadb_id":"alpine-mariadb-1",
-        "mariadb_connect":{
-            "host":"192.168.0.10",
-            "user":"mzramna",
-            "password":"safePassword",
-            "database":"sakila",
-            "port":3306,
-            "tipo":0,
-            "sql_file_pattern":"containers_build/mysql default exemple.sql"
-            },
-        "postgres_id":"alpine-postgres-1",
-        "postgres_connect":{
-            "host":"192.168.0.10",
-            "user":"mzramna",
-            "password":"safePassword",
-            "database":"sakila",
-            "port":5432,
-            "tipo":1,
-            "sql_file_pattern":"containers_build/postgres default exemple.sql"
-            },
-        },
-    "maquina_amd":{
-        "url":"192.168.0.20",
-        "port_docker_sock":2375,
-        "mariadb_id":"alpine-mariadb-1",
-        "mariadb_connect":{
-            "host":"192.168.0.20",
-            "user":"mzramna",
-            "password":"safePassword",
-            "database":"sakila",
-            "port":3306,
-            "tipo":0,
-            "sql_file_pattern":"containers_build/mysql default exemple.sql"
-        },
-        "postgres_id":"alpine-postgres-1",
-        "postgres_connect":{
-            "host":"192.168.0.20",
-            "user":"mzramna",
-            "password":"safePassword",
-            "database":"sakila",
-            "port":5432,
-            "tipo":1,
-            "sql_file_pattern":"containers_build/postgres default exemple.sql"
-        },
-        }
-    }
+infos_docker=json.loads(open("scripts/infos_docker.json").read())
 
 ordem_executar_teste=["host","database","port","tipo","sql_file_pattern","pre_execucao","total_elementos","total_threads","user","password","compiled_users"]
 
@@ -175,35 +85,39 @@ def start_container(ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
 def start_test(tipo_bd:str,paralel=False,recreate=True):
     start_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
     start_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
-    if recreate:
-        reset=GerenciadorDeBD(**infos_docker["maquina_arm"][tipo_bd+"_connect"])
-        reset.reset_database()
-        reset=GerenciadorDeBD(**infos_docker["maquina_amd"][tipo_bd+"_connect"])
-        reset.reset_database()
-        del reset
-    # time.sleep(10)
-    if paralel == True:
-        arm=infos_docker["maquina_arm"][tipo_bd+"_connect"]
-        arm["total_elementos"]=total_elementos
-        arm["total_threads"]=threads_paralel_lv2
-        arm["pre_execucao"]=pre_exec
-        arm["compiled_users"]=usuarios_bd
-        amd=infos_docker["maquina_amd"][tipo_bd+"_connect"]
-        amd["total_elementos"]=total_elementos
-        amd["total_threads"]=threads_paralel_lv2
-        amd["pre_execucao"]=pre_exec
-        amd["compiled_users"]=usuarios_bd
-        dados=[amd,arm]
-        p=Paralel_subprocess(total_threads=2)
-        p.execute(elementos=dados,function=executar_teste)
-    else:
-        executar_teste(**infos_docker["maquina_arm"][tipo_bd+"_connect"],total_elementos=total_elementos)
-        executar_teste(**infos_docker["maquina_amd"][tipo_bd+"_connect"],total_elementos=total_elementos)
-    stop_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
-    stop_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
+    try:
+        if recreate:
+            reset=GerenciadorDeBD(**infos_docker["maquina_arm"][tipo_bd+"_connect"])
+            reset.reset_database()
+            reset=GerenciadorDeBD(**infos_docker["maquina_amd"][tipo_bd+"_connect"])
+            reset.reset_database()
+            del reset
+        # time.sleep(10)
+        if paralel == True:
+            arm=infos_docker["maquina_arm"][tipo_bd+"_connect"]
+            arm["total_elementos"]=total_elementos
+            arm["total_threads"]=threads_paralel_lv2
+            arm["pre_execucao"]=pre_exec
+            arm["compiled_users"]=usuarios_bd
+            amd=infos_docker["maquina_amd"][tipo_bd+"_connect"]
+            amd["total_elementos"]=total_elementos
+            amd["total_threads"]=threads_paralel_lv2
+            amd["pre_execucao"]=pre_exec
+            amd["compiled_users"]=usuarios_bd
+            dados=[amd,arm]
+            p=Paralel_subprocess(total_threads=2)
+            return p.execute(elementos=dados,function=executar_teste,timer=True)
+        else:
+            executar_teste(**infos_docker["maquina_arm"][tipo_bd+"_connect"],total_elementos=total_elementos)
+            executar_teste(**infos_docker["maquina_amd"][tipo_bd+"_connect"],total_elementos=total_elementos)
+    except:
+        pass
+    finally:
+        stop_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
+        stop_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
 
 #executar testes no bd mariadb
-start_test("mariadb",paralel=True,recreate=False)
+print(start_test("mariadb",paralel=True,recreate=True))
 
 #executar testes no bd postgres
-#start_test("postgres",paralel=True)
+print(start_test("postgres",paralel=True,recreate=True))
