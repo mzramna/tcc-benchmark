@@ -2,7 +2,7 @@ from multiprocessing import Queue,Process,Pool,current_process,Manager
 from functools import partial
 from queue import Queue,Empty
 from threading import Thread
-
+from timer import Timer
 class Paralel_pool:
     def __init__(self,total_threads:int,max_size:int=0):
         #self.q=Queue(maxsize=max_size)
@@ -35,7 +35,10 @@ class Paralel_pool:
 
 class Worker_subprocess(Process):
     def __init__(self,   *args, **kwargs):
-        # self.q = q
+        # self.removedor=True
+        # if "remove_element" in kwargs:
+        #     if kwargs["remove_element"] == False:
+        #         self.removedor=False
         self.operacao=0
         self.index=0
         super().__init__(*args, **kwargs)
@@ -59,6 +62,7 @@ class Worker_subprocess(Process):
                 if tamanho<1:
                     return 0
                 work=self.elementos[0]
+                # if self.removedor == True:
                 self.elementos.remove(work)
                 if self.retroativo!="":
                     work[self.retroativo]=self.retorno[self.index_retorno]
@@ -68,8 +72,10 @@ class Worker_subprocess(Process):
                         self.retorno[self.index_retorno].append(result)
                     else:
                         self.retorno[self.index_retorno]+=result
-            except Empty:
-                return 0
+            except ValueError:
+                    pass
+            except:
+                pass
 
     def run(self):
         self.function_element()
@@ -98,19 +104,47 @@ class Paralel_subprocess:
             self.threads.append([])
             self.resultados.append(0)
         
-    def execute(self,elementos,function,retorno=None,daemon=False):
+    def execute(self,elementos,function,retorno=None,daemon=False,timer=False,**kwargs):
         # for j in elementos:
         #         self.q.put(j)
         _elementos=self.manager.list(elementos)
+        if retorno !=None:
+            self.retorno == retorno
+        if timer ==True:
+            self.timer=[]
+            self.time_=True
+        else:
+            self.time_=False
         for i in range(len(self.threads)):
             self.threads[i]=Worker_subprocess()
-            self.threads[i].exec_function(elementos=_elementos,function=function,index_retorno=i,retorno=retorno)
+            # pass_kwargs={}
+            # if "remove_element" in kwargs:
+            #     if kwargs["remove_element"] == False:
+            #         pass_kwargs["remove_element"]=False
+            self.threads[i].exec_function(elementos=_elementos,function=function,index_retorno=i,retorno=retorno)#,kwargs=pass_kwargs)
             if daemon:
                 self.threads[i].daemon=True
             self.threads[i].start()
+            if timer ==True:
+                self.timer.append(Timer())
+                self.timer[-1].inicio()
             
         for i in self.threads:
             i.join()
+        if retorno !=None and timer==False:
+            return (self.retorno,None)
+        elif retorno == None and timer ==True:
+            retorno_timer=[]
+            for i in self.timer:
+                retorno_timer.append(i.fim())
+            return (None,retorno_timer)
+        elif retorno !=None and timer ==True:
+            retorno_timer=[]
+            for i in self.timer:
+                retorno_timer.append(i.fim())
+            return (self.retorno,retorno_timer)
+        else:
+            return(None,None)
         # if join is True:
         #     return self.q.join()
 
