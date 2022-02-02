@@ -1889,7 +1889,7 @@ class GeradorDeSql:
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
 
 
-    def gerar_todos_dados_por_json_paralel(self,threads=2,tipo:list=[],select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
+    def gerar_todos_dados_por_json_paralel(self,threads=0,tipo:list=[],select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
 
         """gera os dados de acordo com o arquivo json e quantidades definidas
 
@@ -1936,7 +1936,7 @@ class GeradorDeSql:
 
         elif quantidade_final>0:
 
-            total=threads#quantidade_final-self.processamento_sqlite.total_operacoes()
+            total=len(paralel.threads)#quantidade_final-self.processamento_sqlite.total_operacoes()
 
             for _ in range(total):
 
