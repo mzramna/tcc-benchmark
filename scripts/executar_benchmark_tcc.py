@@ -49,9 +49,9 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         functions=[]
         for i in gerenciador:
             functions.append(i.execute_operation_from_sqlite_no_return_with_id)
-        if host == "192.168.0.10":
+        if host == infos_docker["maquina_arm"]["url"]:
             name_subprocess="arm"
-        elif host == "192.168.0.20":
+        elif host == infos_docker["maquina_amd"]["url"]:
             name_subprocess="amd"
         p.execute(elementos=array,function=functions,daemon=True,name_subprocess=name_subprocess)
     elif (isinstance(user, str)  and isinstance(password, str) )and (user != "" and password != ""):
