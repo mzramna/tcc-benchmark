@@ -1,10 +1,13 @@
 {
     "recommendations": [
+<<<<<<< HEAD
         "mhutchie.git-graph",
         "eamodio.gitlens",
         "mathematic.vscode-latex",
         "njpwerner.autodocstring",
         "ms-python.python",
+=======
+>>>>>>> e793c41dc6ef007d0578aaa0bc2218b29aa1cbc8
         "qwtel.sqlite-viewer"
     ]
 }
