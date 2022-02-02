@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "mhutchie.git-graph",
+        "eamodio.gitlens",
+        "mathematic.vscode-latex",
+        "njpwerner.autodocstring",
+        "ms-python.python",
+        "qwtel.sqlite-viewer"
+    ]
+}
