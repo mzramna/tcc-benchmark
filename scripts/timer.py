@@ -1,4 +1,5 @@
 import time
+#from time import TimerError
 class Timer:
 
     def __init__(self):

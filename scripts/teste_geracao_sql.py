@@ -1,6 +1,4 @@
 from geradorDeSql import GeradorDeSql
-from pprint import pprint
-from random import randint, random,uniform,choice
 import os
 from timer import Timer
 

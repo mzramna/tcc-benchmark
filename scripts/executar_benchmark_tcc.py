@@ -1,6 +1,6 @@
 import time, docker,json
 from gerenciadorDeBD import GerenciadorDeBD
-from paralel_lib import Paralel_pool,Paralel_subprocess,Paralel_thread
+from paralelLib import Paralel_pool,Paralel_subprocess,Paralel_thread
 #from datetime import datetime
 
 logstash_data={"host":"192.168.0.116","port":5000}

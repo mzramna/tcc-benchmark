@@ -1,7 +1,7 @@
 from sqlite3 import Error as sqliteError
 from sqlite3 import OperationalError as sqliteOperationalError
 from loggingSystem import loggingSystem
-import sqlite3,sys,json,os,time
+import sqlite3,sys,os,time
 from typing import Union
 
 class ProcessamentoSqlite:
@@ -54,12 +54,10 @@ class ProcessamentoSqlite:
         '''
         self.logging.info("insercao dado sqlite")
         insert_command="INSERT INTO "
-        insert_command+="'"+"operacoes"+"' ("
+        insert_command+="'"+table+"' ("
         self.logging.debug(data)
         for coluna in data.keys():
             insert_command+=str(coluna)
-            if table == "" and coluna == 'nomeBD':
-                table=data["nomeBD"]
             if coluna !=  list(data.keys())[-1]:
                 insert_command+=","
         insert_command+=") VALUES ("

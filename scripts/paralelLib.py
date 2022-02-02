@@ -1,6 +1,5 @@
-from multiprocessing import Queue,Process,Pool,current_process,Manager
+from multiprocessing import Queue,Process,Pool,Manager
 import multiprocessing
-from functools import partial
 from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
