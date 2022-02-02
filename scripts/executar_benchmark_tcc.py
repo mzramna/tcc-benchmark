@@ -26,9 +26,16 @@ def criar_usuarios(connect:dict,usuarios:dict,bd:str,root:str,quantidade:int=1):
     elif connect["tipo"]==1:
         gerenciador.execute_sql_file("containers_build/postgres user creation.sql")
 
-def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,total_elementos=10000,total_threads=3,user="",password="",compiled_users:dict={}):
+def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,total_elementos=10000,total_threads=3,user="",password="",compiled_users:dict={},recreate:bool=False):
     array=[]
     threads=[]
+    if recreate == True:
+        try:
+            reset=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40)
+            reset.reset_database()
+            del reset
+        except:
+            pass
     for _ in range(pre_execucao,total_threads):
         threads.append([])
     for i in range(pre_execucao,total_elementos):
@@ -68,7 +75,7 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
 def stop_container(ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
     if compiled != {}:
         client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
-        client.containers.get(compiled[id_key]).start()
+        client.containers.get(compiled[id_key]).stop()
     else:
         if ip == "" or port == 0 or id_key == "":
             return None
@@ -85,16 +92,17 @@ def start_container(ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
         client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
         client.containers.get(id_).start()
 
-def start_test(tipo_bd:str,paralel=False,recreate=True):
+def start_test(tipo_bd:str,paralel=True,recreate:bool=True):
     start_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
     start_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
     try:
-        if recreate:
-            reset=GerenciadorDeBD(**infos_docker["maquina_arm"][tipo_bd+"_connect"])
-            reset.reset_database()
-            reset=GerenciadorDeBD(**infos_docker["maquina_amd"][tipo_bd+"_connect"])
-            reset.reset_database()
-            del reset
+        result=[]
+        # if recreate:
+        #     reset=GerenciadorDeBD(**infos_docker["maquina_arm"][tipo_bd+"_connect"])
+        #     reset.reset_database()
+        #     reset=GerenciadorDeBD(**infos_docker["maquina_amd"][tipo_bd+"_connect"])
+        #     reset.reset_database()
+        #     del reset
         # time.sleep(10)
         if paralel == True:
             arm=infos_docker["maquina_arm"][tipo_bd+"_connect"]
@@ -102,14 +110,16 @@ def start_test(tipo_bd:str,paralel=False,recreate=True):
             arm["total_threads"]=threads_paralel_lv2
             arm["pre_execucao"]=pre_exec
             arm["compiled_users"]=usuarios_bd
+            arm["recreate"]=recreate
             amd=infos_docker["maquina_amd"][tipo_bd+"_connect"]
             amd["total_elementos"]=total_elementos
             amd["total_threads"]=threads_paralel_lv2
             amd["pre_execucao"]=pre_exec
             amd["compiled_users"]=usuarios_bd
+            amd["recreate"]=recreate
             dados=[amd,arm]
             p=Paralel_subprocess(total_threads=2)
-            return p.execute(elementos=dados,function=executar_teste,timer=True,name_subprocess="servidor")
+            result= p.execute(elementos=dados,function=executar_teste,timer=True,name_subprocess="servidor")
         else:
             executar_teste(**infos_docker["maquina_arm"][tipo_bd+"_connect"],total_elementos=total_elementos)
             executar_teste(**infos_docker["maquina_amd"][tipo_bd+"_connect"],total_elementos=total_elementos)
@@ -118,9 +128,10 @@ def start_test(tipo_bd:str,paralel=False,recreate=True):
     finally:
         stop_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
         stop_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
+        return result
 
 #executar testes no bd mariadb
 print(start_test("mariadb",paralel=True,recreate=True))
 
 #executar testes no bd postgres
-print(start_test("postgres",paralel=True,recreate=True))
+#print(start_test("postgres",paralel=True,recreate=True))
