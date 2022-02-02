@@ -500,6 +500,10 @@ class GeradorDeSql:
             self.logging.debug("dado gerado por create_data",extra=dados_gerados)
             return dados_gerados
 
+        except TipoDeDadoIncompativel as e:
+
+            self.logging.exception(e)
+
         except TamanhoArrayErrado  as e :
 
             self.logging.exception(e)
@@ -524,16 +528,14 @@ class GeradorDeSql:
 
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva) 
 
-        except TipoDeDadoIncompativel as e:
 
-            self.logging.exception(e)
 
         except :
 
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
 
-    def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> array:
+    def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> list:
         """ 
 
             gera um conjunto de elementos para serem usados como filtro,eles são gerados a partir do pattern inserido,ignorando os elementos da lista desejada
@@ -608,24 +610,20 @@ class GeradorDeSql:
             if not completo:
 
                 retorno = retorno[0]
-
-        except ValorInvalido as e:
-
-            self.logging.exception(e)
-
         except TamanhoArrayErrado  as e:
 
             self.logging.exception(e)
 
             retorno = self.gerador_filtro(pattern=pattern,pesquisa_pre=pesquisa_pre,retorno_pre=retorno_pre,max=max,completo=completo)
-
+        except ValorInvalido as e:
+            self.logging.exception(e)
         finally:
 
             self.logging.debug("dado gerado por gerador_filtro",extra={"filtro":retorno})
             return retorno
 
 
-    def dividir_array(self,array:list,max:int=0,pesquisa_pre=[],retorno_pre=[]) -> array :
+    def dividir_array(self,array:list,max:int=0,pesquisa_pre=[],retorno_pre=[]) -> list :
 
         """divide um array em 3 outros arrays de tamanhos aleatorios
 
@@ -758,13 +756,9 @@ class GeradorDeSql:
                     array_tmp.remove(y)
 
             return retorno
-
-        except ValorInvalido as e:
-
-            self.logging.exception(e)
-
         except TamanhoArrayErrado  as e:
-
+            self.logging.exception(e)
+        except ValorInvalido as e:
             self.logging.exception(e)
 
 
@@ -1125,7 +1119,7 @@ class GeradorDeSql:
             return dados_gerados
 
 
-    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={},filtro:list=[],not_define_id:bool=False) -> dict:
+    def create_delete(self,table:str,pattern:dict={},select_country:str="random",id:int=-1,values:dict={},filtro:Union[list,str]=[],not_define_id:bool=False) -> dict:
 
         """cria um novo dado para ser inserido no sqlite para a operação de delete
 
@@ -1244,7 +1238,7 @@ class GeradorDeSql:
             self.processamento_sqlite.add_contador_sqlite(table=table)
 
 
-    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:list=[],not_define_id:bool=False):
+    def gerar_dado_busca(self,table:str,pattern:dict,dado_existente:bool=False,id:int=-1,select_country:str="random",filtro:Union[list,str]=[],not_define_id:bool=False):
 
         """função que chama funções anteriormente descritas para gerar dados para o dado de busca e cadastrar elas direto no sqlite
 
@@ -1375,7 +1369,7 @@ class GeradorDeSql:
         self.processamento_sqlite.insert_data_sqlite(data,table=table)
 
 
-    def gerar_dado_leitura_completa(self,table:str,pattern:dict,filtro:list=[],select_country:str="random",not_define_id:bool=False):
+    def gerar_dado_leitura_completa(self,table:str,pattern:dict,filtro:Union[list,str]=[],select_country:str="random",not_define_id:bool=False):
 
         """função que chama funções anteriormente descritas para gerar dados para o dado de leitura e cadastrar elas direto no sqlite
 
@@ -1697,7 +1691,7 @@ class GeradorDeSql:
 #gerador json
 
 
-    def gerar_dados_validos_por_json(self,tipo:int=0,select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
+    def gerar_dados_validos_por_json(self,tipo:list=[],select_country:str="random",table:str="random",quantidade="random",dado_existente:bool=False):
 
         """gera uma sequencia de dados para serem inseridos no sqlite,esses dados são aleatórios,cada execução dessa função corresponde a um ciclo de geração de dado
 
@@ -1730,9 +1724,8 @@ class GeradorDeSql:
 
             self.logging.debug("dados gerados automaticamente",extra={"quantidade":str(quantidade)})
 
-            for i in range(0,quantidade):
-
-                self.ciclo_geracao_dados_json(tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
+            for _ in range(0,quantidade):
+                    self.ciclo_geracao_dados_json(tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
 
         except :
 
@@ -1766,7 +1759,7 @@ class GeradorDeSql:
 
         try:
 
-            if tipo==[]:
+            if tipo==[] :
 
                 tipo_execucao=[randint(1,6)]
 
@@ -1819,7 +1812,8 @@ class GeradorDeSql:
                 else:
 
                     raise ValorInvalido(campo="tipo",valor_inserido=tipo,valor_possivel="de 1 a 6")
-
+        except TipoDeDadoIncompativel as e:
+            self.logging.exception(e)
         except TamanhoArrayErrado  as e :
 
             self.logging.exception(e)
@@ -1834,9 +1828,7 @@ class GeradorDeSql:
 
                 self.ciclo_geracao_dados_json(tipo=tipo_execucao,select_country=select_country,table=table,dado_existente=dado_existente)
 
-        except TipoDeDadoIncompativel as e:
 
-            self.logging.exception(e)
 
 
     def gerar_todos_dados_por_json(self,tipo:list=[],select_country:str="random",quantidade_ciclo="random",total_ciclos="random",quantidade_final:int=0):
@@ -1872,7 +1864,7 @@ class GeradorDeSql:
 
         if quantidade_final==0:
 
-            for i in range(0,total_ciclos):
+            for _ in range(0,total_ciclos):
 
                 cadastrados=self.processamento_sqlite.total_operacoes()
 
@@ -1917,7 +1909,7 @@ class GeradorDeSql:
             quantidade_final (int, optional): se definido os dados serão gerados de forma automática até atingir a quantidade de dados cadastrados ,ignorando o total de ciclos. Defaults to 0.
         """
 
-        from paralel_lib import Paralel_thread,Paralel_subprocess
+        from paralel_lib import Paralel_subprocess
 
         self.logging.info("gerar_todos_dados_por_json",extra=locals())
 
@@ -1934,7 +1926,7 @@ class GeradorDeSql:
         parametros=[]
         if quantidade_final==0:
             
-            for i in range(0,total_ciclos):
+            for _ in range(0,total_ciclos):
                 cadastrados=self.processamento_sqlite.total_operacoes()
                 self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
                 table = choice(list(self.json_loaded.keys()))
