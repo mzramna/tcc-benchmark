@@ -1,4 +1,5 @@
-from multiprocessing import Queue,Process,Pool,current_process,Manager
+from multiprocessing import Queue,Process,Pool,current_process,Manager 
+import multiprocessing
 from functools import partial
 from queue import Queue,Empty
 from threading import Thread
@@ -63,7 +64,6 @@ class Worker_subprocess(Process):
                 tamanho=len(self.elementos)
                 if tamanho<1:
                     self.close_=True
-                    self.close()
                     rodar = False
                     break
                 work=self.elementos[0]
@@ -99,12 +99,14 @@ class Worker_subprocess(Process):
             self.retorno[self.index_retorno]=[]
 
 class Paralel_subprocess:
-    def __init__(self,total_threads:int,max_size:int=0):
+    def __init__(self,total_threads:int=0,max_size:int=0):
         #self.q=Queue(maxsize=max_size)
         self.manager=Manager()
         
         self.threads=[]
         self.resultados=[]
+        if total_threads==0:
+            total_threads=multiprocessing.cpu_count()*2
         for _ in range(total_threads):
             self.threads.append([])
             self.resultados.append(0)
@@ -122,12 +124,8 @@ class Paralel_subprocess:
             self.time_=False
         for i in range(len(self.threads)):
             self.threads[i]=Worker_subprocess(name=name_subprocess+"_"+str(i))
-            # pass_kwargs={}
-            # if "remove_element" in kwargs:
-            #     if kwargs["remove_element"] == False:
-            #         pass_kwargs["remove_element"]=False
             self.threads[i].exec_function(elementos=_elementos,function=function,index_retorno=i,retorno=retorno)#,kwargs=pass_kwargs)
-            if daemon:
+            if daemon == True:
                 self.threads[i].daemon=True
             self.threads[i].start()
             if timer ==True:
@@ -136,11 +134,11 @@ class Paralel_subprocess:
             
         for i in self.threads:
             i.join()
-        while len(self.threads)>0:
-            for i in self.threads:
-                if i.close_ == True:
-                    i.close()
-                    self.threads.remove(i)
+        # while len(self.threads)>0:
+        #     for i in self.threads:
+        #         if i.close_ == True:
+        #             i.close()
+        #             self.threads.remove(i)
         if retorno !=None and timer==False:
             return (self.retorno,None)
         elif retorno == None and timer ==True:
