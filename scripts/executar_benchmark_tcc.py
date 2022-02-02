@@ -1,13 +1,12 @@
 import time, docker,json
 from gerenciadorDeBD import GerenciadorDeBD
-from worker import Paralel_thread
-from paralel_lib import Paralel_pool,Paralel_subprocess
+from paralel_lib import Paralel_pool,Paralel_subprocess,Paralel_thread
 #from datetime import datetime
 
 logstash_data={"host":"192.168.0.116","port":5000}
 total_elementos=10000
 pre_exec=1000
-threads_paralel_lv2=40
+threads_paralel_lv2=100
 usuarios_bd=json.loads(open("scripts/usuarios.json").read())
 
 infos_docker=json.loads(open("scripts/infos_docker.json").read())
@@ -50,7 +49,11 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         functions=[]
         for i in gerenciador:
             functions.append(i.execute_operation_from_sqlite_no_return_with_id)
-        p.execute(elementos=array,function=functions,daemon=True)
+        if host == "192.168.0.10":
+            name_subprocess="arm"
+        elif host == "192.168.0.20":
+            name_subprocess="amd"
+        p.execute(elementos=array,function=functions,daemon=True,name_subprocess=name_subprocess)
     elif (isinstance(user, str)  and isinstance(password, str) )and (user != "" and password != ""):
         gerenciador=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40)
          #reset
@@ -106,7 +109,7 @@ def start_test(tipo_bd:str,paralel=False,recreate=True):
             amd["compiled_users"]=usuarios_bd
             dados=[amd,arm]
             p=Paralel_subprocess(total_threads=2)
-            return p.execute(elementos=dados,function=executar_teste,timer=True)
+            return p.execute(elementos=dados,function=executar_teste,timer=True,name_subprocess="servidor")
         else:
             executar_teste(**infos_docker["maquina_arm"][tipo_bd+"_connect"],total_elementos=total_elementos)
             executar_teste(**infos_docker["maquina_amd"][tipo_bd+"_connect"],total_elementos=total_elementos)

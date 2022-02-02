@@ -3,6 +3,7 @@ from functools import partial
 from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
+import traceback
 class Paralel_pool:
     def __init__(self,total_threads:int,max_size:int=0):
         #self.q=Queue(maxsize=max_size)
@@ -41,8 +42,8 @@ class Worker_subprocess(Process):
         #         self.removedor=False
         self.operacao=0
         self.index=0
+        self.close_=False
         super().__init__(*args, **kwargs)
-
 
     def function_treat(self,work:dict):
         if type(self.function)==type([]):
@@ -55,14 +56,17 @@ class Worker_subprocess(Process):
         else:
             return self.function(**work)
 
-    def function_element(self):
-        while True:
+    def run(self):
+        rodar=True
+        while rodar == True:
             try:
                 tamanho=len(self.elementos)
                 if tamanho<1:
-                    return 0
+                    self.close_=True
+                    self.close()
+                    rodar = False
+                    break
                 work=self.elementos[0]
-                # if self.removedor == True:
                 self.elementos.remove(work)
                 if self.retroativo!="":
                     work[self.retroativo]=self.retorno[self.index_retorno]
@@ -73,12 +77,13 @@ class Worker_subprocess(Process):
                     else:
                         self.retorno[self.index_retorno]+=result
             except ValueError:
-                    pass
-            except:
                 pass
-
-    def run(self):
-        self.function_element()
+            except IndexError:
+                pass
+            except Exception as e:
+                traceback.print_exc()
+                pass
+        return 0
 
     def exec_function(self,elementos,function,retorno=None,index_retorno=None,function_array=False,retroativo=""):
         self.retorno=retorno
@@ -104,7 +109,7 @@ class Paralel_subprocess:
             self.threads.append([])
             self.resultados.append(0)
         
-    def execute(self,elementos,function,retorno=None,daemon=False,timer=False,**kwargs):
+    def execute(self,elementos,function,retorno=None,daemon=False,timer=False,name_subprocess:str="subprocess",**kwargs):
         # for j in elementos:
         #         self.q.put(j)
         _elementos=self.manager.list(elementos)
@@ -116,7 +121,7 @@ class Paralel_subprocess:
         else:
             self.time_=False
         for i in range(len(self.threads)):
-            self.threads[i]=Worker_subprocess()
+            self.threads[i]=Worker_subprocess(name=name_subprocess+"_"+str(i))
             # pass_kwargs={}
             # if "remove_element" in kwargs:
             #     if kwargs["remove_element"] == False:
@@ -131,6 +136,11 @@ class Paralel_subprocess:
             
         for i in self.threads:
             i.join()
+        while len(self.threads)>0:
+            for i in self.threads:
+                if i.close_ == True:
+                    i.close()
+                    self.threads.remove(i)
         if retorno !=None and timer==False:
             return (self.retorno,None)
         elif retorno == None and timer ==True:
