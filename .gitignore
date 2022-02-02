@@ -4,7 +4,7 @@ pluginAssets
 __pycache__
 .history
 .venv
-scripts/*.db
+scripts/*.db*
 dbbench/exemplos
 dbbench/dbbench*
 dbbench/csv
