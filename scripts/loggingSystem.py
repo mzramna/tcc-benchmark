@@ -20,15 +20,20 @@ class loggingSystem:
         self.level=level
         self.logstash_data=logstash_data
         self.log_file=arquivo
-        if  set(["port","host"]).issubset(logstash_data):
-            if name !="":
-                self.logger = self.logger.getLogger(name)
-            self.logger.setLevel(level)
-            if set(["username","password"]).issubset(logstash_data):
-                self.logger.addHandler(logstash.AMQPLogstashHandler(host=logstash_data["host"], port=logstash_data["port"], version=1,username=logstash_data["username"],password=logstash_data["password"],durable=True))
+        try:
+            if  set(["port","host"]).issubset(logstash_data):
+                if name !="":
+                    self.logger = self.logger.getLogger(name)
+                self.logger.setLevel(level)
+                if set(["username","password"]).issubset(logstash_data):
+                    self.logger.addHandler(logstash.AMQPLogstashHandler(host=logstash_data["host"], port=logstash_data["port"], version=1,username=logstash_data["username"],password=logstash_data["password"],durable=True))
+                else:
+                    self.logger.addHandler(logstash.TCPLogstashHandler(logstash_data["host"], logstash_data["port"], version=1))
             else:
-                self.logger.addHandler(logstash.TCPLogstashHandler(logstash_data["host"], logstash_data["port"], version=1))
-        else:
+                self.logger.basicConfig(filename=arquivo, level=level,format=formato,datefmt='%Y-%m-%d %H:%M:%S')
+                if name !="":
+                    self.logger = self.logger.getLogger(name)
+        except:
             self.logger.basicConfig(filename=arquivo, level=level,format=formato,datefmt='%Y-%m-%d %H:%M:%S')
             if name !="":
                 self.logger = self.logger.getLogger(name)
