@@ -19,9 +19,7 @@ class GerenciadorDeBD:
             if self.mydb == None:
                 raise ValorInvalido(valor_inserido=str(locals().values()),campo="algum parametro de conexão é inválido")
             self.cursor=self.mydb.cursor()
-            
             self.json_loaded=json.loads(open(json_path,"r").read())
-            
             self.sql_file_pattern=sql_file_pattern
             
         except ValorInvalido as e:
@@ -346,19 +344,29 @@ class GerenciadorDeBD:
                 mydb.commit()
         except:
             pass
-        #cursor.close()
+        try:
+            cursor.close()
+        except:
+                pass
     
     def reset_database(self):
         self.execute_sql_file(self.sql_file_pattern)
 
     def process_connector(self,connector=None):
-        if connector ==None:
-            mydb=self.mydb
-            cursor=self.mydb.cursor()
-        else:
-            mydb=connector
-            cursor=mydb.cursor()
-        return cursor,mydb
+        import copy
+        try:
+            if connector ==None:
+                    mydb=copy.copy(self.mydb)
+                    cursor=mydb.cursor()
+            else:
+                mydb=copy.copy(connector)
+                cursor=mydb.cursor()
+        except:
+                self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
+                mydb=copy.copy(self.mydb)
+                cursor=mydb.cursor()
+        finally:
+            return cursor,mydb
 
     def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
         try:
@@ -412,7 +420,7 @@ class GerenciadorDeBD:
         except psycopg2.OperationalError as e:
             self.logging.error(e)
             return None,None
-        except:
+        except BaseException as e:
             traceback.print_exc()
 
     def creat_user(self,user:str,password:str,database:str,root_pass:str=""):
@@ -429,9 +437,8 @@ class GerenciadorDeBD:
                 # self.execute_operation_array_no_return(operation,self.mydb)
             elif self.tipo==1 or self.tipo == "postgres":
                 operation=[
-                #"CREATE USER `{user}` PASSWORD '{password}';".format(user=user,password=password),
                 "CREATE USER '{user}' password '{password}';".format(user=user,password=password),
-                'GRANT ALL PRIVILEGES ON DATABASE "{database}" to {user};' .format(user=user,database=database)
+                'GRANT ALL on all sequences in SCHEMA public TO {user};' .format(user=user)
                 ]
                 self.execute_operation_array_no_return(operation,self.mydb)
         except:
@@ -491,10 +498,10 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
                 except BaseException as e:
                     self.logging.error("Unexpected error:", e)
-        # try:
-        #     cursor.close()
-        # except:
-        #         pass
+        try:
+            cursor.close()
+        except:
+                pass
     
     def execute_operation_array_return(self,operations:list)->list:
         retorno=[]
