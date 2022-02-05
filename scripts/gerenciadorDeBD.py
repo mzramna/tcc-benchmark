@@ -3,6 +3,7 @@ from loggingSystem import loggingSystem
 from os import DirEntry
 from tratamentoErro import ValorInvalido
 from interacaoSqlite import InteracaoSqlite
+import time
 class GerenciadorDeBD:
     
     def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql", log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
@@ -429,12 +430,12 @@ class GerenciadorDeBD:
 
     def execute_operation_array_no_return(self,operations:list,connector=None):
         cursor,mydb=self.process_connector(connector)
-
-        for i in operations:
-            self.logging.debug(i)
+        error=0
+        for i in range(len(operations)):
+            self.logging.debug(operations[i])
             if self.tipo=="mysql":
                 try:
-                    cursor.execute(i)
+                    cursor.execute(operations[i])
                     try:
                         mydb.commit()
                     except:
@@ -446,7 +447,7 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
             elif self.tipo=="postgres":
                 try:
-                    cursor.execute(i)
+                    cursor.execute(operations[i])
                     try:
                         mydb.commit()
                     except:
@@ -462,11 +463,20 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
                 except psycopg2.errors.InFailedSqlTransaction as e :
                     mydb.rollback()
+                    if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
+                        i-=1
+                        error+=1
+                        time.sleep(0.001)
+                    else:
+                        #print(self.user)
+                        error=0
                     self.logging.exception(e)
                 except psycopg2.errors.InsufficientPrivilege as e:
                     self.logging.exception(e)
-                #except:
-                 #   self.logging.error("Unexpected error:", sys.exc_info()[0])
+                except psycopg2.errors.DatabaseError as e:
+                    self.logging.exception(e)
+                except:
+                    self.logging.error("Unexpected error:", sys.exc_info()[0])
 
     def execute_operation_array_return(self,operations:list)->list:
         retorno=[]

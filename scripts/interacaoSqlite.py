@@ -1,11 +1,12 @@
-from processamentoSqlite import ProcessamentoSqlite 
+#from processamentoSqlite import ProcessamentoSqlite 
 from typing import Union
 import json
 from random import randint, random,uniform,choice,sample
 from loggingSystem import loggingSystem
 import sqlite3,sys,json,os,time
 from typing import Union
-
+from sqlite3 import OperationalError as sqliteOperationalError
+from sqlite3 import Error as sqliteError
 class ProcessamentoSqlite:
     def __init__(self,sqlite_db="./initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="./processadorSQlite.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',log_name:str="gerenciador sqlite",logstash_data:dict={},thread=False):
         """

@@ -33,6 +33,8 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         try:
             reset=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40)
             reset.reset_database()
+            if tipo == 1:
+                reset.execute_sql_file("containers_build/postgres repermission.sql")
             del reset
         except:
             pass
@@ -60,7 +62,7 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
             name_subprocess="arm"
         elif host == infos_docker["maquina_amd"]["url"]:
             name_subprocess="amd"
-        p.execute(elementos=array,function=functions,daemon=True,name_subprocess=name_subprocess)
+        p.execute(elementos=array,function=functions,daemon=False,name_subprocess=name_subprocess)
     elif (isinstance(user, str)  and isinstance(password, str) )and (user != "" and password != ""):
         gerenciador=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40)
          #reset
@@ -131,7 +133,7 @@ def start_test(tipo_bd:str,paralel=True,recreate:bool=True):
         return result
 
 #executar testes no bd mariadb
-print(start_test("mariadb",paralel=True,recreate=True))
+#print(start_test("mariadb",paralel=True,recreate=True))
 
 #executar testes no bd postgres
-#print(start_test("postgres",paralel=True,recreate=True))
+print(start_test("postgres",paralel=True,recreate=True))

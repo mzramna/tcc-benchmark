@@ -1,7 +1,7 @@
 from array import array
 from os import name,DirEntry
 from loggingSystem import loggingSystem
-from processamentosqlite import ProcessamentoSqlite
+#from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
 from random import randint, random,uniform,choice,sample
 import sys,re,sqlite3,json,logging,csv
@@ -1726,9 +1726,7 @@ class GeradorDeSql:
 
             for _ in range(0,quantidade):
                     self.ciclo_geracao_dados_json(tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
-
         except :
-
             self.logging.error("Unexpected error:", sys.exc_info()[0])
 
 
@@ -1909,7 +1907,7 @@ class GeradorDeSql:
             quantidade_final (int, optional): se definido os dados serão gerados de forma automática até atingir a quantidade de dados cadastrados ,ignorando o total de ciclos. Defaults to 0.
         """
 
-        from paralel_lib import Paralel_subprocess
+        from paralelLib import Paralel_subprocess
 
         self.logging.info("gerar_todos_dados_por_json",extra=locals())
 
