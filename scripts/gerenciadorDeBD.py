@@ -346,7 +346,7 @@ class GerenciadorDeBD:
                 mydb.commit()
         except:
             pass
-        cursor.close()
+        #cursor.close()
     
     def reset_database(self):
         self.execute_sql_file(self.sql_file_pattern)
@@ -491,10 +491,10 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
                 except BaseException as e:
                     self.logging.error("Unexpected error:", e)
-        try:
-            cursor.close()
-        except:
-                pass
+        # try:
+        #     cursor.close()
+        # except:
+        #         pass
     
     def execute_operation_array_return(self,operations:list)->list:
         retorno=[]
@@ -518,6 +518,18 @@ class GerenciadorDeBD:
 #gerencia
     def get_status(self):
         if self.tipo=="mysql":
+            # consulta_queries="""SHOW GLOBAL STATUS
+            #     Map keys: [Com_select, Com_insert, Com_update, Com_delete]
+            #     Map labels: [Select, Insert, Update, Delete]"""
+            # consulta_sessions="""SELECT Command,count(*) from information_schema.PROCESSLIST GROUP BY Command"""
             return self.mydb.cmd_statistics()
         elif self.tipo == "postgre":
+            # consulta_queries="""SELECT
+            #     (SELECT sum(xact_commit) + sum(xact_rollback) AS "Total" FROM pg_stat_database),
+            #     (SELECT sum(xact_commit) AS "Commit" FROM pg_stat_database),
+            #     (SELECT sum(xact_rollback) AS "Rollback" FROM pg_stat_database)"""
+            # consulta_sessions="""SELECT
+            # (SELECT count(*) AS "Active" FROM pg_catalog.pg_stat_activity sa WHERE state='active'),
+            # (SELECT count(*) AS "Idle" FROM pg_catalog.pg_stat_activity sa WHERE state='idle'),
+            # (SELECT count(*) AS "Total" FROM pg_catalog.pg_stat_activity sa WHERE state IS NOT NULL)"""
             return None

@@ -164,17 +164,16 @@ GRANT ALL ON TABLE public.store TO nyq9kedfwus9d;
 GRANT ALL ON TABLE public.store TO rg2dsvhc6ahajz;
 GRANT ALL ON TABLE public.store TO vaddpet2mh7hiq;
 
-
-GRANT ALL ON SCHEMA public TO b2cr7y3twxkfzn;
-GRANT ALL ON SCHEMA public TO c7f5w3xj54poop;
-GRANT ALL ON SCHEMA public TO cu9c5qycens55v;
-GRANT ALL ON SCHEMA public TO dvjr3ef9uwukby;
-GRANT ALL ON SCHEMA public TO fhabpsyubkgo7;
-GRANT ALL ON SCHEMA public TO ibd4bhkjpyi4hx;
-GRANT ALL ON SCHEMA public TO loymzy83yf9kub;
-GRANT ALL ON SCHEMA public TO mzramna;
-GRANT ALL ON SCHEMA public TO nyq9kedfwus9d;
-GRANT ALL ON SCHEMA public TO rg2dsvhc6ahajz;
-GRANT ALL ON SCHEMA public TO usuarios;
-GRANT ALL ON SCHEMA public TO vaddpet2mh7hiq;
+GRANT ALL on all sequences in  SCHEMA public TO b2cr7y3twxkfzn;
+GRANT ALL on all sequences in SCHEMA public TO c7f5w3xj54poop;
+GRANT ALL on all sequences in SCHEMA public TO cu9c5qycens55v;
+GRANT ALL on all sequences in SCHEMA public TO dvjr3ef9uwukby;
+GRANT ALL on all sequences in SCHEMA public TO fhabpsyubkgo7;
+GRANT ALL on all sequences in SCHEMA public TO ibd4bhkjpyi4hx;
+GRANT ALL on all sequences in SCHEMA public TO loymzy83yf9kub;
+GRANT ALL on all sequences in SCHEMA public TO mzramna;
+GRANT ALL on all sequences in SCHEMA public TO nyq9kedfwus9d;
+GRANT ALL on all sequences in SCHEMA public TO rg2dsvhc6ahajz;
+GRANT ALL on all sequences in SCHEMA public TO usuarios;
+GRANT ALL on all sequences in SCHEMA public TO vaddpet2mh7hiq;
 

@@ -6,7 +6,7 @@ from paralelLib import Paralel_pool,Paralel_subprocess,Paralel_thread
 logstash_data={"host":"192.168.0.116","port":5000}
 total_elementos=50000
 pre_exec=5000
-threads_paralel_lv2=5
+threads_paralel_lv2=10
 usuarios_bd=json.loads(open("scripts/usuarios.json").read())
 
 infos_docker=json.loads(open("scripts/infos_docker.json").read())
