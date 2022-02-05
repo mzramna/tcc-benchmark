@@ -339,7 +339,7 @@ class GerenciadorDeBD:
                 except IOError as msg:
                     self.logging.error("Command skipped: ", msg)
         elif self.tipo == "postgres":
-            self.cursor.execute(open("containers_build/postgres default exemple.sql","r").read())
+            self.cursor.execute(open(file,"r").read())
         self.mydb.commit()
     
     def reset_database(self):
