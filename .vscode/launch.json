@@ -13,49 +13,49 @@
             "console": "internalConsole"
         },
         {
-            "name": "Python: main",
+            "name": "main",
             "type": "python",
             "request": "launch",
             "program": "scripts/main.py",
             "console": "internalConsole"
         },
         {
-            "name": "Python: teste gerador dbbench",
+            "name": "teste gerador dbbench",
             "type": "python",
             "request": "launch",
             "program": "scripts/teste_gerador_dbbench.py",
             "console": "internalConsole"
         },
         {
-            "name": "Python: gerar db para testes",
+            "name": "gerar db para testes",
             "type": "python",
             "request": "launch",
             "program": "scripts/geração_bd_testes.py",
             "console": "internalConsole"
         },
         {
-            "name": "Python: teste inserção bd",
+            "name": "teste inserção bd",
             "type": "python",
             "request": "launch",
             "program": "scripts/teste_script_bd_completo.py",
             "console": "internalConsole"
         },
         {
-            "name": "Python: teste inserção bd paralelo",
+            "name": "teste inserção bd paralelo",
             "type": "python",
             "request": "launch",
             "program": "scripts/teste_script_bd_completo_paralel.py",
             "console": "internalConsole"
         },
         {
-            "name": "Python: teste monitor container",
+            "name": "teste monitor container",
             "type": "python",
             "request": "launch",
             "program": "scripts/teste_monitor_container.py",
             "console": "internalConsole"
         },
         {
-            "name": "Python: executar benchmark",
+            "name": "executar benchmark",
             "type": "python",
             "request": "launch",
             "program": "scripts/executar_benchmark_tcc.py",

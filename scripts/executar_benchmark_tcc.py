@@ -4,9 +4,9 @@ from paralelLib import Paralel_pool,Paralel_subprocess,Paralel_thread
 #from datetime import datetime
 
 logstash_data={"host":"192.168.0.116","port":5000}
-total_elementos=10000
-pre_exec=1000
-threads_paralel_lv2=100
+total_elementos=50000
+pre_exec=5000
+threads_paralel_lv2=5
 usuarios_bd=json.loads(open("scripts/usuarios.json").read())
 
 infos_docker=json.loads(open("scripts/infos_docker.json").read())
@@ -47,7 +47,7 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         if compiled_users != {}:
             #criar_usuarios(connect={"host":host, "user":user, "password":password, "database":database, "port":port,"tipo":tipo,"sql_file_pattern":sql_file_pattern,"logstash_data":logstash_data,"level":40}, usuarios=compiled_users, bd=database, root="SafestRootPassword",quantidade=total_threads)
             for i in compiled_users.keys():
-                gerenciador.append(GerenciadorDeBD(host=host, user=compiled_users[i]["usuario"], password=compiled_users[i]["senha"], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40))
+                gerenciador.append(GerenciadorDeBD(host=host, user=compiled_users[i]["usuario"], password=compiled_users[i]["senha"], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40,autocommit=True))
         elif ( len(user) == len(password) ) and user!="" and password!="":
             for i in range(len(user)):
                 gerenciador.append(GerenciadorDeBD(host=host, user=user[i], password=password[i], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40))

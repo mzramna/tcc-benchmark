@@ -6,15 +6,16 @@ from interacaoSqlite import InteracaoSqlite
 import time
 class GerenciadorDeBD:
     
-    def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql", log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
+    def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql",autocommit:bool=False, log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
         try:
             self.host=host
             self.user=user
             self.password=password
             self.database=database
             self.port=port
+            self.autocommit=autocommit
             self.logging = loggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
-            self.mydb,self.tipo=self.create_connector(tipo=tipo,user=self.user,password= self.password,database=self.database)
+            self.mydb,self.tipo=self.create_connector(tipo=tipo,user=self.user,password= self.password,database=self.database,autocommit=autocommit)
             if self.mydb == None:
                 raise ValorInvalido(valor_inserido=str(locals().values()),campo="algum parametro de conexão é inválido")
             self.cursor=self.mydb.cursor()
@@ -62,8 +63,8 @@ class GerenciadorDeBD:
             command=self.generate_lib_insertion_from_data(data=data,sql=True)
         except ValorInvalido as e :
             self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+        except BaseException as e:
+            self.logging.error("Unexpected error:", e)
         finally:
             return command
 
@@ -88,8 +89,8 @@ class GerenciadorDeBD:
         except ValorInvalido as e:
             self.logging.exception(e)
             return None
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+        except BaseException as e:
+            self.logging.error("Unexpected error:", e)
             return None
 
     def gernerate_SQL_from_sqlite_range(self,amount:int)->list:
@@ -276,8 +277,8 @@ class GerenciadorDeBD:
             self.logging.exception(e)
         except TypeError as e:
             self.logging.exception(e)
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])            
+        except BaseException as e:
+            self.logging.error("Unexpected error:", e)
 
     def generate_lib_insertion_from_sqlite_id(self,id:int,sqlite_db:DirEntry,sql:bool=False)->str:
         """retorna um comando sql a partir de um id de operação do sqlite
@@ -300,8 +301,8 @@ class GerenciadorDeBD:
         except ValorInvalido as e:
             self.logging.exception(e)
             return None
-        except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+        except BaseException as e:
+            self.logging.error("Unexpected error:", e)
             return None
 
     def gernerate_lib_insertion_from_sqlite_range(self,amount:int,sqlite_db:DirEntry,initial:int=1,sql:bool=False)->list:
@@ -347,14 +348,14 @@ class GerenciadorDeBD:
 
     def process_connector(self,connector=None):
         if connector ==None:
-            cursor=self.cursor
             mydb=self.mydb
+            cursor=self.mydb.cursor()
         else:
             mydb=connector
             cursor=mydb.cursor()
         return cursor,mydb
 
-    def create_connector(self,tipo:int,user:str,password:str,database:str=None):
+    def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
         try:
             if database!=None:
                 if tipo==0 or tipo=="mysql":#0=mariadb,1=postgres
@@ -366,6 +367,7 @@ class GerenciadorDeBD:
                             port=self.port
                             )
                     tipo="mysql"
+                    mydb.autocommit=autocommit
                 elif tipo==1 or tipo=="postgres":
                     mydb = psycopg2.connect(
                             host=self.host,
@@ -375,6 +377,7 @@ class GerenciadorDeBD:
                             port=self.port
                             )
                     tipo="postgres"
+                    mydb.autocommit=autocommit
                 else:
                     raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
             else:
@@ -396,6 +399,7 @@ class GerenciadorDeBD:
                     tipo="postgres"
                 else:
                     raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
+            
             return mydb , tipo
         except mysql.connector.errors.ProgrammingError as e:
             self.logging.error(e)
@@ -437,7 +441,8 @@ class GerenciadorDeBD:
                 try:
                     cursor.execute(operations[i])
                     try:
-                        mydb.commit()
+                        if self.autocommit==False:
+                            mydb.commit()
                     except:
                         try:
                             cursor.fetchall()
@@ -449,7 +454,8 @@ class GerenciadorDeBD:
                 try:
                     cursor.execute(operations[i])
                     try:
-                        mydb.commit()
+                        if self.autocommit==False:
+                            mydb.commit()
                     except:
                         try:
                             cursor.fetchall()
@@ -462,7 +468,10 @@ class GerenciadorDeBD:
                     #self.mydb.commit()
                     self.logging.exception(e)
                 except psycopg2.errors.InFailedSqlTransaction as e :
-                    mydb.rollback()
+                    try:
+                        mydb.rollback()
+                    except BaseException :
+                        pass
                     if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
                         i-=1
                         error+=1
@@ -475,9 +484,13 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
                 except psycopg2.errors.DatabaseError as e:
                     self.logging.exception(e)
-                except:
-                    self.logging.error("Unexpected error:", sys.exc_info()[0])
-
+                except BaseException as e:
+                    self.logging.error("Unexpected error:", e)
+            try:
+                cursor.close()
+            except:
+                pass
+    
     def execute_operation_array_return(self,operations:list)->list:
         retorno=[]
         for i in operations:
