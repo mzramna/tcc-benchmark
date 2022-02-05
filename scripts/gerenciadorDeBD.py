@@ -486,9 +486,9 @@ class GerenciadorDeBD:
                     self.logging.exception(e)
                 except BaseException as e:
                     self.logging.error("Unexpected error:", e)
-            try:
-                cursor.close()
-            except:
+        try:
+            cursor.close()
+        except:
                 pass
     
     def execute_operation_array_return(self,operations:list)->list:
