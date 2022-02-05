@@ -326,22 +326,27 @@ class GerenciadorDeBD:
 
 #operações
 
-    def execute_sql_file(self,file:DirEntry):
-        if self.tipo == "mysql":
-            fd = open(file, 'r')
-            sqlFile = fd.read()
-            fd.close()
-            sqlCommands = sqlFile.split(';')
-
-            for command in sqlCommands:
-                try:
-                    if command.strip() != '':
-                        self.cursor.execute(command)
-                except IOError as msg:
-                    self.logging.error("Command skipped: ", msg)
-        elif self.tipo == "postgres":
-            self.cursor.execute(open(file,"r").read())
-        self.mydb.commit()
+    def execute_sql_file(self,file:DirEntry,connector=None):
+        cursor,mydb=self.process_connector(connector)
+        try:
+            if self.tipo == "mysql":
+                fd = open(file, 'r')
+                sqlFile = fd.read()
+                fd.close()
+                sqlCommands = sqlFile.split(';')
+                for command in sqlCommands:
+                    try:
+                        if command.strip() != '':
+                            cursor.execute(command)
+                    except IOError as msg:
+                        self.logging.error("Command skipped: ", msg)
+            elif self.tipo == "postgres":
+                cursor.execute(open(file,"r").read())
+            if self.autocommit==False:
+                mydb.commit()
+        except:
+            pass
+        cursor.close()
     
     def reset_database(self):
         self.execute_sql_file(self.sql_file_pattern)
@@ -456,10 +461,10 @@ class GerenciadorDeBD:
                     try:
                         if self.autocommit==False:
                             mydb.commit()
-                    except:
+                    except BaseException as e:
                         try:
                             cursor.fetchall()
-                        except:
+                        except BaseException as e:
                             pass
                 except psycopg2.errors.ForeignKeyViolation as e:
                     self.logging.exception(e)
