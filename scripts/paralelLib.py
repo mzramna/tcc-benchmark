@@ -42,7 +42,6 @@ class Worker_subprocess(Process):
         #         self.removedor=False
         self.operacao=0
         self.index=0
-        self.close_=False
         super().__init__(*args, **kwargs)
 
     def function_treat(self,work:dict):
@@ -72,7 +71,6 @@ class Worker_subprocess(Process):
             try:
                 tamanho=len(self.elementos)
                 if tamanho<1:
-                    self.close_=True
                     rodar = False
                     break
                 work=self.elementos[0]
@@ -150,9 +148,7 @@ class Paralel_subprocess:
             name_subprocess (str, optional): nome para os subprocessos,facilita o debug. Defaults to "subprocess".
         Returns:
             (list,list): primeiro list sendo o retorno,segundo sendo o tempo gasto para a execução,pode ser ignorado o segundo parametro,mas sempre será retornado
-        """        
-        # for j in elementos:
-        #         self.q.put(j)
+        """
         _elementos=self.manager.list(elementos)
         if retorno != None:
             self.retorno_ = True
@@ -185,14 +181,20 @@ class Paralel_subprocess:
             if timer ==True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
-            
-        for i in self.threads:
-            i.join()
-        # while len(self.threads)>0:
-        #     for i in self.threads:
-        #         if i.close_ == True:
-        #             i.close()
-        #             self.threads.remove(i)
+        executando= True
+        while executando == True:
+            contador=0
+            for i in self.threads:
+                if i.is_alive() == False or len(i.elementos)<1:
+                    total_elementos=len(i.elementos)
+                    contador+=1
+            if contador == len(self.threads):
+                executando = False
+        # for i in self.threads:
+        #     i.join()
+        # for i in self.threads:
+        #     i.terminate()
+                
         if retorno !=None and timer==False:
             return (self.retorno,None)
         elif retorno == None and timer ==True:

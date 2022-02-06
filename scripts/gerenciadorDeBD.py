@@ -1,4 +1,4 @@
-import psycopg2, mysql.connector, sys,traceback,json
+import psycopg2, mysql.connector, traceback,json
 from loggingSystem import loggingSystem
 from os import DirEntry
 from tratamentoErro import ValorInvalido
@@ -6,7 +6,7 @@ from interacaoSqlite import InteracaoSqlite
 import time
 class GerenciadorDeBD:
     
-    def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql",autocommit:bool=False, log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
+    def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql",autocommit:bool=True, log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
         try:
             self.host=host
             self.user=user
@@ -324,11 +324,11 @@ class GerenciadorDeBD:
 
 #operações
 
-    def execute_sql_file(self,file:DirEntry,connector=None):
+    def execute_sql_file(self,arquivo:DirEntry,connector=None):
         cursor,mydb=self.process_connector(connector)
         try:
             if self.tipo == "mysql":
-                fd = open(file, 'r')
+                fd = open(arquivo, 'r')
                 sqlFile = fd.read()
                 fd.close()
                 sqlCommands = sqlFile.split(';')
@@ -339,10 +339,12 @@ class GerenciadorDeBD:
                     except IOError as msg:
                         self.logging.error("Command skipped: ", msg)
             elif self.tipo == "postgres":
-                cursor.execute(open(file,"r").read())
+                cursor.execute(open(arquivo,"r").read())
             if self.autocommit==False:
                 mydb.commit()
-        except:
+        except psycopg2.InterfaceError as e:
+            self.execute_sql_file(arquivo=arquivo,connector=self.mydb)
+        except BaseException as e:
             pass
         try:
             cursor.close()
@@ -353,19 +355,31 @@ class GerenciadorDeBD:
         self.execute_sql_file(self.sql_file_pattern)
 
     def process_connector(self,connector=None):
-        import copy
         try:
             if connector ==None:
-                    mydb=copy.copy(self.mydb)
-                    cursor=mydb.cursor()
+                    mydb=self.mydb
+                    cursor=self.cursor
+                    if cursor == None:
+                        raise BaseException
             else:
-                mydb=copy.copy(connector)
+                mydb=connector
                 cursor=mydb.cursor()
-        except:
+        except BaseException as e:
                 self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
-                mydb=copy.copy(self.mydb)
-                cursor=mydb.cursor()
-        finally:
+                try:
+                    mydb=self.mydb
+                    self.cursor=self.mydb.cursor()
+                    cursor=self.cursor
+                    self.logging.exception(e)
+                    
+                except BaseException as e:
+                    traceback.print_exc()
+                    pass
+        if cursor == None:
+        # if type(cursor) != mysql.connector.cursor_cext.CMySQLCursor or type(cursor) != psycopg2.extensions.cursor or type(cursor) != psycopg2.cursor:
+            print(cursor)
+            return process_connector(connector)
+        else:
             return cursor,mydb
 
     def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
@@ -412,8 +426,6 @@ class GerenciadorDeBD:
                     tipo="postgres"
                 else:
                     raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
-            
-            return mydb , tipo
         except mysql.connector.errors.ProgrammingError as e:
             self.logging.error(e)
             return None,None
@@ -422,6 +434,8 @@ class GerenciadorDeBD:
             return None,None
         except BaseException as e:
             traceback.print_exc()
+        finally:
+            return mydb , tipo
 
     def creat_user(self,user:str,password:str,database:str,root_pass:str=""):
         try:
@@ -473,12 +487,15 @@ class GerenciadorDeBD:
                             cursor.fetchall()
                         except BaseException as e:
                             pass
-                except psycopg2.errors.ForeignKeyViolation as e:
-                    self.logging.exception(e)
-                except psycopg2.OperationalError as e:
-                    #self.cursor.execute("ROLLBACK")
-                    #self.mydb.commit()
-                    self.logging.exception(e)
+                except psycopg2.InterfaceError as e:
+                    cursor,mydb=self.process_connector(connector=self.mydb)
+                    if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
+                        i-=1
+                        error+=1
+                        time.sleep(0.001)
+                    else:
+                        #print(self.user)
+                        error=0
                 except psycopg2.errors.InFailedSqlTransaction as e :
                     try:
                         mydb.rollback()
@@ -492,17 +509,32 @@ class GerenciadorDeBD:
                         #print(self.user)
                         error=0
                     self.logging.exception(e)
-                except psycopg2.errors.InsufficientPrivilege as e:
-                    self.logging.exception(e)
-                except psycopg2.errors.DatabaseError as e:
+                except psycopg2.errors.ForeignKeyViolation as e:
+                    try:
+                        mydb.rollback()
+                    except BaseException :
+                        pass
+                    # if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
+                    #     i-=1
+                    #     error+=1
+                    #     time.sleep(0.001)
+                    # else:
+                    #     #print(self.user)
+                    #     error=0
+                    if e.pgcode == "23503":
+                        test="operação sem retorno,essa pesquisa ou update não encontra nada no banco de dados existente"
+                        pass
                     self.logging.exception(e)
                 except BaseException as e:
-                    self.logging.error("Unexpected error:", e)
-        try:
-            cursor.close()
-        except:
-                pass
-    
+                    try:
+                        self.logging.error("Unexpected error:", e)
+                    except:
+                        pass
+        # try:
+        #     cursor.close()
+        # except:
+        #         pass
+
     def execute_operation_array_return(self,operations:list)->list:
         retorno=[]
         for i in operations:

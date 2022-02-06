@@ -4,8 +4,8 @@ from paralelLib import Paralel_pool,Paralel_subprocess,Paralel_thread
 #from datetime import datetime
 
 logstash_data={"host":"192.168.0.116","port":5000}
-total_elementos=50000
-pre_exec=5000
+total_elementos=500
+pre_exec=10
 threads_paralel_lv2=10
 usuarios_bd=json.loads(open("scripts/usuarios.json").read())
 
@@ -16,15 +16,15 @@ ordem_executar_teste=["host","database","port","tipo","sql_file_pattern","pre_ex
 def criar_usuarios(connect:dict,usuarios:dict,bd:str,root:str,quantidade:int=1):
     gerenciador=GerenciadorDeBD(**connect)
     tmp=0
-    # for i in usuarios.keys():
-    #     gerenciador.creat_user(root_pass=root, user=usuarios[i]["usuario"], password=usuarios[i]["senha"],database=bd)
-    #     tmp+=1
-    #     if tmp>=quantidade:
-    #         break
-    if connect["tipo"]==0:
-        gerenciador.execute_sql_file("containers_build/mysql user creation.sql")
-    elif connect["tipo"]==1:
-        gerenciador.execute_sql_file("containers_build/postgres user creation.sql")
+    for i in usuarios.keys():
+        gerenciador.creat_user(root_pass=root, user=usuarios[i]["usuario"], password=usuarios[i]["senha"],database=bd)
+        tmp+=1
+        if tmp>=quantidade:
+            break
+    # if connect["tipo"]==0:
+    #     gerenciador.execute_sql_file("containers_build/mysql user creation.sql")
+    # elif connect["tipo"]==1:
+    #     gerenciador.execute_sql_file("containers_build/postgres user creation.sql")
 
 def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,total_elementos=10000,total_threads=3,user="",password="",compiled_users:dict={},recreate:bool=False):
     array=[]
@@ -63,6 +63,8 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         elif host == infos_docker["maquina_amd"]["url"]:
             name_subprocess="amd"
         p.execute(elementos=array,function=functions,daemon=False,name_subprocess=name_subprocess)
+        del gerenciador
+        del p
     elif (isinstance(user, str)  and isinstance(password, str) )and (user != "" and password != ""):
         gerenciador=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40)
          #reset
@@ -71,6 +73,8 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
             gerenciador.execute_operation_from_sqlite_no_return(pre_execucao, "scripts/initial_db.db") 
         p=Paralel_thread(total_threads=total_threads)
         p.execute(elementos=array,function=gerenciador.execute_operation_from_sqlite_no_return_with_id)
+        del gerenciador
+        del p
     else:
         return 0
 
@@ -122,6 +126,7 @@ def start_test(tipo_bd:str,paralel=True,recreate:bool=True):
             dados=[amd,arm]
             p=Paralel_subprocess(total_threads=2)
             result= p.execute(elementos=dados,function=executar_teste,timer=True,name_subprocess="servidor")
+            del p
         else:
             executar_teste(**infos_docker["maquina_arm"][tipo_bd+"_connect"],total_elementos=total_elementos)
             executar_teste(**infos_docker["maquina_amd"][tipo_bd+"_connect"],total_elementos=total_elementos)
@@ -133,7 +138,7 @@ def start_test(tipo_bd:str,paralel=True,recreate:bool=True):
         return result
 
 #executar testes no bd mariadb
-#print(start_test("mariadb",paralel=True,recreate=True))
+print(start_test("mariadb",paralel=True,recreate=True))
 
 #executar testes no bd postgres
 print(start_test("postgres",paralel=True,recreate=True))
