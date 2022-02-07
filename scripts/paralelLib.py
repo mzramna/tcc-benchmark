@@ -42,7 +42,11 @@ class Worker_subprocess(Process):
         #         self.removedor=False
         self.operacao=0
         self.index=0
+        self._close=False
         super().__init__(*args, **kwargs)
+
+    def is_colse(self):
+        return self._close
 
     def function_treat(self,work:dict):
         """faz com que a iteração seja feita de forma correta entre os multiplos elementos do array de funções caso seja um array ou executa como uma função normal
@@ -72,6 +76,7 @@ class Worker_subprocess(Process):
                 tamanho=len(self.elementos)
                 if tamanho<1:
                     rodar = False
+                    self._close=True
                     break
                 work=self.elementos[0]
                 self.elementos.remove(work)
@@ -181,17 +186,18 @@ class Paralel_subprocess:
             if timer ==True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
-        executando= True
-        while executando == True:
-            contador=0
-            for i in self.threads:
-                if i.is_alive() == False or len(i.elementos)<1:
-                    total_elementos=len(i.elementos)
-                    contador+=1
-            if contador == len(self.threads):
-                executando = False
-        # for i in self.threads:
-        #     i.join()
+        # executando= True
+        # while executando == True:
+        #     contador=0
+        #     for i in self.threads:
+        #         if i.is_alive() == False or i.is_colse() == True:#or len(i.elementos)<1 
+        #             total_elementos=len(i.elementos)
+        #             cosed=i.is_colse()
+        #             contador+=1
+        #     if contador == len(self.threads):
+        #         executando = False
+        for i in self.threads:
+            i.join()
         # for i in self.threads:
         #     i.terminate()
                 

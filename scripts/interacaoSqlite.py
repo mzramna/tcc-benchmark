@@ -2,7 +2,7 @@
 from typing import Union
 import json
 from random import randint, random,uniform,choice,sample
-from loggingSystem import loggingSystem
+from loggingSystem import LoggingSystem
 import sqlite3,sys,json,os,time
 from typing import Union
 from sqlite3 import OperationalError as sqliteOperationalError
@@ -14,7 +14,7 @@ class ProcessamentoSqlite:
         :param loggin_name: nome do log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         :param log_file: nome do arquivo de log que foi definido para a classe,altere apenas em caso seja necessário criar multiplas insstancias da função
         """
-        self.logging = loggingSystem(name=log_name, arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
+        self.logging = LoggingSystem(name=log_name, arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
         if thread is True:
             self.conn = sqlite3.connect(sqlite_db,check_same_thread=False)
@@ -87,7 +87,7 @@ class ProcessamentoSqlite:
             #print("erro operacional no sqlite")
             self.logging.error(e)
             time.sleep(0.001)
-            chamadas=loggingSystem.full_inspect_caller()
+            chamadas=LoggingSystem.full_inspect_caller()
             if chamadas.count(chamadas[0])<self.stack_overflow_max:
                 self.insert_data_sqlite(data=data,table=table)
         except sqliteError as e:

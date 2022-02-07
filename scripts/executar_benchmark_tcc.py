@@ -1,4 +1,6 @@
-import time, docker,json
+import time, docker,json,string
+from random import choice
+from os import DirEntry
 from gerenciadorDeBD import GerenciadorDeBD
 from paralelLib import Paralel_pool,Paralel_subprocess,Paralel_thread
 #from datetime import datetime
@@ -13,13 +15,34 @@ infos_docker=json.loads(open("scripts/infos_docker.json").read())
 
 ordem_executar_teste=["host","database","port","tipo","sql_file_pattern","pre_execucao","total_elementos","total_threads","user","password","compiled_users"]
 
-def criar_usuarios(connect:dict,usuarios:dict,bd:str,root:str,quantidade:int=1):
+def gerador_usuarios(arquivo:DirEntry,quantidade:int,tamanho:int=10):
+    valores = string.ascii_lowercase + string.digits
+    usuarios_cadastrados=json.loads(open(arquivo).read())
+    for q in range(quantidade+1):
+        if q<len(usuarios_cadastrados.keys()):
+            pass
+        else:
+            tmp={"usuario":"","senha":""}
+            for j in ["usuario","senha"]:
+                gerado = ''
+                for i in range(tamanho):
+                    if i ==0:
+                        gerado += choice(valores)
+                        while gerado[0] in string.digits:
+                            gerado = choice(valores)
+                    else:
+                        gerado += choice(valores)
+                tmp[j]=gerado
+            usuarios_cadastrados["usuario"+str(q)]=tmp
+    json.dump(usuarios_cadastrados,open(arquivo,"w"))
+
+def cadastrar_usuarios(connect:dict,usuarios:dict,bd:str,root:str,quantidade:int=1):
     gerenciador=GerenciadorDeBD(**connect)
     tmp=0
     for i in usuarios.keys():
         gerenciador.creat_user(root_pass=root, user=usuarios[i]["usuario"], password=usuarios[i]["senha"],database=bd)
         tmp+=1
-        if tmp>=quantidade:
+        if tmp==quantidade:
             break
     # if connect["tipo"]==0:
     #     gerenciador.execute_sql_file("containers_build/mysql user creation.sql")
@@ -45,7 +68,8 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
     if (isinstance(user, list) and isinstance(password, list) ) or (compiled_users !={}):
         gerenciador=[]
         if compiled_users != {}:
-            #criar_usuarios(connect={"host":host, "user":user, "password":password, "database":database, "port":port,"tipo":tipo,"sql_file_pattern":sql_file_pattern,"logstash_data":logstash_data,"level":40}, usuarios=compiled_users, bd=database, root="SafestRootPassword",quantidade=total_threads)
+            gerador_usuarios("scripts/usuarios.json",total_threads)
+            cadastrar_usuarios(connect={"host":host, "user":user, "password":password, "database":database, "port":port,"tipo":tipo,"sql_file_pattern":sql_file_pattern,"logstash_data":logstash_data,"level":40}, usuarios=compiled_users, bd=database, root="SafestRootPassword",quantidade=total_threads)
             for i in compiled_users.keys():
                 gerenciador.append(GerenciadorDeBD(host=host, user=compiled_users[i]["usuario"], password=compiled_users[i]["senha"], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=logstash_data,level=40,autocommit=True))
         elif ( len(user) == len(password) ) and user!="" and password!="":
@@ -109,13 +133,6 @@ def start_test(tipo_bd:str,paralel=True,recreate:bool=True):
     start_container(compiled=infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
     try:
         result=[]
-        # if recreate:
-        #     reset=GerenciadorDeBD(**infos_docker["maquina_arm"][tipo_bd+"_connect"])
-        #     reset.reset_database()
-        #     reset=GerenciadorDeBD(**infos_docker["maquina_amd"][tipo_bd+"_connect"])
-        #     reset.reset_database()
-        #     del reset
-        # time.sleep(10)
         if paralel == True:
             arm=infos_docker["maquina_arm"][tipo_bd+"_connect"]
             arm["total_elementos"]=total_elementos

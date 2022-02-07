@@ -1,5 +1,5 @@
 import logging,logstash,inspect
-class loggingSystem:
+class LoggingSystem:
     def __init__(self,  arquivo='./arquivo.log', formato:str='%(name)s - %(levelname)s - %(message)s',level=logging.DEBUG,name:str="",logstash_data:dict={}):
         """
         :param name: nome do log a ser escrito no arquivo

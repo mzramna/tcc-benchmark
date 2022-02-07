@@ -1,9 +1,12 @@
 import psycopg2, mysql.connector, traceback,json
-from loggingSystem import loggingSystem
+from loggingSystem import LoggingSystem
 from os import DirEntry
 from tratamentoErro import ValorInvalido
 from interacaoSqlite import InteracaoSqlite
 import time
+from typing import List,Union
+from psycopg2 import errors as psyErro
+from mysql.connector import errors as mysqlErro
 class GerenciadorDeBD:
     
     def __init__(self,host:str,user:str,password:str,database:str,port:int,tipo:int=0,sql_file_pattern:str="./sqlPattern.sql",autocommit:bool=True, log_file="./gerenciadorBD.log",level:int=10,logging_pattern='%(name)s - %(levelname)s - %(message)s',logstash_data:dict={},json_path:DirEntry="scripts/padroes.json"):
@@ -14,7 +17,8 @@ class GerenciadorDeBD:
             self.database=database
             self.port=port
             self.autocommit=autocommit
-            self.logging = loggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
+            self.logging = LoggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
+            self.tipo= tipo
             self.mydb,self.tipo=self.create_connector(tipo=tipo,user=self.user,password= self.password,database=self.database,autocommit=autocommit)
             if self.mydb == None:
                 raise ValorInvalido(valor_inserido=str(locals().values()),campo="algum parametro de conexão é inválido")
@@ -57,6 +61,7 @@ class GerenciadorDeBD:
                     }
             '''
         self.logging.info("generate_SQL_command_from_data",extra=locals())
+        command=""
         try:
             command=self.generate_lib_insertion_from_data(data=data,sql=True)
         except ValorInvalido as e :
@@ -91,7 +96,7 @@ class GerenciadorDeBD:
             self.logging.error("Unexpected error:", e)
             return None
 
-    def gernerate_SQL_from_sqlite_range(self,amount:int)->list:
+    def gernerate_SQL_from_sqlite_range(self,amount:int)->List[str]:
         """gera um raio de elementos,a partir do primeiro até o informado,de comandos sql a partir do sqlite
 
         Args:
@@ -344,6 +349,8 @@ class GerenciadorDeBD:
                 mydb.commit()
         except psycopg2.InterfaceError as e:
             self.execute_sql_file(arquivo=arquivo,connector=self.mydb)
+        except mysqlErro.OperationalError:
+            self.execute_sql_file(arquivo=arquivo,connector=self.mydb)
         except BaseException as e:
             pass
         try:
@@ -355,6 +362,8 @@ class GerenciadorDeBD:
         self.execute_sql_file(self.sql_file_pattern)
 
     def process_connector(self,connector=None):
+        cursor=""
+        mydb=""
         try:
             if connector ==None:
                     mydb=self.mydb
@@ -364,6 +373,10 @@ class GerenciadorDeBD:
             else:
                 mydb=connector
                 cursor=mydb.cursor()
+        except AttributeError as e:
+            time.sleep(1)
+            self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
+            return self.process_connector(connector=connector)
         except BaseException as e:
                 self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
                 try:
@@ -371,16 +384,18 @@ class GerenciadorDeBD:
                     self.cursor=self.mydb.cursor()
                     cursor=self.cursor
                     self.logging.exception(e)
-                    
                 except BaseException as e:
                     traceback.print_exc()
                     pass
-        if cursor == None:
-        # if type(cursor) != mysql.connector.cursor_cext.CMySQLCursor or type(cursor) != psycopg2.extensions.cursor or type(cursor) != psycopg2.cursor:
-            print(cursor)
-            return process_connector(connector)
-        else:
-            return cursor,mydb
+        try:
+            if cursor == None:
+            # if type(cursor) != mysql.connector.cursor_cext.CMySQLCursor or type(cursor) != psycopg2.extensions.cursor or type(cursor) != psycopg2.cursor:
+                print(cursor)
+                return self.process_connector(connector)
+            else:
+                return (cursor,mydb)
+        except UnboundLocalError:
+            return self.process_connector(connector)
 
     def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
         try:
@@ -426,16 +441,19 @@ class GerenciadorDeBD:
                     tipo="postgres"
                 else:
                     raise ValorInvalido(campo="tipo",valor_possivel="0 para mariadb,1 para postgres")
-        except mysql.connector.errors.ProgrammingError as e:
+            return (mydb , tipo)
+        except mysqlErro.ProgrammingError as e:
             self.logging.error(e)
-            return None,None
+            if e.errno == 1045:
+                erro="acesso negado"
+            return (None,tipo)
         except psycopg2.OperationalError as e:
             self.logging.error(e)
-            return None,None
+            return (None,tipo)
         except BaseException as e:
             traceback.print_exc()
-        finally:
-            return mydb , tipo
+            return self.create_connector(tipo=tipo,user=user,password=password,database=database,autocommit=autocommit)
+
 
     def creat_user(self,user:str,password:str,database:str,root_pass:str=""):
         try:
@@ -444,9 +462,11 @@ class GerenciadorDeBD:
                 "CREATE USER IF NOT EXISTS `{user}`@`%` IDENTIFIED BY '{password}';".format(user=user,password=password),
                 "GRANT ALL ON `{database}`.* to `{user}`@`%` IDENTIFIED BY '{password}';" .format(database=database,user=user,password=password)
                 ]
+                for tabela in self.json_loaded.keys():
+                    operation.append("GRANT ALL ON `{database}`.`{tabela}` to `{user}`@`%` IDENTIFIED BY '{password}';" .format(database=database,tabela=tabela,user=user,password=password))
                 if root_pass=="":
                     raise ValorInvalido(campo="root_pass",valor_inserido=root_pass)
-                con,tipo=self.create_connector(self.tipo, user="root",password=root_pass)
+                con,tipo=self.create_connector(tipo=self.tipo, user="root",password=root_pass)
                 self.execute_operation_array_no_return(operation,con)
                 # self.execute_operation_array_no_return(operation,self.mydb)
             elif self.tipo==1 or self.tipo == "postgres":
@@ -454,6 +474,8 @@ class GerenciadorDeBD:
                 "CREATE USER '{user}' password '{password}';".format(user=user,password=password),
                 'GRANT ALL on all sequences in SCHEMA public TO {user};' .format(user=user)
                 ]
+                for tabela in self.json_loaded.keys():
+                    operation.append("GRANT ALL ON TABLE {database}.{tabela} to {user};" .format(database=database,tabela=tabela,user=user))
                 self.execute_operation_array_no_return(operation,self.mydb)
         except:
             pass
@@ -496,7 +518,7 @@ class GerenciadorDeBD:
                     else:
                         #print(self.user)
                         error=0
-                except psycopg2.errors.InFailedSqlTransaction as e :
+                except psyErro.InFailedSqlTransaction as e :
                     try:
                         mydb.rollback()
                     except BaseException :
@@ -509,7 +531,7 @@ class GerenciadorDeBD:
                         #print(self.user)
                         error=0
                     self.logging.exception(e)
-                except psycopg2.errors.ForeignKeyViolation as e:
+                except psyErro.ForeignKeyViolation as e:
                     try:
                         mydb.rollback()
                     except BaseException :
@@ -535,7 +557,7 @@ class GerenciadorDeBD:
         # except:
         #         pass
 
-    def execute_operation_array_return(self,operations:list)->list:
+    def execute_operation_array_return(self,operations:list)-> List[str]:
         retorno=[]
         for i in operations:
             self.logging.debug(i)
@@ -544,6 +566,7 @@ class GerenciadorDeBD:
                 retorno.append(self.cursor.fetchall())
             except:
                 retorno.append([])
+        return retorno
 
     def execute_operation_from_sqlite_no_return(self,amount:int,sqlite_file:DirEntry,initial:int=1):
         self.execute_operation_array_no_return(self.gernerate_lib_insertion_from_sqlite_range(amount=amount,sqlite_db=sqlite_file,sql=True,initial=initial))
