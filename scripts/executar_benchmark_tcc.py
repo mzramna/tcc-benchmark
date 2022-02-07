@@ -79,24 +79,30 @@ def executar_teste(host,database,port,tipo,sql_file_pattern,pre_execucao=1000,to
         return 0
 
 def stop_container(ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
-    if compiled != {}:
-        client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
-        client.containers.get(compiled[id_key]).stop()
-    else:
-        if ip == "" or port == 0 or id_key == "":
-            return None
-        client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
-        client.containers.get(id_).stop()
+    try:
+        if compiled != {}:
+            client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
+            client.containers.get(compiled[id_key]).stop()
+        else:
+            if ip == "" or port == 0 or id_key == "":
+                return None
+            client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
+            client.containers.get(id_).stop()
+    except:
+            stop_container(ip=ip,port=port,id_=id_,compiled=compiled,id_key=id_key)
 
 def start_container(ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
-    if compiled != {}:
-        client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
-        client.containers.get(compiled[id_key]).start()
-    else:
-        if ip == "" or port == 0 or id_key == "":
-            return None
-        client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
-        client.containers.get(id_).start()
+    try:
+        if compiled != {}:
+            client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
+            client.containers.get(compiled[id_key]).start()
+        else:
+            if ip == "" or port == 0 or id_key == "":
+                return None
+            client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
+            client.containers.get(id_).start()
+    except:
+            start_container(ip=ip,port=port,id_=id_,compiled=compiled,id_key=id_key)
 
 def start_test(tipo_bd:str,paralel=True,recreate:bool=True):
     start_container(compiled=infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
