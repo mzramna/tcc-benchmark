@@ -4,6 +4,7 @@ from multiprocessing.managers import ValueProxy
 from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
+import time
 import traceback
 class Paralel_pool:
     def __init__(self,total_threads:int,max_size:int=0):
@@ -102,7 +103,8 @@ class Worker_subprocess(Process):
                 break
             except Exception as e:
                 traceback.print_exc()
-                pass
+                rodar = False
+                break
         return 0
 
     def exec_function(self,elementos,function,index=-1,retorno=None,retorno_modo=None):
@@ -138,7 +140,7 @@ class Worker_subprocess(Process):
 class Paralel_subprocess:
     """classe de gerenciamento de processos paralelos
     """    
-    def __init__(self,total_threads:int=0):
+    def __init__(self,total_threads:int=0,special_timeout:int=-1,timeout_percent:float=1):
         """classe de gerenciamento de processos paralelos
 
         Args:
@@ -149,6 +151,10 @@ class Paralel_subprocess:
         self.retorno=Manager()
         self.threads=[]
         self.resultados=[]
+        self.special_timeout=special_timeout
+        if timeout_percent>1 or timeout_percent<0:
+            raise
+        self.timeout_percent=timeout_percent
         if total_threads==0:
             total_threads=multiprocessing.cpu_count()*2
         for _ in range(total_threads):
@@ -219,10 +225,14 @@ class Paralel_subprocess:
                     # total_elementos=len(_elementos)
                     # cosed=i.is_colse()
                     contador+=1
+                elif contador/len(self.threads) >self.timeout_percent:
+                    contador+=1
+                    if self.special_timeout>0:
+                        time.sleep(self.special_timeout)
         # for i in self.threads:
         #     i.join()
-        # for i in self.threads:
-        #     i.terminate()
+        for i in self.threads:
+            i.terminate()
                 
         if retorno !=None and timer==False:
             return (self.retorno,None)
