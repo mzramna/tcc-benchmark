@@ -16,6 +16,7 @@ class GerenciadorDeBD:
             self.password=password
             self.database=database
             self.port=port
+            self.stack_overflow_max=5
             self.autocommit=autocommit
             self.logging = LoggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
             self.tipo= tipo
@@ -148,7 +149,7 @@ class GerenciadorDeBD:
             retorno["operacao"]=data["tipoOperacao"]
             retorno["nomeBD"]=data["nomeBD"]
             for i in data["dados"].keys():
-                if data["tipoOperacao"] ==1 and self.json_loaded[data["nomeBD"]][i][0]=="id":
+                if data["tipoOperacao"] == 1 and self.json_loaded[data["nomeBD"]][i][0]=="id":
                     pass
                 elif  type(data["dados"][i])==type(None):
                     pass
@@ -276,6 +277,8 @@ class GerenciadorDeBD:
                 else:
                     retorno[0]=retorno[0].replace("\'","")
             return retorno
+        except AttributeError as e:
+            self.logging.exception(e)
         except ValorInvalido as e :
             self.logging.exception(e)
         except TypeError as e:
@@ -374,7 +377,7 @@ class GerenciadorDeBD:
                 mydb=connector
                 cursor=mydb.cursor()
         except AttributeError as e:
-            time.sleep(1)
+            time.sleep(0.1)
             self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
             return self.process_connector(connector=connector)
         except BaseException as e:
@@ -384,6 +387,8 @@ class GerenciadorDeBD:
                     self.cursor=self.mydb.cursor()
                     cursor=self.cursor
                     self.logging.exception(e)
+                except AttributeError as e:
+                    return self.process_connector(connector)
                 except BaseException as e:
                     traceback.print_exc()
                     pass
@@ -394,7 +399,7 @@ class GerenciadorDeBD:
                 return self.process_connector(connector)
             else:
                 return (cursor,mydb)
-        except UnboundLocalError:
+        except UnboundLocalError as e:
             return self.process_connector(connector)
 
     def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
@@ -449,7 +454,21 @@ class GerenciadorDeBD:
             return (None,tipo)
         except psycopg2.OperationalError as e:
             self.logging.error(e)
-            return (None,tipo)
+            if "Connection refused" in e.args[0]:
+                chamadas=LoggingSystem.full_inspect_caller()
+
+                if chamadas.count(chamadas[0])>self.stack_overflow_max:
+
+                    return (None,tipo)
+                else:
+                    return self.create_connector(tipo=tipo,user=user,password=password,database=database,autocommit=autocommit)
+            else:
+                return (None,tipo)
+        except mysqlErro.DatabaseError as e:
+            (2003, "2003 (HY000): Can't connect to MySQL server on '192.168.0.10:3306' (111)", 'HY000')
+            if e.errno == 2003:
+                pass
+            self.logging.error(e)
         except BaseException as e:
             traceback.print_exc()
             return self.create_connector(tipo=tipo,user=user,password=password,database=database,autocommit=autocommit)
@@ -471,11 +490,16 @@ class GerenciadorDeBD:
                 # self.execute_operation_array_no_return(operation,self.mydb)
             elif self.tipo==1 or self.tipo == "postgres":
                 operation=[
-                "CREATE USER '{user}' password '{password}';".format(user=user,password=password),
-                'GRANT ALL on all sequences in SCHEMA public TO {user};' .format(user=user)
+                "DROP ROLE IF EXISTS {user};".format(user=user),
+                "CREATE USER {user} WITH PASSWORD '{password}';".format(user=user,password=password),
+                'GRANT ALL ON ALL SEQUENCES in SCHEMA public TO {user};' .format(user=user)
                 ]
                 for tabela in self.json_loaded.keys():
-                    operation.append("GRANT ALL ON TABLE {database}.{tabela} to {user};" .format(database=database,tabela=tabela,user=user))
+                    operation.append('GRANT ALL ON TABLE public."{tabela}" to {user};' .format(database=database,tabela=tabela,user=user))
+                # with open("containers_build/postgres user creation.sql","a") as arquivo:
+                #     for i in operation:
+                #         arquivo.write(i)
+                #         arquivo.write("\n")
                 self.execute_operation_array_no_return(operation,self.mydb)
         except:
             pass
@@ -511,32 +535,25 @@ class GerenciadorDeBD:
                             pass
                 except psycopg2.InterfaceError as e:
                     cursor,mydb=self.process_connector(connector=self.mydb)
-                    if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
-                        i-=1
-                        error+=1
-                        time.sleep(0.001)
-                    else:
-                        #print(self.user)
-                        error=0
                 except psyErro.InFailedSqlTransaction as e :
                     try:
                         mydb.rollback()
                     except BaseException :
                         pass
-                    if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
+                    if error<self.stack_overflow_max:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
                         i-=1
                         error+=1
-                        time.sleep(0.001)
+                        time.sleep(0.01)
                     else:
                         #print(self.user)
                         error=0
                     self.logging.exception(e)
                 except psyErro.ForeignKeyViolation as e:
-                    try:
-                        mydb.rollback()
-                    except BaseException :
-                        pass
-                    # if error<5:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
+                    # try:
+                    #     mydb.rollback()
+                    # except BaseException :
+                    #     pass
+                    # if error<self.stack_overflow_max:#se rolar rollback ele vai tentar dnv,limite de 5 vezes
                     #     i-=1
                     #     error+=1
                     #     time.sleep(0.001)
@@ -546,6 +563,12 @@ class GerenciadorDeBD:
                     if e.pgcode == "23503":
                         test="operação sem retorno,essa pesquisa ou update não encontra nada no banco de dados existente"
                         pass
+                    self.logging.exception(e)
+                except psyErro.DuplicateObject as e:
+                    pass
+                except psyErro.InsufficientPrivilege as e:
+                    self.logging.exception(e)
+                except psyErro.OperationalError as e:
                     self.logging.exception(e)
                 except BaseException as e:
                     try:

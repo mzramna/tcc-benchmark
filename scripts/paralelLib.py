@@ -1,5 +1,6 @@
 from multiprocessing import Queue,Process,Pool,Manager
 import multiprocessing
+from multiprocessing.managers import ValueProxy
 from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
@@ -57,15 +58,19 @@ class Worker_subprocess(Process):
         Returns:
             [type]: retorno da função passada nos parametros da classe
         """        
-        if type(self.function)==type([]):
-            if self.index<len(self.function):
-                self.index+=1
-                return self.function[self.index-1](**work)
+        try:
+            if type(self.function)==type([]):
+                if self.index.value<len(self.function):
+                    self.index.value=self.index.value+1
+                    return self.function[self.index.value-1](**work)
+                else:
+                    self.index.value=0
+                    return self.function[self.index.value](**work)
             else:
-                self.index=0
-                return self.function[self.index](**work)
-        else:
-            return self.function(**work)
+                return self.function(**work)
+        except Exception as e:
+            traceback.print_exc()
+            pass
 
     def run(self):
         """executa o processo paralelo
@@ -80,7 +85,6 @@ class Worker_subprocess(Process):
                     break
                 work=self.elementos[0]
                 self.elementos.remove(work)
-
                 result=self.function_treat(work)
                 if self.retorno_modo!=None:
                     if type(self.retorno_modo)==list:
@@ -88,16 +92,20 @@ class Worker_subprocess(Process):
                     if type(self.retorno_modo)==dict:
                         for key in self.retorno.keys():
                             self.retorno[key]=result[key]
-            except ValueError:
-                pass
-            except IndexError:
-                pass
+            except ValueError as e:
+                if e.args[0]=='list.remove(x): x not in list':
+                    pass
+                else:
+                    raise
+            except IndexError as e:
+                rodar = False
+                break
             except Exception as e:
                 traceback.print_exc()
                 pass
         return 0
 
-    def exec_function(self,elementos,function,retorno=None,retorno_modo=None):
+    def exec_function(self,elementos,function,index=-1,retorno=None,retorno_modo=None):
         """executa processo paralelo
 
         Args:
@@ -108,13 +116,22 @@ class Worker_subprocess(Process):
             - se passado um dict,com as keys definidas e conteudo delas indiferente,essas keys devem ser as mesmas do retorno da função inserida,pois o retorno será dado dessa forma,como array contendo o valor de retorno em cada key,pode estar totalmente fora de ordem,para evitar isso use o modo de array
             - se valor default não será retornado nenhum valor ao final da execução,não compativel com modo daemon no momento. Defaults to None.
             retorno_modo ([type], optional): modo de output que será usado no retorno dos processos. Defaults to None.
-        """        
+        """
+        tipo=type(index)
+        if type(function) == list and type(index) != ValueProxy:
+            return None
+        else:
+            self.index=index
         if retorno != None:
             self.retorno_ = True
             self.retorno=retorno
         else:
             self.retorno_ = False
-        self.function=function
+        if type(function) == list:
+            self.function=function
+            self.index=index
+        else:
+            self.function=function
         self.retorno_modo=retorno_modo
         self.elementos=elementos
 
@@ -177,27 +194,33 @@ class Paralel_subprocess:
         for i in range(len(self.threads)):
             self.threads[i]=Worker_subprocess(name=name_subprocess+"_"+str(i))
             if self.retorno_ == True:
-                self.threads[i].exec_function(elementos=_elementos,function=function,index_retorno=i,retorno=self.retorno,retorno_modo=self.retorno_modo)
+                if type(function)==list:
+                    self.index=self.manager.Value(typecode=int,value=0)
+                    self.threads[i].exec_function(elementos=_elementos,function=function,index_retorno=i,retorno=self.retorno,retorno_modo=self.retorno_modo,index=self.index)
+                else:
+                    self.threads[i].exec_function(elementos=_elementos,function=function,index_retorno=i,retorno=self.retorno,retorno_modo=self.retorno_modo)
             else:
-                self.threads[i].exec_function(elementos=_elementos,function=function)
+                if type(function)==list:
+                    self.index=self.manager.Value(typecode=int,value=0)
+                    self.threads[i].exec_function(elementos=_elementos,function=function,index=self.index)
+                else:
+                    self.threads[i].exec_function(elementos=_elementos,function=function)
             if daemon == True:
                 self.threads[i].daemon=True
             self.threads[i].start()
             if timer ==True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
-        # executando= True
-        # while executando == True:
-        #     contador=0
-        #     for i in self.threads:
-        #         if i.is_alive() == False or i.is_colse() == True:#or len(i.elementos)<1 
-        #             total_elementos=len(i.elementos)
-        #             cosed=i.is_colse()
-        #             contador+=1
-        #     if contador == len(self.threads):
-        #         executando = False
-        for i in self.threads:
-            i.join()
+        contador=0
+        while contador < len(self.threads):
+            contador=0
+            for i in self.threads:
+                if i.is_alive() == False or i.is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
+                    # total_elementos=len(_elementos)
+                    # cosed=i.is_colse()
+                    contador+=1
+        # for i in self.threads:
+        #     i.join()
         # for i in self.threads:
         #     i.terminate()
                 
