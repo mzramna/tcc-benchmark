@@ -7,7 +7,7 @@ do
 		. "${i}"
 	fi
 done
-
+/daemon/execute_python.sh
 if [ -d "/run/mysqld" ]; then
 	echo "[i] mysqld already present, skipping creation"
 	chown -R mysql:mysql /run/mysqld
@@ -52,17 +52,20 @@ else
 	if [ ! -f "$tfile" ]; then
 	    return 1
 	fi
-#GRANT Create user,Event,File,Process,Reload,Replication client,Replication slave,Show databases,Shutdown,Super,Create tablespace ON *.* TO '$MYSQL_USER'@'%';
+
 	cat << EOF > $tfile
 USE mysql;
-FLUSH PRIVILEGES ;
+FLUSH PRIVILEGES;
 CREATE USER 'root'@'%' IDENTIFIED BY '$MYSQL_ROOT_PASSWORD';
+SET PASSWORD FOR 'root'@'localhost'=PASSWORD('$MYSQL_ROOT_PASSWORD') ;
+SET PASSWORD FOR 'root'@'%'=PASSWORD('$MYSQL_ROOT_PASSWORD') ;
 GRANT ALL ON *.* TO 'root'@'%' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
 GRANT ALL ON *.* TO 'root'@'localhost' identified by '$MYSQL_ROOT_PASSWORD' WITH GRANT OPTION ;
-SET PASSWORD FOR 'root'@'localhost'=PASSWORD('$MYSQL_ROOT_PASSWORD') ;
 SET GLOBAL general_log=1;
 SET GLOBAL general_log_file='$LOG_LOCAL';
 SET GLOBAL log_warnings=4;
+SET GLOBAL sort_buffer_size = 1024 * 1024 * 4;
+SET GLOBAL join_buffer_size = 1024 * 1024 * 4;
 SHOW VARIABLES LIKE "general_log%";
 SET GLOBAL log_output = 'FILE';
 DROP DATABASE IF EXISTS test ;
@@ -85,16 +88,19 @@ EOF
 		echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* to '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD';" >> $tfile
 		echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* to '$MYSQL_USER'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';" >> $tfile
 		echo "GRANT ALL ON *.* to '$MYSQL_USER'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';" >> $tfile
+		echo "GRANT ALL ON *.* to '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD';" >> $tfile
+		echo "GRANT Create user,Event,File,Process,Reload,Replication client,Replication slave,Show databases,Shutdown,Super,Create tablespace ON *.* TO '$MYSQL_USER'@'%';" >> $tfile
+		echo "FLUSH PRIVILEGES ;" >> $tfile
 	    fi
 	fi
 	cat $tfile
-	/usr/bin/mysqld --user=mysql --bootstrap --verbose=2 --skip-name-resolve --skip-networking=0 < $tfile
+	/usr/bin/mysqld --user=mysql --bootstrap --verbose=1 --skip-name-resolve --skip-networking=0  < $tfile
 	rm -f $tfile
 
 	for f in /docker-entrypoint-initdb.d/*; do
 		case "$f" in
-			*.sql)    echo "$0: running $f"; /usr/bin/mysqld --user=mysql --bootstrap --verbose=2 --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
-			*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | /usr/bin/mysqld --user=mysql --bootstrap --verbose=2 --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
+			*.sql)    echo "$0: running $f"; /usr/bin/mysqld --user=mysql --bootstrap --verbose=1 --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
+			*.sql.gz) echo "$0: running $f"; gunzip -c "$f" | /usr/bin/mysqld --user=mysql --bootstrap --verbose=1 --skip-name-resolve --skip-networking=0 < "$f"; echo ;;
 			*)        echo "$0: ignoring or entrypoint initdb empty $f" ;;
 		esac
 		echo
@@ -104,7 +110,7 @@ EOF
 	echo 'MySQL init process done. Ready for start up.'
 	echo
 
-	echo "exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0" "$@"
+	echo "exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 --verbose=1" "$@"
 fi
 
 # execute any pre-exec scripts
@@ -115,5 +121,4 @@ do
 		. ${i}
 	fi
 done
-/daemon/execute_python.sh
-exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 --verbose=1  $@
+exec /usr/bin/mysqld --user=mysql --console --skip-name-resolve --skip-networking=0 --verbose=1 $@

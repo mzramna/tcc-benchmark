@@ -9,7 +9,7 @@ services:
             - "5432:5432"
         volumes:
             - $config_folder/postgres/data:/var/lib/postgresql/data
-            - $config_folder/postgres/logs:/var/log/postgresql
+            - $config_folder/postgres/logs:/var/log
             - $config_folder/postgres/config:/config
             - ../postgres\ default\ exemple.sql:/docker-entrypoint-initdb.d/postgres\ default\ exemple.sql
             #- /var/run/docker.sock:/var/run/docker.sock:ro
@@ -18,10 +18,11 @@ services:
         restart: unless-stopped
         networks:
             - benchmarks_db
-#        resources:
-#            limits:
-#               cpus: 2
-#               memory: 1G
+        deploy:
+            resources:
+                limits:
+                    cpus: "1.0"
+                    memory: 1G
     mariadb:
         build: ./alpine_mariadb
         environment:
@@ -34,7 +35,7 @@ services:
             - "3306:3306"
         volumes:
             - $config_folder/mariadb/data:/var/lib/mysql
-            - $config_folder/mariadb/logs:/var/log/mysql/
+            - $config_folder/mariadb/logs:/var/log
             - $config_folder/mariadb/config:/config
             - ../mysql\ default\ exemple.sql:/docker-entrypoint-initdb.d/mysql\ default\ exemple.sql
             #- /var/run/docker.sock:/var/run/docker.sock:ro
@@ -44,10 +45,11 @@ services:
         restart: unless-stopped
         networks:
             - benchmarks_db
-#        resources:
-#        limits:
-#               cpus: 2
-#               memory: 1G
+        deploy:
+            resources:
+                limits:
+                    cpus: "1.0"
+                    memory: 1G
 networks:
     benchmarks_db: 
         driver: bridge 
