@@ -1883,13 +1883,13 @@ class GeradorDeSql:
             quantidade_final (int, optional): se definido os dados serão gerados de forma automática até atingir a quantidade de dados cadastrados ,ignorando o total de ciclos. Defaults to 0.
         """
 
-        from paralelLib import Paralel_thread
+        from paralelLib import Paralel_subprocess
         self.logging.info("gerar_todos_dados_por_json",extra=locals())
         if quantidade_ciclo == "random":
             quantidade_ciclo=randint(0, 20)
         if total_ciclos == "random":
             total_ciclos=randint(0, 20)
-        paralel=Paralel_thread(total_threads=threads)
+        paralel=Paralel_subprocess(total_threads=threads,join=True)
         parametros=[]
         if quantidade_final==0:
             for _ in range(0,total_ciclos):
@@ -1898,7 +1898,7 @@ class GeradorDeSql:
                 table = choice(list(self.json_loaded.keys()))
                 parametros.append({"select_country":select_country,"table":table,"quantidade":quantidade_ciclo,"tipo":tipo})
             #self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
-            paralel.execute(elementos=parametros,function=self.gerar_dados_validos_por_json,)
+            paralel.execute(elementos=parametros,function=self.gerar_dados_validos_por_json)
         elif quantidade_final>0:
             total=len(paralel.threads)
             for _ in range(total):

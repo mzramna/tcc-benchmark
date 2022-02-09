@@ -70,7 +70,8 @@ class Worker_subprocess(Process):
             else:
                 return self.function(**work)
         except Exception as e:
-            #traceback.print_exc()
+            # traceback.print_exc()
+            # time.sleep(200)
             raise
 
     def run(self):
@@ -148,7 +149,7 @@ class Paralel_subprocess:
         """        
         #self.q=Queue(maxsize=max_size)
         self.manager=Manager()
-        self.retorno=Manager()
+        self.retorno=None
         self.threads=[]
         self.resultados=[]
         self.daemon=daemon
@@ -164,6 +165,7 @@ class Paralel_subprocess:
             self.threads.append([])
             self.resultados.append(0)
         if retorno != None:
+            self.retorno=Manager()
             self.retorno_ = True
             if type(retorno)==list:
                 self.retorno_modo=[]
@@ -344,8 +346,10 @@ class Worker_thread(Thread):
         if function_array:
             self.retorno[self.index_retorno]=[]
 
+    def kill(self):
+        raise SystemExit()
 class Paralel_thread:
-    def __init__(self,total_threads:int,max_size:int=0,retorno=None,timer=False,daemon=True):
+    def __init__(self,total_threads:int,max_size:int=0,retorno=None,timer=False,daemon=False):
         self.q=Queue(maxsize=max_size)
         self.threads=[]
         self.resultados=retorno
@@ -393,6 +397,8 @@ class Paralel_thread:
         retorno = None
         if join == True:
             retorno=self.q.join()
+            # for i in self.threads:
+            #     i.kill()
         if join == True and self.time_== False:
             return (retorno,None)
         elif join == False and self.time_ == True:

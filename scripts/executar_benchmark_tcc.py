@@ -174,7 +174,7 @@ class Executar_benchmark:
         dados=[arm,amd]
         try:
             if paralel == True:
-                p=Paralel_thread(total_threads=2,timer=True)
+                p=Paralel_subprocess(total_threads=2,timer=True,join=True,name_subprocess="servidor")
                 result= p.execute(elementos=dados,function=self.executar_teste)
                 del p
             else:
