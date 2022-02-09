@@ -350,6 +350,8 @@ class Paralel_thread:
         self.threads=[]
         self.resultados=retorno
         self.daemon=daemon
+        if total_threads==0:
+            total_threads=multiprocessing.cpu_count()*2
         for _ in range(total_threads):
             self.threads.append([])
             if retorno != None:
@@ -388,8 +390,11 @@ class Paralel_thread:
             if self.time_ == True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
+        retorno = None
+        if join == True:
+            retorno=self.q.join()
         if join == True and self.time_== False:
-            return (self.q.join(),None)
+            return (retorno,None)
         elif join == False and self.time_ == True:
             retorno_timer=[]
             for i in self.timer:
@@ -399,6 +404,6 @@ class Paralel_thread:
             retorno_timer=[]
             for i in self.timer:
                 retorno_timer.append(i.fim())
-            return (self.q.join(),retorno_timer)
+            return (retorno,retorno_timer)
         else:
             return(None,None)

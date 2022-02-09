@@ -1,6 +1,6 @@
 from array import array
 from os import name,DirEntry
-from loggingSystem import loggingSystem
+from loggingSystem import LoggingSystem
 #from processamentosqlite import ProcessamentoSqlite
 from faker import Faker
 from random import randint, random,uniform,choice,sample
@@ -26,21 +26,13 @@ class GeradorDeSql:
         """
 
         self.sqlite_db=sqlite_db
-
         self.sql_file_pattern=sql_file_pattern
-
         self.json_file=json_file
-
         self.log_file=log_file
-
         self.level=level
-
         self.logging_pattern=logging_pattern
-
         self.logstash_data=logstash_data
-
-        self.logging = loggingSystem(name="gerador sql",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
-
+        self.logging = LoggingSystem(name="gerador sql",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
         #self.create_temporary_DB(local=sqlite_db,pattern=sql_file_pattern)
 
         self.processamento_sqlite=InteracaoSqlite(sqlite_db=sqlite_db,sql_file_pattern=sql_file_pattern,log_file=log_file,logging_pattern=logging_pattern,level=level,logstash_data=logstash_data)
@@ -175,7 +167,7 @@ class GeradorDeSql:
 
         self.logging.info("create_data",extra=locals())
 
-        self.logging.debug("rastreio create_data",extra={"rastreio":loggingSystem.full_inspect_caller()})
+        self.logging.debug("rastreio create_data",extra={"rastreio":LoggingSystem.full_inspect_caller()})
 
         try:
 
@@ -216,7 +208,7 @@ class GeradorDeSql:
 
                 if type(pattern[dado][0]) != type(""):
 
-                        raise TipoDeDadoIncompativel(valor_inserido=pattern[dado][0],tipo_possivel="string",campo="nome do campo")
+                    raise TipoDeDadoIncompativel(valor_inserido=pattern[dado][0],tipo_possivel="string",campo="nome do campo")
 
                 if pattern[dado][0] == "nomeCompleto":
 
@@ -518,7 +510,7 @@ class GeradorDeSql:
 
             elif e.campo=="associacao":
 
-                chamadas=loggingSystem.full_inspect_caller()
+                chamadas=LoggingSystem.full_inspect_caller()
 
                 if chamadas.count(chamadas[0])>self.stack_overflow_max:
 
@@ -834,7 +826,7 @@ class GeradorDeSql:
 
         self.logging.info("create_insert",extra=locals())
 
-        self.logging.debug("rastreio create_insert",extra={"rastreio":loggingSystem.full_inspect_caller()})
+        self.logging.debug("rastreio create_insert",extra={"rastreio":LoggingSystem.full_inspect_caller()})
 
         if values=={}:
 
@@ -886,7 +878,7 @@ class GeradorDeSql:
 
         self.logging.info("create_select",extra=locals())
 
-        self.logging.debug("rastreio create_select",extra={"rastreio":loggingSystem.full_inspect_caller()})
+        self.logging.debug("rastreio create_select",extra={"rastreio":LoggingSystem.full_inspect_caller()})
 
         try:
 
@@ -960,7 +952,7 @@ class GeradorDeSql:
 
             self.logging.exception(e)
 
-            chamadas=loggingSystem.full_inspect_caller()
+            chamadas=LoggingSystem.full_inspect_caller()
 
             if chamadas.count(chamadas[0])>self.stack_overflow_max:
 
@@ -1007,7 +999,7 @@ class GeradorDeSql:
 
         self.logging.info("create_update",extra=locals())
 
-        self.logging.debug("rastreio create_update",extra={"rastreio":loggingSystem.full_inspect_caller()})
+        self.logging.debug("rastreio create_update",extra={"rastreio":LoggingSystem.full_inspect_caller()})
 
         try:
 
@@ -1097,7 +1089,7 @@ class GeradorDeSql:
 
             self.logging.exception(e)
 
-            chamadas=loggingSystem.full_inspect_caller()
+            chamadas=LoggingSystem.full_inspect_caller()
 
             if chamadas.count(chamadas[0])>self.stack_overflow_max:
 
@@ -1148,7 +1140,7 @@ class GeradorDeSql:
 
         self.logging.info("create_delete",extra=locals())
 
-        self.logging.debug("rastreio create_delete",extra={"rastreio":loggingSystem.full_inspect_caller()})
+        self.logging.debug("rastreio create_delete",extra={"rastreio":LoggingSystem.full_inspect_caller()})
 
         try:
 
@@ -1192,7 +1184,7 @@ class GeradorDeSql:
 
             self.logging.exception(e)
 
-            chamadas=loggingSystem.full_inspect_caller()
+            chamadas=LoggingSystem.full_inspect_caller()
 
             if chamadas.count(chamadas[0])>self.stack_overflow_max:
 
@@ -1852,38 +1844,22 @@ class GeradorDeSql:
         self.logging.info("gerar_todos_dados_por_json",extra=locals())
 
         if quantidade_ciclo == "random":
-
             quantidade_ciclo=randint(0, 20)
-
         if total_ciclos == "random":
-
             total_ciclos=randint(0, 20)
         
-
         if quantidade_final==0:
-
             for _ in range(0,total_ciclos):
-
                 cadastrados=self.processamento_sqlite.total_operacoes()
-
                 self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
-
                 table = choice(list(self.json_loaded.keys()))
-
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
-
         elif quantidade_final>0:
-
             cadastrados=self.processamento_sqlite.total_operacoes()
-
             while cadastrados <quantidade_final:
-
                 cadastrados=self.processamento_sqlite.total_operacoes()
-
                 self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
-
                 table = choice(list(self.json_loaded.keys()))
-
                 self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
 
 
@@ -1907,23 +1883,15 @@ class GeradorDeSql:
             quantidade_final (int, optional): se definido os dados serão gerados de forma automática até atingir a quantidade de dados cadastrados ,ignorando o total de ciclos. Defaults to 0.
         """
 
-        from paralelLib import Paralel_subprocess
-
+        from paralelLib import Paralel_thread
         self.logging.info("gerar_todos_dados_por_json",extra=locals())
-
         if quantidade_ciclo == "random":
-
             quantidade_ciclo=randint(0, 20)
-
         if total_ciclos == "random":
-
             total_ciclos=randint(0, 20)
-
-        paralel=Paralel_subprocess(total_threads=threads)
-
+        paralel=Paralel_thread(total_threads=threads)
         parametros=[]
         if quantidade_final==0:
-            
             for _ in range(0,total_ciclos):
                 cadastrados=self.processamento_sqlite.total_operacoes()
                 self.logging.debug("total cadastrado",extra={"cadastrados":cadastrados})
@@ -1931,15 +1899,11 @@ class GeradorDeSql:
                 parametros.append({"select_country":select_country,"table":table,"quantidade":quantidade_ciclo,"tipo":tipo})
             #self.gerar_dados_validos_por_json(select_country=select_country,table=table,quantidade=quantidade_ciclo,tipo=tipo)
             paralel.execute(elementos=parametros,function=self.gerar_dados_validos_por_json,)
-
         elif quantidade_final>0:
-
-            total=len(paralel.threads)#quantidade_final-self.processamento_sqlite.total_operacoes()
-
+            total=len(paralel.threads)
             for _ in range(total):
-
                 parametros.append({"tipo":tipo,"select_country":select_country,"quantidade_ciclo":quantidade_ciclo,"total_ciclos":total_ciclos,"quantidade_final":quantidade_final})
-
-            paralel.execute(elementos=parametros,function=GeradorDeSql(sqlite_db=self.sqlite_db,sql_file_pattern=self.sql_file_pattern,json_file=self.json_file,level=self.level,logging_pattern=self.logging_pattern,logstash_data=self.logstash_data).gerar_todos_dados_por_json)
+            gerador_tmp=GeradorDeSql(sqlite_db=self.sqlite_db,sql_file_pattern=self.sql_file_pattern,json_file=self.json_file,level=self.level,logging_pattern=self.logging_pattern,logstash_data=self.logstash_data)
+            paralel.execute(elementos=parametros,function=gerador_tmp.gerar_todos_dados_por_json)
 
 

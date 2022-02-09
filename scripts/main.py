@@ -1,29 +1,36 @@
-from geradorDeSql import GeradorDeSql
-from pprint import pprint
-from random import randint, random,uniform,choice
-import os
-#logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
-#logstash_data={"host":"192.168.0.116","port":5000}
-logstash_data={}
-quantidade_elementos=5000
-gerador=GeradorDeSql(sqlite_db="scripts/initial_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/geradorSQL.log",level=10,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
+from geração_bd_testes import Gerar_bd_teste
+from executar_benchmark_tcc import Executar_benchmark
+import json
+threads=0
+bd_teste="scripts/teste_db.db"
+gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
+retorno="valores_tempo_velocidade_benchmark.json"
+try:
+    valores_benchmark=json.loads(open(retorno,"r").read())
+except:
+    with open(retorno, "w") as out_file:
+        json.dump({}, out_file)
+        out_file.close()
+    valores_benchmark=json.loads(open(retorno,"r").read())
+if "valores_execucao" in valores_benchmark.keys():
+    valor_inicial=valores_benchmark["valores_execucao"]["valor_inicial"]
+    valor_final=valores_benchmark["valores_execucao"]["valor_final"]
+    valor_max=valores_benchmark["valores_execucao"]["valor_max"]
+else:
+    valor_inicial=20
+    valor_final=100000
+    valor_max=1000
 
-gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_ciclo=1,total_ciclos=100,quantidade_final=quantidade_elementos)
-#gerador.gerar_dados_validos_por_json(table="actor",tipo=1,select_country="pt_br",quantidade=10)#create
-#gerador.gerar_dados_validos_por_json(table="actor",tipo=2,select_country="pt_br",quantidade=10)#leitura completa
-#gerador.gerar_dados_validos_por_json(table="actor",tipo=3,select_country="pt_br",quantidade=10)#busca
-#gerador.gerar_dados_validos_por_json(table="actor",tipo=4,select_country="pt_br",quantidade=10,dado_existente=True)#busca filtrada
-#gerador.gerar_dados_validos_por_json(table="actor",tipo=5,select_country="pt_br",quantidade=10,dado_existente=True)#edição
-#gerador.gerar_dados_validos_por_json(table="actor",tipo=6,select_country="pt_br",quantidade=10,dado_existente=True)#deleção
+with open(retorno, "w") as out_file:
+        json.dump(valores_benchmark, out_file)
+        out_file.close()
 
-#pprint(gerador.read_contadores())
-
-dados_retornados=gerador.processamento_sqlite.read_operacoes(filtro={"nomeBD":"actor"})
-dados_separados=[[] for x in range(0,7)]
-for i in dados_retornados:
-    dados_separados[i["tipoOperacao"]].append(i)
-for i in range(1,7):
-    #tmp=choice(dados_separados[i])
-    #pprint(dados_separados[i])
-    arquivo="./teste_geracao_dbbench_tipo_"+str(i)+".csv"
-    gerador.generate_dbbench_file_from_datas(datas=dados_separados[i],file_path=arquivo)
+while valor_max<valor_final:
+    benchmark=Executar_benchmark(total_elementos=valor_max,sqlite_bd=bd_teste).executar()
+    valores_benchmark["valor_final"+str(valor_max)]={"postgres":benchmark[0],"mariadb":benchmark[1]}
+    print(benchmark)
+    valores_benchmark["valores_execucao"]={"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max}
+    with open(retorno, "w") as out_file:
+        json.dump(valores_benchmark, out_file)
+        out_file.close()
+    valor_max+=1000
