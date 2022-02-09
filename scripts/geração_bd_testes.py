@@ -16,5 +16,5 @@ class Gerar_bd_teste:
         print("gerados dados randomicos")
 
 if __name__ == "__main__":
-    Gerar_bd_teste(local_sqlite="scripts/initial_db.db").executar()
+    Gerar_bd_teste(local_sqlite=DirEntry("scripts/initial_db.db")).executar()
     
