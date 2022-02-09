@@ -524,7 +524,7 @@ class GeradorDeSql:
 
         except :
 
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            raise
 
 
     def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> list:
@@ -1584,7 +1584,7 @@ class GeradorDeSql:
 
         except :
 
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            raise
 
 
     def generate_dbbench_file_from_datas(self,datas:list,file_path: DirEntry):
@@ -1619,7 +1619,7 @@ class GeradorDeSql:
 
         except :
 
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            raise
 
 
     def generate_dbbench_all_data_from_database(self,table:str,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[]):
@@ -1663,7 +1663,7 @@ class GeradorDeSql:
 
         except:
 
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            raise
 
 
     def generate_all_dbbench_data(self,file_path:DirEntry="./",default_name_pre:str="teste_geracao_dbbench_tipo",default_file_type:str="csv",tipos:list=[],table_name_in_file:bool=False):
@@ -1719,7 +1719,7 @@ class GeradorDeSql:
             for _ in range(0,quantidade):
                     self.ciclo_geracao_dados_json(tipo=tipo,select_country=select_country,table=table,dado_existente=dado_existente)
         except :
-            self.logging.error("Unexpected error:", sys.exc_info()[0])
+            raise
 
 
     #TODO gerar dados de erro por json
