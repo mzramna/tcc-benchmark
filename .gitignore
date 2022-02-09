@@ -8,3 +8,4 @@ scripts/*.db*
 dbbench/exemplos
 dbbench/dbbench*
 dbbench/csv
+valores_tempo_velocidade_benchmark.json
