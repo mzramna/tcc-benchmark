@@ -70,8 +70,8 @@ class Worker_subprocess(Process):
             else:
                 return self.function(**work)
         except Exception as e:
-            traceback.print_exc()
-            pass
+            #traceback.print_exc()
+            raise
 
     def run(self):
         """executa o processo paralelo
@@ -102,7 +102,7 @@ class Worker_subprocess(Process):
                 rodar = False
                 break
             except Exception as e:
-                traceback.print_exc()
+                # traceback.print_exc()
                 rodar = False
                 break
         return 0
@@ -140,7 +140,7 @@ class Worker_subprocess(Process):
 class Paralel_subprocess:
     """classe de gerenciamento de processos paralelos
     """    
-    def __init__(self,total_threads:int=0,special_timeout:int=-1,timeout_percent:float=1):
+    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name_subprocess:str="subprocess",special_timeout:int=-1,timeout_percent:float=1,join:bool=False):
         """classe de gerenciamento de processos paralelos
 
         Args:
@@ -151,7 +151,10 @@ class Paralel_subprocess:
         self.retorno=Manager()
         self.threads=[]
         self.resultados=[]
+        self.daemon=daemon
         self.special_timeout=special_timeout
+        self.name_subprocess=name_subprocess
+        self.join=join
         if timeout_percent>1 or timeout_percent<0:
             raise
         self.timeout_percent=timeout_percent
@@ -160,24 +163,6 @@ class Paralel_subprocess:
         for _ in range(total_threads):
             self.threads.append([])
             self.resultados.append(0)
-        
-    def execute(self,elementos,function,retorno=None,daemon=False,timer=False,name_subprocess:str="subprocess",**kwargs):
-        """executa o processamento das funções passadas com os parametros passados
-
-        Args:
-            elementos ([dict]): array de dictionarys de kwargs para as execuções das funções 
-            function ([function]): array de funções,pode ter apenas uma função,só é necessária mais de uma se forem usados varios objetos diferentes para fazer as execuções
-            retorno (type, optional): implementado mas não testado:
-            - se passado um array,independente do conteudo,irá retornar um valor para cada input em cada elemento do array,fora de ordem
-            - se passado um dict,com as keys definidas e conteudo delas indiferente,essas keys devem ser as mesmas do retorno da função inserida,pois o retorno será dado dessa forma,como array contendo o valor de retorno em cada key,pode estar totalmente fora de ordem,para evitar isso use o modo de array
-            - se valor default não será retornado nenhum valor ao final da execução,não compativel com modo daemon no momento. Defaults to None.
-            daemon (bool, optional): se verdadeiro o processo funcionará em modo daemon,isso fará com que as funções não sejam destruidas ao final da operação,só deve ser usado se forem adicionados novos elementos ao manager em segundo plano em outro subprocesso,não compativel com retorno no momento. Defaults to False.
-            timer (bool, optional): retorna o tempo gasto para executar a função. Defaults to False.
-            name_subprocess (str, optional): nome para os subprocessos,facilita o debug. Defaults to "subprocess".
-        Returns:
-            (list,list): primeiro list sendo o retorno,segundo sendo o tempo gasto para a execução,pode ser ignorado o segundo parametro,mas sempre será retornado
-        """
-        _elementos=self.manager.list(elementos)
         if retorno != None:
             self.retorno_ = True
             if type(retorno)==list:
@@ -197,8 +182,27 @@ class Paralel_subprocess:
             self.time_=True
         else:
             self.time_=False
+        
+        
+    def execute(self,elementos,function):
+        """executa o processamento das funções passadas com os parametros passados
+
+        Args:
+            elementos ([dict]): array de dictionarys de kwargs para as execuções das funções 
+            function ([function]): array de funções,pode ter apenas uma função,só é necessária mais de uma se forem usados varios objetos diferentes para fazer as execuções
+            retorno (type, optional): implementado mas não testado:
+            - se passado um array,independente do conteudo,irá retornar um valor para cada input em cada elemento do array,fora de ordem
+            - se passado um dict,com as keys definidas e conteudo delas indiferente,essas keys devem ser as mesmas do retorno da função inserida,pois o retorno será dado dessa forma,como array contendo o valor de retorno em cada key,pode estar totalmente fora de ordem,para evitar isso use o modo de array
+            - se valor default não será retornado nenhum valor ao final da execução,não compativel com modo daemon no momento. Defaults to None.
+            daemon (bool, optional): se verdadeiro o processo funcionará em modo daemon,isso fará com que as funções não sejam destruidas ao final da operação,só deve ser usado se forem adicionados novos elementos ao manager em segundo plano em outro subprocesso,não compativel com retorno no momento. Defaults to False.
+            timer (bool, optional): retorna o tempo gasto para executar a função. Defaults to False.
+            name_subprocess (str, optional): nome para os subprocessos,facilita o debug. Defaults to "subprocess".
+        Returns:
+            (list,list): primeiro list sendo o retorno,segundo sendo o tempo gasto para a execução,pode ser ignorado o segundo parametro,mas sempre será retornado
+        """
+        _elementos=self.manager.list(elementos)
         for i in range(len(self.threads)):
-            self.threads[i]=Worker_subprocess(name=name_subprocess+"_"+str(i))
+            self.threads[i]=Worker_subprocess(name=self.name_subprocess+"_"+str(i))
             if self.retorno_ == True:
                 if type(function)==list:
                     self.index=self.manager.Value(typecode=int,value=0)
@@ -211,37 +215,40 @@ class Paralel_subprocess:
                     self.threads[i].exec_function(elementos=_elementos,function=function,index=self.index)
                 else:
                     self.threads[i].exec_function(elementos=_elementos,function=function)
-            if daemon == True:
-                self.threads[i].daemon=True
+            self.threads[i].daemon=self.daemon 
             self.threads[i].start()
-            if timer ==True:
+            if self.time_ == True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
-        contador=0
-        while contador < len(self.threads):
+
+        if self.join == False:
             contador=0
+            while contador < len(self.threads) or len(_elementos)>0:
+                contador=0
+                for i in self.threads:
+                    if i.is_alive() == False or i.is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
+                        # total_elementos=len(_elementos)
+                        # cosed=i.is_colse()
+                        contador+=1
+                    elif contador/len(self.threads) >self.timeout_percent:
+                        contador+=1
+                        if self.special_timeout>0:
+                            time.sleep(self.special_timeout)
+        else:
             for i in self.threads:
-                if i.is_alive() == False or i.is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
-                    # total_elementos=len(_elementos)
-                    # cosed=i.is_colse()
-                    contador+=1
-                elif contador/len(self.threads) >self.timeout_percent:
-                    contador+=1
-                    if self.special_timeout>0:
-                        time.sleep(self.special_timeout)
-        # for i in self.threads:
-        #     i.join()
+                i.join()
+
         for i in self.threads:
             i.terminate()
-                
-        if retorno !=None and timer==False:
+
+        if self.retorno !=None and self.time_==False:
             return (self.retorno,None)
-        elif retorno == None and timer ==True:
+        elif self.retorno == None and self.time_ ==True:
             retorno_timer=[]
             for i in self.timer:
                 retorno_timer.append(i.fim())
             return (None,retorno_timer)
-        elif retorno !=None and timer ==True:
+        elif self.retorno !=None and self.time_ ==True:
             retorno_timer=[]
             for i in self.timer:
                 retorno_timer.append(i.fim())
@@ -338,21 +345,60 @@ class Worker_thread(Thread):
             self.retorno[self.index_retorno]=[]
 
 class Paralel_thread:
-    def __init__(self,total_threads:int,max_size:int=0):
+    def __init__(self,total_threads:int,max_size:int=0,retorno=None,timer=False,daemon=True):
         self.q=Queue(maxsize=max_size)
         self.threads=[]
-        self.resultados=[]
+        self.resultados=retorno
+        self.daemon=daemon
         for _ in range(total_threads):
             self.threads.append([])
-            self.resultados.append(0)
-        
-    def execute(self,elementos,function,retorno=None,join:bool=False):
+            if retorno != None:
+                self.resultados.append(0)
+        if retorno != None:
+            self.retorno_ = True
+            if type(retorno)==list:
+                self.retorno_modo=[]
+                self.retorno=self.retorno.list()
+                for i in retorno:
+                    self.retorno.append(i)
+            elif type(retorno)==dict:
+                self.retorno_modo={}
+                self.retorno=self.retorno.dict()
+                for key in retorno.keys():
+                    self.retorno[key]=[]
+        else:
+            self.retorno_ = False
+        if timer == True:
+            self.timer=[]
+            self.time_=True
+        else:
+            self.time_=False
+
+    def execute(self,elementos,function,join:bool=True):
         for j in elementos:
                 self.q.put(j)
         for i in range(len(self.threads)):
             self.threads[i]=Worker_thread(self.q)
-            self.threads[i].exec_function(function=function,index_retorno=i,retorno=retorno)
-            self.threads[i].setDaemon(True)
+            if self.retorno_== True:
+                self.threads[i].exec_function(function=function,index_retorno=i,retorno=self.retorno)
+            else:
+                self.threads[i].exec_function(function=function,index_retorno=i)
+            self.threads[i].setDaemon(self.daemon)
             self.threads[i].start()
-        if join is True:
-            return self.q.join()
+            if self.time_ == True:
+                self.timer.append(Timer())
+                self.timer[-1].inicio()
+        if join == True and self.time_== False:
+            return (self.q.join(),None)
+        elif join == False and self.time_ == True:
+            retorno_timer=[]
+            for i in self.timer:
+                retorno_timer.append(i.fim())
+            return (None,retorno_timer)
+        elif join == True and self.time_ == True:
+            retorno_timer=[]
+            for i in self.timer:
+                retorno_timer.append(i.fim())
+            return (self.q.join(),retorno_timer)
+        else:
+            return(None,None)

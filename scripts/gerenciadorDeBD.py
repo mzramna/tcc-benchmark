@@ -355,7 +355,7 @@ class GerenciadorDeBD:
         except mysqlErro.OperationalError:
             self.execute_sql_file(arquivo=arquivo,connector=self.mydb)
         except BaseException as e:
-            pass
+            raise
         try:
             cursor.close()
         except:
@@ -390,8 +390,8 @@ class GerenciadorDeBD:
                 except AttributeError as e:
                     return self.process_connector(connector)
                 except BaseException as e:
-                    traceback.print_exc()
-                    pass
+                    #traceback.print_exc()
+                    raise
         try:
             if cursor == None:
             # if type(cursor) != mysql.connector.cursor_cext.CMySQLCursor or type(cursor) != psycopg2.extensions.cursor or type(cursor) != psycopg2.cursor:
@@ -470,9 +470,8 @@ class GerenciadorDeBD:
                 pass
             self.logging.error(e)
         except BaseException as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             return self.create_connector(tipo=tipo,user=user,password=password,database=database,autocommit=autocommit)
-
 
     def creat_user(self,user:str,password:str,database:str,root_pass:str=""):
         try:
