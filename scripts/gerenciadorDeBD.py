@@ -34,6 +34,10 @@ class GerenciadorDeBD:
             except:
                 pass
 
+    def __del__(self):
+        self.cursor.close()
+        self.mydb.close()
+
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict):
         '''

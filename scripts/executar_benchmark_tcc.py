@@ -103,11 +103,28 @@ class Executar_benchmark:
         except:
             traceback.print_exc()
             raise
+        finally:
+            if tipo == 0:
+                tipo_bd="mariadb"
+            elif tipo ==1:
+                tipo_bd="postgres"
+            if host == self.infos_docker["maquina_arm"]["url"]:
+                self.stop_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
+            elif host == self.infos_docker["maquina_amd"]["url"]:
+                self.stop_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
 
     def executar_teste(self,host,database,port,tipo,sql_file_pattern,pre_execucao=1000,total_elementos=10000,total_threads=3,user:str="",password:str="",compiled_users:dict={},recreate:bool=False,total_users:int=-1,pre_exec=True):
         array=[]
         threads=[]
         try:
+            if tipo == 0:
+                tipo_bd="mariadb"
+            elif tipo ==1:
+                tipo_bd="postgres"
+            if host == self.infos_docker["maquina_arm"]["url"]:
+                    self.start_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
+            elif host == self.infos_docker["maquina_amd"]["url"]:
+                self.start_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
             self.preparacao_pre_teste(host=host,database=database,port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,total_users=total_users, user=user,password=password,compiled_users=compiled_users,recreate=recreate)
             for _ in range(pre_execucao,total_threads):
                 threads.append([])
@@ -203,6 +220,7 @@ class Executar_benchmark:
         return retorno
     
     def reset_bd_full(self):
+        dados=[]
         for tipo_bd in ["mariadb","postgres"]:
             arm=self.infos_docker["maquina_arm"][tipo_bd+"_connect"]
             arm["compiled_users"]=self.usuarios_bd
@@ -212,12 +230,15 @@ class Executar_benchmark:
             amd["compiled_users"]=self.usuarios_bd
             amd["recreate"]=True
             amd["total_users"]=-1
-            dados=[arm,amd]
-            try:
-                for i in dados:
-                    self.preparacao_pre_teste(**i)
-            except:
-                pass
+            dados.append(arm)
+            dados.append(amd)
+        try:
+            resetter=Paralel_subprocess(join=True,name_subprocess="reset_bd",total_threads=len(dados))
+            resetter.execute(elementos=dados,function=self.preparacao_pre_teste)
+            # for i in dados:
+            #     self.preparacao_pre_teste(**i)
+        except:
+            pass
 
 if __name__ == "__main__":
     logstash_data={"host":"192.168.0.116","port":5000}
