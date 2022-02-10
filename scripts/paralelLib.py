@@ -50,6 +50,9 @@ class Worker_subprocess(Process):
     def is_colse(self):
         return self._close
 
+    # def terminate(self):
+    #     super.terminate()
+
     def function_treat(self,work:dict):
         """faz com que a iteração seja feita de forma correta entre os multiplos elementos do array de funções caso seja um array ou executa como uma função normal
 
@@ -229,19 +232,23 @@ class Paralel_subprocess:
                 contador=0
                 for i in self.threads:
                     if i.is_alive() == False or i.is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
-                        # total_elementos=len(_elementos)
+                        total_elementos=len(_elementos)
                         # cosed=i.is_colse()
+                        condicao=contador/len(self.threads)
                         contador+=1
-                    elif contador/len(self.threads) >self.timeout_percent:
-                        contador+=1
-                        if self.special_timeout>0:
-                            time.sleep(self.special_timeout)
+                    if contador/len(self.threads) >=self.timeout_percent:
+                        contador = len(self.threads)
+                        for i in self.threads:
+                            i.terminate()
+                            self.threads.remove(i)
+                        break
         else:
             for i in self.threads:
                 i.join()
 
         for i in self.threads:
             i.terminate()
+            self.threads.remove(i)
 
         if self.retorno !=None and self.time_==False:
             return (self.retorno,None)
