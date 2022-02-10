@@ -1,0 +1,3 @@
+[submodule "texto/tcc-benchmark-texto"]
+	path = texto/tcc-benchmark-texto
+	url = https://github.com/mzramna/tcc-benchmark-texto.git
