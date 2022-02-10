@@ -17,18 +17,20 @@ if "valores_execucao" in valores_benchmark.keys():
     valor_final=valores_benchmark["valores_execucao"]["valor_final"]
     valor_max=valores_benchmark["valores_execucao"]["valor_max"]
 else:
-    valor_inicial=20
-    valor_final=100000
-    valor_max=1000
-
+    valor_inicial=1000
+    valor_final=10000
+    valor_max=100000
+benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=20)
+if valor_inicial == 1000:
+    benchmark.reset_bd_full()
 with open(retorno, "w") as out_file:
         json.dump(valores_benchmark, out_file)
         out_file.close()
 
-while valor_max<=valor_final:
-    gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_inicial,quantidade_elementos_totais=valor_max)
-    benchmark=Executar_benchmark(total_elementos=valor_max,sqlite_bd=bd_teste)
-    resultado_benchmark=benchmark.executar()
+while valor_final<=valor_max:
+    gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_inicial,quantidade_elementos_totais=valor_final)
+    
+    resultado_benchmark=benchmark.executar(total_elementos=valor_final,pre_execucao=valor_inicial,pre_exec=False)
     del benchmark
     tmp={"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1]}
     valores_benchmark["valor_final"+str(valor_max)]=tmp
@@ -37,4 +39,5 @@ while valor_max<=valor_final:
     with open(retorno, "w") as out_file:
         json.dump(valores_benchmark, out_file)
         out_file.close()
-    valor_max+=1000
+    valor_inicial=valor_final
+    valor_final+=10000

@@ -547,6 +547,8 @@ class GerenciadorDeBD:
                         #print(self.user)
                         error=0
                     self.logging.exception(e)
+                except psycopg2.DatabaseError as e:
+                    self.logging.exception(e)
                 except psyErro.ForeignKeyViolation as e:
                     # try:
                     #     mydb.rollback()

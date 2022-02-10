@@ -7,12 +7,10 @@ import traceback
 #from datetime import datetime
 
 class Executar_benchmark:
-    def __init__(self,paralel=True,recreate=True,total_elementos=10000,pre_exec=10,threads_paralel_lv2=10,threads_pct_timeout_lv2=0.6,quantidade_usuarios=-1,sqlite_bd:DirEntry="scripts/initial_db.db",usuarios_bd:DirEntry="scripts/usuarios.json",infos_docker:DirEntry="scripts/infos_docker.json",logstash_data={}):
+    def __init__(self,paralel=True,recreate=True,threads_paralel_lv2=10,threads_pct_timeout_lv2=0.6,quantidade_usuarios=-1,sqlite_bd:DirEntry="scripts/initial_db.db",usuarios_bd:DirEntry="scripts/usuarios.json",infos_docker:DirEntry="scripts/infos_docker.json",logstash_data={}):
         self.logstash_data=logstash_data
         self.paralel=paralel
         self.recreate=recreate
-        self.total_elementos=total_elementos
-        self.pre_exec=pre_exec
         self.threads_paralel_lv2=threads_paralel_lv2
         self.threads_pct_timeout_lv2=threads_pct_timeout_lv2
         self.quantidade_usuarios=quantidade_usuarios
@@ -23,22 +21,23 @@ class Executar_benchmark:
     def gerador_usuarios(self,arquivo:DirEntry,quantidade:int,tamanho:int=10):
         valores = string.ascii_lowercase + string.digits
         usuarios_cadastrados=json.loads(open(arquivo).read())
-        for q in range(quantidade+1):
-            if q<=len(usuarios_cadastrados.keys()):
-                pass
-            else:
-                tmp={"usuario":"","senha":""}
-                for j in ["usuario","senha"]:
-                    gerado = ''
-                    for i in range(tamanho):
-                        if i ==0:
-                            gerado += choice(valores)
-                            while gerado[0] in string.digits:
-                                gerado = choice(valores)
-                        else:
-                            gerado += choice(valores)
-                    tmp[j]=gerado
-                usuarios_cadastrados["usuario"+str(q)]=tmp
+        if quantidade>0:
+            for q in range(quantidade+1):
+                if q<=len(usuarios_cadastrados.keys()):
+                    pass
+                else:
+                    tmp={"usuario":"","senha":""}
+                    for j in ["usuario","senha"]:
+                        gerado = ''
+                        for i in range(tamanho):
+                            if i ==0:
+                                gerado += choice(valores)
+                                while gerado[0] in string.digits:
+                                    gerado = choice(valores)
+                            else:
+                                gerado += choice(valores)
+                        tmp[j]=gerado
+                    usuarios_cadastrados["usuario"+str(q)]=tmp
         json.dump(usuarios_cadastrados,open(arquivo,"w"))
 
     def cadastrar_usuarios(self,connect:dict,usuarios:dict,bd:str,root:str,quantidade:int=-1):
@@ -99,13 +98,13 @@ class Executar_benchmark:
                     except BaseException as e:
                         raise
             if compiled_users !={}:
-                self.gerador_usuarios("scripts/usuarios.json",total_users)
+                self.gerador_usuarios(arquivo="scripts/usuarios.json",quantidade=total_users)
                 self.cadastrar_usuarios(connect={"host":host, "user":user, "password":password, "database":database, "port":port,"tipo":tipo,"sql_file_pattern":sql_file_pattern,"logstash_data":self.logstash_data,"level":40}, usuarios=compiled_users, bd=database, root="SafestRootPassword")
         except:
             traceback.print_exc()
             raise
 
-    def executar_teste(self,host,database,port,tipo,sql_file_pattern,pre_execucao=1000,total_elementos=10000,total_threads=3,user:str="",password:str="",compiled_users:dict={},recreate:bool=False,total_users:int=-1):
+    def executar_teste(self,host,database,port,tipo,sql_file_pattern,pre_execucao=1000,total_elementos=10000,total_threads=3,user:str="",password:str="",compiled_users:dict={},recreate:bool=False,total_users:int=-1,pre_exec=True):
         array=[]
         threads=[]
         try:
@@ -120,7 +119,7 @@ class Executar_benchmark:
                     gerenciador.append(GerenciadorDeBD(host=host, user=compiled_users[i]["usuario"], password=compiled_users[i]["senha"], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40,autocommit=True))
                     if total_users>-1 and len(gerenciador) == total_users:
                         break
-                if pre_execucao>0:
+                if pre_execucao>0 and pre_exec == True:
                     gerenciador[0].execute_operation_from_sqlite_no_return(pre_execucao, "scripts/initial_db.db") 
                 name_subprocess=""
                 if host == self.infos_docker["maquina_arm"]["url"]:
@@ -148,7 +147,7 @@ class Executar_benchmark:
             elif host == self.infos_docker["maquina_amd"]["url"]:
                 self.stop_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
 
-    def start_test(self,tipo_bd:str,paralel=True,recreate:bool=True,total_users=-1):
+    def start_test(self,tipo_bd:str,pre_execucao=1000,total_elementos=10000,paralel=True,recreate:bool=True,total_users=-1,timer=False,pre_exec=True):
         result=[]
         arm=self.infos_docker["maquina_arm"][tipo_bd+"_connect"]
         arm["compiled_users"]=self.usuarios_bd
@@ -165,16 +164,18 @@ class Executar_benchmark:
                     self.preparacao_pre_teste(**i)
             except:
                 pass
-        arm["total_elementos"]=self.total_elementos
-        arm["pre_execucao"]=self.pre_exec
+        arm["total_elementos"]=total_elementos
+        arm["pre_execucao"]=pre_execucao
         arm["total_threads"]=self.threads_paralel_lv2
-        amd["total_elementos"]=self.total_elementos
+        arm["pre_exec"]=pre_exec
+        amd["total_elementos"]=total_elementos
         amd["total_threads"]=self.threads_paralel_lv2
-        amd["pre_execucao"]=self.pre_exec
+        amd["pre_execucao"]=pre_execucao
+        amd["pre_exec"]=pre_exec
         dados=[arm,amd]
         try:
             if paralel == True:
-                p=Paralel_subprocess(total_threads=2,timer=True,join=True,name_subprocess="servidor")
+                p=Paralel_subprocess(total_threads=2,timer=timer,join=True,name_subprocess="servidor")
                 result= p.execute(elementos=dados,function=self.executar_teste)
                 del p
             else:
@@ -185,14 +186,38 @@ class Executar_benchmark:
         finally:
             return result
 
-    def executar(self):
+    def executar(self,pre_execucao=1000,total_elementos=10000,pre_exec=True):
+        from timer import Timer
+        timer=Timer()
         retorno=[]
         #executar testes no bd postgres
-        retorno.append(self.start_test("postgres",paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios))
-        
+        timer.inicio()
+        self.start_test("postgres",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec)
+        retorno.append(timer.fim())
+        print("postgres concluido")
         #executar testes no bd mariadb
-        retorno.append(self.start_test("mariadb",paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios))
+        timer.inicio()
+        self.start_test("mariadb",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec)
+        retorno.append(timer.fim())
+        print("mariadb concluido")
         return retorno
+    
+    def reset_bd_full(self):
+        for tipo_bd in ["mariadb","postgres"]:
+            arm=self.infos_docker["maquina_arm"][tipo_bd+"_connect"]
+            arm["compiled_users"]=self.usuarios_bd
+            arm["recreate"]=True
+            arm["total_users"]=-1
+            amd=self.infos_docker["maquina_amd"][tipo_bd+"_connect"]
+            amd["compiled_users"]=self.usuarios_bd
+            amd["recreate"]=True
+            amd["total_users"]=-1
+            dados=[arm,amd]
+            try:
+                for i in dados:
+                    self.preparacao_pre_teste(**i)
+            except:
+                pass
 
 if __name__ == "__main__":
     logstash_data={"host":"192.168.0.116","port":5000}
