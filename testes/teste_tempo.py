@@ -7,9 +7,9 @@ from timer import Timer
 #logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
 #logstash_data={"host":"192.168.0.116","port":5000}
 logstash_data={}
-
+arquivo="teste_tempo_aditional_data_amd64"
 try:
-    f = open("teste_tempo_aditional_data.json", "r")
+    f = open(arquivo+".json", "r")
     loaded=json.load(f)
     f.close()
 except:
@@ -27,7 +27,7 @@ while loaded["quantidade_elementos"]<maximo_elementos:
     loaded["quantidade_elementos"]+=incremento
     while len(loaded["tempos"][-1])<total_por_ciclo:
         timer=Timer()
-        f = open("teste_tempo_execucao.log", "a")
+        f = open(arquivo+".log", "a")
         try:
             os.remove("scripts/teste_tempo_db.db")
         except:
@@ -41,13 +41,13 @@ while loaded["quantidade_elementos"]<maximo_elementos:
         print(duracao)
         f.write(str(duracao)+"\n")
         f.close()
-        f = open("teste_tempo_aditional_data.json", "w")
+        f = open(arquivo+".json", "w")
         loaded["tempos"][-1].append(duracao)
         json.dump(loaded,f)
         f.close()
         del gerador
     #pprint(tempos)
-    f = open("teste_tempo_execucao.log", "a")
+    f = open(arquivo+".log", "a")
     print("para ",loaded["quantidade_elementos"]," dados foram gastos os seguintes dados de tempo")
     print("media geração completa ",str(sum(loaded["tempos"][-1])/len(loaded["tempos"][-1])))
     print("media por elemento ",str((sum(loaded["tempos"][-1])/len(loaded["tempos"][-1]))/loaded["quantidade_elementos"]))
@@ -61,9 +61,9 @@ while quantidade_elementos<maximo_elementos:
     somatorio_total+=sum(loaded["tempos"][i])
     quantidades+=len(loaded["tempos"][i])
     quantidade_elementos+=incremento
-f = open("teste_tempo_execucao.log", "a")
+f = open(arquivo+".log", "a")
 print("media geração completa "+str(somatorio_total/quantidades)+"\n")
 print("media por elemento "+str((somatorio_total/quantidades)/quantidade_elementos)+"\n")
 f.write("media geração completa "+str(somatorio_total/quantidades)+"\n")
 f.write("media por elemento "+str((somatorio_total/quantidades)/quantidade_elementos)+"\n")
-os.remove("teste_tempo_aditional_data.json")
+os.remove(arquivo+".json")
