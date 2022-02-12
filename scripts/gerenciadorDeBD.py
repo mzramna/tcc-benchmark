@@ -598,10 +598,8 @@ class GerenciadorDeBD:
                 except psyErro.OperationalError as e:
                     self.logging.exception(e)
                 except BaseException as e:
-                    try:
-                        self.logging.error("Unexpected error:", e)
-                    except:
-                        pass
+                    # self.logging.error("Unexpected error:", e)
+                    raise
         # try:
         #     cursor.close()
         # except:

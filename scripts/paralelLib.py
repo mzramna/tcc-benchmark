@@ -6,6 +6,8 @@ from threading import Thread
 from timer import Timer
 import time
 import traceback
+import signal
+
 class Paralel_pool:
     def __init__(self,total_threads:int,max_size:int=0):
         #self.q=Queue(maxsize=max_size)
@@ -37,11 +39,12 @@ class Paralel_pool:
             return retorno
 
 class Worker_subprocess(Process):
-    def __init__(self,   *args, **kwargs):
+    def __init__(self,special_timeout=0,   *args, **kwargs):
         # self.removedor=True
         # if "remove_element" in kwargs:
         #     if kwargs["remove_element"] == False:
         #         self.removedor=False
+        self.special_timeout=special_timeout
         self.operacao=0
         self.index=0
         self._close=False
@@ -50,8 +53,8 @@ class Worker_subprocess(Process):
     def is_colse(self):
         return self._close
 
-    # def terminate(self):
-    #     super.terminate()
+    def handler(self,signum, frame):
+        raise Exception("timeout")
 
     def function_treat(self,work:dict):
         """faz com que a iteração seja feita de forma correta entre os multiplos elementos do array de funções caso seja um array ou executa como uma função normal
@@ -63,20 +66,36 @@ class Worker_subprocess(Process):
             [type]: retorno da função passada nos parametros da classe
         """        
         try:
+            if self.special_timeout>0:
+                signal.signal(signal.SIGALRM, self.handler)
+                signal.alarm(self.special_timeout)
+            retorno=None
             if type(self.function)==type([]):
                 if self.index.value<len(self.function):
                     self.index.value=self.index.value+1
-                    return self.function[self.index.value-1](**work)
+                    retorno= self.function[self.index.value-1](**work)
+                    # subsubprocess=Process(target=self.function[self.index.value-1],kwargs=work)
+                    # subsubprocess.start()
+                    # retorno=subsubprocess.join(timeout=self.special_timeout)
                 else:
                     self.index.value=0
-                    return self.function[self.index.value](**work)
+                    retorno= self.function[self.index.value](**work)
+                    # subsubprocess=Process(target=self.function[self.index.value],kwargs=work)
+                    # subsubprocess.start()
+                    # retorno=subsubprocess.join(timeout=self.special_timeout)
             else:
-                return self.function(**work)
+                retorno= self.function(**work)
+                # subsubprocess=Process(target=self.function,kwargs=work)
+                # subsubprocess.start()
+                # retorno=subsubprocess.join(timeout=self.special_timeout)
+            return retorno
         except Exception as e:
             # traceback.print_exc()
             # time.sleep(200)
+            # if e.args[0]=="timeout":
+            #     self.elementos.insert(0,work)
             raise
-
+        
     def run(self):
         """executa o processo paralelo
         """        
@@ -107,8 +126,11 @@ class Worker_subprocess(Process):
                 break
             except Exception as e:
                 # traceback.print_exc()
-                rodar = False
-                break
+                if e.args[0]=="timeout":
+                    pass
+                else:
+                    rodar = False
+                    break
         return 0
 
     def exec_function(self,elementos,function,index=-1,retorno=None,retorno_modo=None):
@@ -144,7 +166,7 @@ class Worker_subprocess(Process):
 class Paralel_subprocess:
     """classe de gerenciamento de processos paralelos
     """    
-    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name_subprocess:str="subprocess",special_timeout:int=-1,timeout_percent:float=1,join:bool=False):
+    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name_subprocess:str="subprocess",special_timeout:float=0,timeout_percent:float=1,join:bool=False):
         """classe de gerenciamento de processos paralelos
 
         Args:
@@ -207,7 +229,7 @@ class Paralel_subprocess:
         """
         _elementos=self.manager.list(elementos)
         for i in range(len(self.threads)):
-            self.threads[i]=Worker_subprocess(name=self.name_subprocess+"_"+str(i))
+            self.threads[i]=Worker_subprocess(name=self.name_subprocess+"_"+str(i),special_timeout=self.special_timeout)
             if self.retorno_ == True:
                 if type(function)==list:
                     self.index=self.manager.Value(typecode=int,value=0)
@@ -228,7 +250,7 @@ class Paralel_subprocess:
 
         if self.join == False:
             contador=0
-            while contador < len(self.threads) or len(_elementos)>0:
+            while(contador < len(self.threads) or len(_elementos)>0 ) and len(self.threads)>1:
                 contador=0
                 for i in self.threads:
                     if i.is_alive() == False or i.is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
@@ -247,7 +269,7 @@ class Paralel_subprocess:
                 i.join()
 
         for i in self.threads:
-            i.terminate()
+            i.kill()
             self.threads.remove(i)
 
         if self.retorno !=None and self.time_==False:

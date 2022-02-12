@@ -7,12 +7,13 @@ import traceback
 #from datetime import datetime
 
 class Executar_benchmark:
-    def __init__(self,paralel=True,recreate=True,threads_paralel_lv2=10,threads_pct_timeout_lv2=0.5,quantidade_usuarios=-1,sqlite_bd:DirEntry="scripts/initial_db.db",usuarios_bd:DirEntry="scripts/usuarios.json",infos_docker:DirEntry="scripts/infos_docker.json",logstash_data={}):
+    def __init__(self,paralel=True,recreate=True,threads_paralel_lv2=10,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=5,quantidade_usuarios=-1,sqlite_bd:DirEntry="scripts/initial_db.db",usuarios_bd:DirEntry="scripts/usuarios.json",infos_docker:DirEntry="scripts/infos_docker.json",logstash_data={}):
         self.logstash_data=logstash_data
         self.paralel=paralel
         self.recreate=recreate
         self.threads_paralel_lv2=threads_paralel_lv2
         self.threads_pct_timeout_lv2=threads_pct_timeout_lv2
+        self.threads_timeout_lv2=threads_timeout_lv2
         self.quantidade_usuarios=quantidade_usuarios
         self.sqlite_db=sqlite_bd
         self.usuarios_bd=json.loads(open(usuarios_bd).read())
@@ -113,29 +114,34 @@ class Executar_benchmark:
                 threads.append([])
             for i in range(pre_execucao,total_elementos):
                 array.append({"id":i,"sqlite_file":self.sqlite_db})
-            if compiled_users !={}:
-                gerenciador=[]
-                for i in compiled_users.keys():
-                    gerenciador.append(GerenciadorDeBD(host=host, user=compiled_users[i]["usuario"], password=compiled_users[i]["senha"], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40,autocommit=True))
-                    if total_users>-1 and len(gerenciador) == total_users:
-                        break
-                if pre_execucao>0 and pre_exec == True:
-                    gerenciador[0].execute_operation_from_sqlite_no_return(pre_execucao, "scripts/initial_db.db") 
-                name_subprocess=""
-                if host == self.infos_docker["maquina_arm"]["url"]:
-                    name_subprocess="arm"
-                elif host == self.infos_docker["maquina_amd"]["url"]:
-                    name_subprocess="amd"
-                p=Paralel_subprocess(total_threads=total_threads,timeout_percent=self.threads_pct_timeout_lv2,daemon=False,name_subprocess=name_subprocess)
-                functions=[]
-                for i in gerenciador:
-                    functions.append(i.execute_operation_from_sqlite_no_return_with_id)
-                p.execute(elementos=array,function=functions)
-                del gerenciador
-                del p
+            if self.threads_paralel_lv2>1 :
+                if compiled_users !={}:
+                    gerenciador=[]
+                    for i in compiled_users.keys():
+                        gerenciador.append(GerenciadorDeBD(host=host, user=compiled_users[i]["usuario"], password=compiled_users[i]["senha"], database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40,autocommit=True))
+                        if total_users>-1 and len(gerenciador) == total_users:
+                            break
+                    if pre_execucao>0 and pre_exec == True:
+                        gerenciador[0].execute_operation_from_sqlite_no_return(pre_execucao, self.sqlite_db) 
+                    name_subprocess=""
+                    if host == self.infos_docker["maquina_arm"]["url"]:
+                        name_subprocess="arm"
+                    elif host == self.infos_docker["maquina_amd"]["url"]:
+                        name_subprocess="amd"
+                    p=Paralel_subprocess(total_threads=total_threads,timeout_percent=self.threads_pct_timeout_lv2,daemon=False,name_subprocess=name_subprocess,special_timeout=self.threads_timeout_lv2)
+                    functions=[]
+                    for i in gerenciador:
+                        functions.append(i.execute_operation_from_sqlite_no_return_with_id)
+                    p.execute(elementos=array,function=functions)
+                    del gerenciador
+                    del p
+                else:
+                    return 0
             else:
-                return 0
-        except:
+                gerenciador=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40,autocommit=True)
+                gerenciador.execute_operation_from_sqlite_no_return(total_elementos, self.sqlite_db) 
+                del gerenciador
+        except BaseException as e:
             raise
         finally:
             if tipo == 0:
@@ -175,7 +181,8 @@ class Executar_benchmark:
         dados=[arm,amd]
         try:
             if paralel == True:
-                p=Paralel_subprocess(total_threads=2,timer=timer,join=True,name_subprocess="servidor")
+                # timeout=200*total_elementos
+                p=Paralel_subprocess(total_threads=2,timer=timer,join=True,name_subprocess="servidor")#,special_timeout=timeout
                 result= p.execute(elementos=dados,function=self.executar_teste)
                 del p
             else:
