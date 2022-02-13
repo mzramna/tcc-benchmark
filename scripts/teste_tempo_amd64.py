@@ -7,7 +7,7 @@ from timer import Timer
 #logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
 #logstash_data={"host":"192.168.0.116","port":5000}
 logstash_data={}
-arquivo="teste_tempo_aditional_data_amd64"
+arquivo="teste_tempo_aditional_data_amd64_2"
 try:
     f = open(arquivo+".json", "r")
     loaded=json.load(f)
@@ -15,8 +15,8 @@ try:
 except:
     loaded={}
 total_por_ciclo=4
-maximo_elementos=30000
-incremento=1000
+maximo_elementos=3000
+incremento=100
 if "quantidade_elementos" not in loaded.keys():
     loaded["quantidade_elementos"]=0
 if "tempos" not in loaded.keys():
@@ -35,7 +35,7 @@ while loaded["quantidade_elementos"]<maximo_elementos:
         timer.inicio()
         gerador=GeradorDeSql(sqlite_db="scripts/teste_tempo_db.db",sql_file_pattern="scripts/sqlitePattern.sql", log_file="scripts/teste_tempo.log",level=40,logging_pattern='%(asctime)s - %(name)s - %(levelname)s - %(message)s',logstash_data=logstash_data)
 
-        gerador.gerar_todos_dados_por_json_paralel(threads=0,select_country="pt_br",quantidade_final=loaded["quantidade_elementos"])
+        gerador.gerar_todos_dados_por_json(select_country="pt_br",quantidade_final=loaded["quantidade_elementos"])
 
         duracao=timer.fim()
         print(duracao)
