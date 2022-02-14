@@ -30,7 +30,7 @@ else:
 with open(retorno, "w") as out_file:
     json.dump(valores_benchmark, out_file)
     out_file.close()
-for quantidade_subprocessos in range(quantidade_subprocessos,4):
+for quantidade_subprocessos in range(quantidade_subprocessos,9):
     if quantidade_subprocessos<2:
         benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6)
     else:
@@ -44,7 +44,7 @@ for quantidade_subprocessos in range(quantidade_subprocessos,4):
         tmp={"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
         valores_benchmark["valor_final_"+str(valor_final)+"_"+str(quantidade_subprocessos)]=tmp
         print(tmp)
-        valores_benchmark["valores_execucao"]={"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max,"quantidade_subprocessos": quantidade_subprocessos}
+        valores_benchmark["valores_execucao"]={"valor_final":valor_final,"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max,"quantidade_subprocessos": quantidade_subprocessos}
         with open(retorno, "w") as out_file:
             json.dump(valores_benchmark, out_file)
             out_file.close()

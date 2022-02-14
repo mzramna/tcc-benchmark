@@ -92,8 +92,8 @@ class Worker_subprocess(Process):
         except Exception as e:
             # traceback.print_exc()
             # time.sleep(200)
-            # if e.args[0]=="timeout":
-            #     self.elementos.insert(0,work)
+            if e.args[0]=="timeout":
+                self.elementos.insert(0,work)
             raise
         
     def run(self):
@@ -228,6 +228,7 @@ class Paralel_subprocess:
             (list,list): primeiro list sendo o retorno,segundo sendo o tempo gasto para a execução,pode ser ignorado o segundo parametro,mas sempre será retornado
         """
         _elementos=self.manager.list(elementos)
+        retorno_timer=[]
         for i in range(len(self.threads)):
             self.threads[i]=Worker_subprocess(name=self.name_subprocess+"_"+str(i),special_timeout=self.special_timeout)
             if self.retorno_ == True:
@@ -247,26 +248,33 @@ class Paralel_subprocess:
             if self.time_ == True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
-
+                retorno_timer.append(0)
         if self.join == False:
             contador=0
             while(contador < len(self.threads) or len(_elementos)>0 ) and len(self.threads)>1:
                 contador=0
-                for i in self.threads:
-                    if i.is_alive() == False or i.is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
+                for i in range(len(self.threads)):
+                    if self.threads[i].is_alive() == False or self.threads[i].is_colse() == True or len(_elementos)<=1:#or len(i.elementos)<1 
                         total_elementos=len(_elementos)
                         # cosed=i.is_colse()
                         condicao=contador/len(self.threads)
                         contador+=1
+                        if self.time_ == True and retorno_timer[i]==0:
+                            retorno_timer[i]=self.timer[i].fim()
                     if contador/len(self.threads) >=self.timeout_percent:
                         contador = len(self.threads)
-                        for i in self.threads:
-                            i.terminate()
-                            self.threads.remove(i)
+                        for i in range(len(self.threads)):
+                            self.threads[i].terminate()
+                            self.threads.remove(self.threads[i])
+                            if self.time_ == True and retorno_timer[i]==0:
+                                retorno_timer[i]=self.timer[i].fim()
                         break
         else:
             for i in self.threads:
                 i.join()
+            if self.time_ == True:
+                for i in self.timer:
+                    retorno_timer.append(i.fim())
 
         for i in self.threads:
             i.kill()
@@ -275,14 +283,8 @@ class Paralel_subprocess:
         if self.retorno !=None and self.time_==False:
             return (self.retorno,None)
         elif self.retorno == None and self.time_ ==True:
-            retorno_timer=[]
-            for i in self.timer:
-                retorno_timer.append(i.fim())
             return (None,retorno_timer)
         elif self.retorno !=None and self.time_ ==True:
-            retorno_timer=[]
-            for i in self.timer:
-                retorno_timer.append(i.fim())
             return (self.retorno,retorno_timer)
         else:
             return(None,None)

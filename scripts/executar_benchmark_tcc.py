@@ -193,22 +193,32 @@ class Executar_benchmark:
         finally:
             return result
 
-    def executar(self,pre_execucao=1000,total_elementos=10000,pre_exec=True,tipo:str=""):
+    def executar(self,pre_execucao=1000,total_elementos=10000,pre_exec=True,tipo:str="",timer_geral=True):
         from timer import Timer
         timer=Timer()
         retorno=[]
-        #executar testes no bd postgres
-        if tipo == "" or tipo == "postgres":
-            timer.inicio()
-            self.start_test("postgres",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec)
-            retorno.append(timer.fim())
-            print("postgres concluido em "+str(retorno[-1]))
-        #executar testes no bd mariadb
-        if tipo == "" or tipo == "mariadb":
-            timer.inicio()
-            self.start_test("mariadb",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec)
-            retorno.append(timer.fim())
-            print("mariadb concluido em "+str(retorno[-1]))
+        if timer_geral == True:
+            #executar testes no bd postgres
+            if tipo == "" or tipo == "postgres":
+                timer.inicio()
+                self.start_test("postgres",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec)
+                retorno.append(timer.fim())
+                print("postgres concluido em "+str(retorno[-1]))
+            #executar testes no bd mariadb
+            if tipo == "" or tipo == "mariadb":
+                timer.inicio()
+                self.start_test("mariadb",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec)
+                retorno.append(timer.fim())
+                print("mariadb concluido em "+str(retorno[-1]))
+        if timer_geral == False:
+            #executar testes no bd postgres
+            if tipo == "" or tipo == "postgres":
+                retorno.append(self.start_test("postgres",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec))
+                print("postgres concluido em "+str(retorno[-1]))
+            #executar testes no bd mariadb
+            if tipo == "" or tipo == "mariadb":
+                retorno.append(self.start_test("mariadb",pre_execucao=pre_execucao,total_elementos=total_elementos,paralel=self.paralel,recreate=self.recreate,total_users=self.quantidade_usuarios,pre_exec=pre_exec))
+                print("mariadb concluido em "+str(retorno[-1]))
         return retorno
     
     def reset_bd_full(self):
