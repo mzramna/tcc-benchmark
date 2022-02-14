@@ -32,19 +32,19 @@ with open(retorno, "w") as out_file:
     out_file.close()
 for quantidade_subprocessos in range(quantidade_subprocessos,9):
     if quantidade_subprocessos<2:
-        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6)
+        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=True,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6)
     else:
-        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6)
+        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=True,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6)
     while valor_final<=valor_max:
         #benchmark.reset_bd_full()
         gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_inicial,quantidade_elementos_totais=valor_final)
         # benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=4)
         resultado_benchmark=benchmark.executar(total_elementos=valor_final,pre_execucao=valor_inicial,pre_exec=True)
         # del benchmark
-        tmp={"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
+        tmp={"valor_final":valor_final,"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
         valores_benchmark["valor_final_"+str(valor_final)+"_"+str(quantidade_subprocessos)]=tmp
         print(tmp)
-        valores_benchmark["valores_execucao"]={"valor_final":valor_final,"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max,"quantidade_subprocessos": quantidade_subprocessos}
+        valores_benchmark["valores_execucao"]={"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max,"quantidade_subprocessos": quantidade_subprocessos}
         with open(retorno, "w") as out_file:
             json.dump(valores_benchmark, out_file)
             out_file.close()

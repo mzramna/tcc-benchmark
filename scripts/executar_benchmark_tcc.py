@@ -183,7 +183,7 @@ class Executar_benchmark:
             if paralel == True:
                 # timeout=200*total_elementos
                 p=Paralel_subprocess(total_threads=2,timer=timer,join=True,name_subprocess="servidor")#,special_timeout=timeout
-                result= p.execute(elementos=dados,function=self.executar_teste)
+                result=p.execute(elementos=dados,function=self.executar_teste)
                 del p
             else:
                 for i in dados:
