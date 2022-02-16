@@ -5,6 +5,7 @@ from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
 import time
+import os
 import traceback
 import signal
 
@@ -145,7 +146,6 @@ class Worker_subprocess(Process):
             - se valor default não será retornado nenhum valor ao final da execução,não compativel com modo daemon no momento. Defaults to None.
             retorno_modo ([type], optional): modo de output que será usado no retorno dos processos. Defaults to None.
         """
-        tipo=type(index)
         if type(function) == list and type(index) != ValueProxy:
             return None
         else:
@@ -166,7 +166,7 @@ class Worker_subprocess(Process):
 class Paralel_subprocess:
     """classe de gerenciamento de processos paralelos
     """    
-    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name_subprocess:str="subprocess",special_timeout:float=0,timeout_percent:float=1,join:bool=False):
+    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name:str="subprocess",special_timeout:float=0,timeout_percent:float=1,join:bool=False):
         """classe de gerenciamento de processos paralelos
 
         Args:
@@ -179,7 +179,7 @@ class Paralel_subprocess:
         self.resultados=[]
         self.daemon=daemon
         self.special_timeout=special_timeout
-        self.name_subprocess=name_subprocess
+        self.name_subprocess=name
         self.join=join
         if timeout_percent>1 or timeout_percent<0:
             raise
@@ -204,11 +204,9 @@ class Paralel_subprocess:
                     self.retorno[key]=[]
         else:
             self.retorno_ = False
+        self.time_=timer
         if timer ==True:
             self.timer=[]
-            self.time_=True
-        else:
-            self.time_=False
         
         
     def execute(self,elementos,function):
@@ -264,10 +262,13 @@ class Paralel_subprocess:
                     if contador/len(self.threads) >=self.timeout_percent:
                         contador = len(self.threads)
                         for i in range(len(self.threads)):
-                            self.threads[i].terminate()
-                            self.threads.remove(self.threads[i])
-                            if self.time_ == True and retorno_timer[i]==0:
-                                retorno_timer[i]=self.timer[i].fim()
+                            try:
+                                self.threads[i].terminate()
+                                self.threads.remove(self.threads[i])
+                                if self.time_ == True and retorno_timer[i]==0:
+                                    retorno_timer[i]=self.timer[i].fim()
+                            except:
+                                pass
                         break
         else:
             for i in self.threads:
@@ -277,14 +278,17 @@ class Paralel_subprocess:
                     retorno_timer.append(i.fim())
 
         for i in self.threads:
-            i.kill()
+            try:
+                os.killpg(os.getpgid(i.pid), signal.SIGTERM)
+            except Exception as e:
+                pass
             self.threads.remove(i)
 
-        if self.retorno !=None and self.time_==False:
+        if self.retorno != None and self.time_ == False:
             return (self.retorno,None)
-        elif self.retorno == None and self.time_ ==True:
+        elif self.retorno == None and self.time_ == True:
             return (None,retorno_timer)
-        elif self.retorno !=None and self.time_ ==True:
+        elif self.retorno != None and self.time_ == True:
             return (self.retorno,retorno_timer)
         else:
             return(None,None)
@@ -292,99 +296,109 @@ class Paralel_subprocess:
         #     return self.q.join()
 
 class Worker_thread(Thread):
-    def __init__(self, q,  *args, **kwargs):
+    def __init__(self, q,name="thread",  *args, **kwargs):
         self.q = q
         self.operacao=0
         self.index=0
         super().__init__(*args, **kwargs)
-
-    def print_element(self):
-        while True:
-            try:
-                work = self.q.get()  # 3s timeout
-                print(work)
-            except Empty:
-                return
-            # do whatever work you have to do on work
-            self.q.task_done()
-
-    def sum_element(self):
-        while True:
-            try:
-                work = self.q.get()  # 3s timeout
-                self.retorno[self.index_retorno]+=work
-            except Empty:
-                return 
-            # do whatever work you have to do on work
-            self.q.task_done()
+        self.name=name
 
     def function_treat(self,work:dict):
-        if type(self.function)==type([]):
-            if self.index<len(self.function):
-                self.index+=1
-                return self.function[self.index-1](**work)
-            else:
-                self.index=0
-                return self.function[self.index](**work)
-        else:
-            return self.function(**work)
+        """faz com que a iteração seja feita de forma correta entre os multiplos elementos do array de funções caso seja um array ou executa como uma função normal
 
-    def function_element(self):
-        while True:
-            try:
-                work = self.q.get()
-                if self.retroativo!="":
-                    work[self.retroativo]=self.retorno[self.index_retorno]
-                result=self.function_treat(work)
-                if self.retorno != None:
-                    if self.function_array:
-                        self.retorno[self.index_retorno].append(result)
-                    else:
-                        self.retorno[self.index_retorno]+=result
-            except Empty:
-                return 
-            finally:
-            # do whatever work you have to do on work
-                self.q.task_done()
+        Args:
+            work (dict): kwargs das funções passadas 
+
+        Returns:
+            [type]: retorno da função passada nos parametros da classe
+        """        
+        try:
+            retorno=None
+            if type(self.function)==type([]):
+                if self.index.value<len(self.function):
+                    self.index.value=self.index.value+1
+                    retorno= self.function[self.index.value-1](**work)
+                    # subsubprocess=Process(target=self.function[self.index.value-1],kwargs=work)
+                    # subsubprocess.start()
+                    # retorno=subsubprocess.join(timeout=self.special_timeout)
+                else:
+                    self.index.value=0
+                    retorno= self.function[self.index.value](**work)
+                    # subsubprocess=Process(target=self.function[self.index.value],kwargs=work)
+                    # subsubprocess.start()
+                    # retorno=subsubprocess.join(timeout=self.special_timeout)
+            else:
+                retorno= self.function(**work)
+                # subsubprocess=Process(target=self.function,kwargs=work)
+                # subsubprocess.start()
+                # retorno=subsubprocess.join(timeout=self.special_timeout)
+            return retorno
+        except Exception as e:
+            # traceback.print_exc()
+            # time.sleep(200)
+            raise
 
     def run(self):
-        if self.operacao==1:
-            self.print_element()
-        elif self.operacao==2:
-            self.sum_element()
-        elif self.operacao==3:
-            self.function_element()
-        else:
-            return None
+        """executa o processo paralelo
+        """        
+        rodar=True
+        while rodar == True:
+            try:
+                if self.q.empty():
+                    rodar = False
+                    self._close=True
+                    break
+                work = self.q.get()
+                result=self.function_treat(work)
+                if self.retorno_modo!=None:
+                    if type(self.retorno_modo)==list:
+                        self.retorno.append(result)
+                    if type(self.retorno_modo)==dict:
+                        for key in self.retorno.keys():
+                            self.retorno[key]=result[key]
+            except ValueError as e:
+                if e.args[0]=='list.remove(x): x not in list':
+                    pass
+                else:
+                    raise
+            except IndexError as e:
+                rodar = False
+                break
+            except Exception as e:
+                # traceback.print_exc()
+                if e.args[0]=="timeout":
+                    pass
+                else:
+                    rodar = False
+                    break
+        return 0
+        self.q.task_done()
+        self._is_running = False
 
-    def exec_print(self):
-        self.operacao=1
-
-    def exec_sum(self,retorno,index_retorno=None):
+    def exec_function(self,function,retorno=None,index=-1,retorno_modo=None):
         self.retorno=retorno
-        if index_retorno != None:
-            self.index_retorno=index_retorno
-            if self.retorno !=None:
-                self.retorno[self.index_retorno]=0
-        self.operacao=2
-
-    def exec_function(self,function,retorno=None,index_retorno=None,function_array=False,retroativo=""):
-        self.exec_sum(retorno,index_retorno)
-        self.operacao=3
+        if type(function) == list and type(index) != ValueProxy:
+            return None
+        else:
+            self.index=index
         self.function=function
-        self.function_array=function_array
-        self.retroativo=retroativo
-        if function_array:
-            self.retorno[self.index_retorno]=[]
+        self.retorno_modo=retorno_modo
 
     def kill(self):
         raise SystemExit()
+
 class Paralel_thread:
-    def __init__(self,total_threads:int,max_size:int=0,retorno=None,timer=False,daemon=False):
+    def __init__(self,total_threads:int,max_size:int=0,retorno=None,timer=False,daemon=False,join:bool=True,special_timeout:float=0,timeout_percent:float=1,name="thread"):
         self.q=Queue(maxsize=max_size)
         self.threads=[]
-        self.resultados=retorno
+        self.retorno=retorno
         self.daemon=daemon
+        self.special_timeout=special_timeout
+        if timeout_percent>1 or timeout_percent<0:
+            raise
+        self.timeout_percent=timeout_percent
+        self.join=join
+        self.name=name
         if total_threads==0:
             total_threads=multiprocessing.cpu_count()*2
         for _ in range(total_threads):
@@ -411,36 +425,67 @@ class Paralel_thread:
         else:
             self.time_=False
 
-    def execute(self,elementos,function,join:bool=True):
+    def execute(self,elementos,function):
         for j in elementos:
-                self.q.put(j)
+            self.q.put(j)
+        retorno_timer=[]
         for i in range(len(self.threads)):
-            self.threads[i]=Worker_thread(self.q)
-            if self.retorno_== True:
-                self.threads[i].exec_function(function=function,index_retorno=i,retorno=self.retorno)
+            self.threads[i]=Worker_thread(q=self.q,name=self.name+"_"+str(i))
+            if self.retorno_ == True:
+                if type(function)==list:
+                    self.index=Manager().Value(typecode=int,value=0)
+                    self.threads[i].exec_function(function=function,index_retorno=i,retorno=self.retorno,retorno_modo=self.retorno_modo,index=self.index)
+                else:
+                    self.threads[i].exec_function(function=function,index_retorno=i,retorno=self.retorno,retorno_modo=self.retorno_modo)
             else:
-                self.threads[i].exec_function(function=function,index_retorno=i)
-            self.threads[i].setDaemon(self.daemon)
+                if type(function)==list:
+                    self.index=Manager().Value(typecode=int,value=0)
+                    self.threads[i].exec_function(function=function,index=self.index)
+                else:
+                    self.threads[i].exec_function(function=function)
+            self.threads[i].daemon=self.daemon 
             self.threads[i].start()
             if self.time_ == True:
                 self.timer.append(Timer())
                 self.timer[-1].inicio()
-        retorno = None
-        if join == True:
-            retorno=self.q.join()
-            # for i in self.threads:
-            #     i.kill()
-        if join == True and self.time_== False:
-            return (retorno,None)
-        elif join == False and self.time_ == True:
-            retorno_timer=[]
-            for i in self.timer:
-                retorno_timer.append(i.fim())
+                retorno_timer.append(0)
+        if self.join == False:
+            contador=0
+            while (contador < len(self.threads) or self.q.empty() ) and len(self.threads)>1:
+                contador=0
+                for thread in range(len(self.threads)):
+                    if self.threads[thread].is_alive() == False or self.q.empty():#or len(i.elementos)<1 
+                        total_elementos=self.q.qsize()
+                        # cosed=i.is_colse()
+                        # condicao=contador/len(self.threads)
+                        contador+=1
+                        if self.time_ == True and retorno_timer[thread]==0:
+                            retorno_timer[thread]=self.timer[thread].fim()
+                    if contador/len(self.threads) >=self.timeout_percent:
+                        contador = len(self.threads)
+                        for thread in range(len(self.threads)):
+                            try:
+                                self.threads[thread].terminate()
+                                self.threads.remove(self.threads[thread])
+                                if self.time_ == True and retorno_timer[thread]==0:
+                                    retorno_timer[thread]=self.timer[thread].fim()
+                            except:
+                                pass
+                        break
+        else:
+            for thread in self.threads:
+                thread.join()
+            if self.time_ == True:
+                for thread in len(self.timer):
+                    retorno_timer[thread]=self.timer[thread].fim()
+
+        # for i in self.threads:
+        #     i.terminate()
+        if self.retorno_ == True and self.time_== False:
+            return (self.retorno,None)
+        elif self.retorno_ == False and self.time_ == True:
             return (None,retorno_timer)
-        elif join == True and self.time_ == True:
-            retorno_timer=[]
-            for i in self.timer:
-                retorno_timer.append(i.fim())
-            return (retorno,retorno_timer)
+        elif self.retorno_ == True and self.time_ == True:
+            return (self.retorno,retorno_timer)
         else:
             return(None,None)

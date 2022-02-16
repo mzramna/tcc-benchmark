@@ -529,6 +529,29 @@ class GerenciadorDeBD:
         except:
             pass
 
+    def delete_user(self,user:str,password:str,database:str,root_pass:str=""):
+        try:
+            if self.tipo==0 or self.tipo=="mysql":
+                operation=[
+                "DROP USER IF EXISTS `{user}`@`%` ;".format(user=user,password=password)
+                ]
+                if root_pass=="":
+                    raise ValorInvalido(campo="root_pass",valor_inserido=root_pass)
+                con,tipo=self.create_connector(tipo=self.tipo, user="root",password=root_pass)
+                self.execute_operation_array_no_return(operation,con)
+                # self.execute_operation_array_no_return(operation,self.mydb)
+            elif self.tipo==1 or self.tipo == "postgres":
+                operation=[
+                "DROP ROLE IF EXISTS {user};".format(user=user)
+                ]
+                # with open("containers_build/postgres user creation.sql","a") as arquivo:
+                #     for i in operation:
+                #         arquivo.write(i)
+                #         arquivo.write("\n")
+                self.execute_operation_array_no_return(operation,self.mydb)
+        except:
+            pass
+
     def execute_operation_array_no_return(self,operations:list,connector=None):
         cursor,mydb=self.process_connector(connector)
         error=0
