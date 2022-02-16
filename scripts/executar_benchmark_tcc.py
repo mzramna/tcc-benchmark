@@ -174,12 +174,12 @@ class Executar_benchmark:
                             break
                     if pre_execucao>0 and pre_exec == True:
                         gerenciador[0].execute_operation_from_sqlite_no_return(pre_execucao, self.sqlite_db) 
-                    name_subprocess=""
+                    name_paralel=""
                     if host == self.infos_docker["maquina_arm"]["url"]:
-                        name_subprocess="arm"
+                        name_paralel="arm"
                     elif host == self.infos_docker["maquina_amd"]["url"]:
-                        name_subprocess="amd"
-                    p=Paralel_thread(total_threads=total_threads,daemon=False,name=name_subprocess)
+                        name_paralel="amd"
+                    p=Paralel_thread(total_threads=total_threads,daemon=False,name=name_paralel,join=True)
                     functions=[]
                     for i in gerenciador:
                         functions.append(i.execute_operation_from_sqlite_no_return_with_id)
@@ -239,7 +239,7 @@ class Executar_benchmark:
             if paralel == True:
                 # timeout=200*total_elementos
                 #p=Paralel_subprocess(total_threads=2,timer=timer,join=True,name_subprocess="servidor")#,special_timeout=timeout
-                p=Paralel_thread(total_threads=2,timer=timer,join=False,name="teste")#,special_timeout=timeout
+                p=Paralel_thread(total_threads=2,timer=timer,join=True,name="teste")
                 result=p.execute(elementos=dados,function=self.executar_teste)
                 del p
             else:

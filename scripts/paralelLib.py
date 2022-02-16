@@ -1,6 +1,6 @@
 from multiprocessing import Queue,Process,Pool,Manager
 import multiprocessing
-from multiprocessing.managers import ValueProxy
+from multiprocessing.managers import ValueProxy,ListProxy
 from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
@@ -296,10 +296,15 @@ class Paralel_subprocess:
         #     return self.q.join()
 
 class Worker_thread(Thread):
-    def __init__(self, q,name="thread",  *args, **kwargs):
+    def __init__(self, q,name="thread",timer=False,  *args, **kwargs):
         self.q = q
         self.operacao=0
         self.index=0
+        if type(timer)==ListProxy:
+            self.timer=timer
+            self.time_=True
+        else:
+            self.time_=False
         super().__init__(*args, **kwargs)
         self.name=name
 
@@ -342,6 +347,9 @@ class Worker_thread(Thread):
         """executa o processo paralelo
         """        
         rodar=True
+        if self.time_ == True:
+            timer=Timer()
+            timer.inicio()
         while rodar == True:
             try:
                 if self.q.empty():
@@ -371,9 +379,12 @@ class Worker_thread(Thread):
                 else:
                     rodar = False
                     break
-        return 0
+        
+        if self.time_ == True:
+            self.timer.append(timer.fim())
         self.q.task_done()
-        self._is_running = False
+        return 0
+        
 
     def exec_function(self,function,retorno=None,index=-1,retorno_modo=None):
         self.retorno=retorno
@@ -420,7 +431,7 @@ class Paralel_thread:
         else:
             self.retorno_ = False
         if timer == True:
-            self.timer=[]
+            self.timer=Manager().list()
             self.time_=True
         else:
             self.time_=False
@@ -430,7 +441,10 @@ class Paralel_thread:
             self.q.put(j)
         retorno_timer=[]
         for i in range(len(self.threads)):
-            self.threads[i]=Worker_thread(q=self.q,name=self.name+"_"+str(i))
+            if self.time_==True:
+                self.threads[i]=Worker_thread(q=self.q,name=self.name+"_"+str(i),timer=self.timer)
+            else:
+                self.threads[i]=Worker_thread(q=self.q,name=self.name+"_"+str(i))
             if self.retorno_ == True:
                 if type(function)==list:
                     self.index=Manager().Value(typecode=int,value=0)
@@ -445,42 +459,53 @@ class Paralel_thread:
                     self.threads[i].exec_function(function=function)
             self.threads[i].daemon=self.daemon 
             self.threads[i].start()
-            if self.time_ == True:
-                self.timer.append(Timer())
-                self.timer[-1].inicio()
-                retorno_timer.append(0)
+            # if self.time_ == True:
+            #     self.timer.append(Timer())
+            #     self.timer[-1].inicio()
+            #     retorno_timer.append(0)
         if self.join == False:
             contador=0
-            while (contador < len(self.threads) or self.q.empty() ) and len(self.threads)>1:
+            while (contador < len(self.threads) or self.q.empty() ) and len(self.threads)>=1:
                 contador=0
                 for thread in range(len(self.threads)):
-                    if self.threads[thread].is_alive() == False or self.q.empty():#or len(i.elementos)<1 
-                        total_elementos=self.q.qsize()
-                        # cosed=i.is_colse()
+                    alive=self.threads[thread].is_alive()
+                    empty=self.q.empty()
+                    if alive == False or empty == True : 
+                        #total_elementos=self.q.qsize()
                         # condicao=contador/len(self.threads)
                         contador+=1
-                        if self.time_ == True and retorno_timer[thread]==0:
-                            retorno_timer[thread]=self.timer[thread].fim()
-                    if contador/len(self.threads) >=self.timeout_percent:
+                        # if self.time_ == True and retorno_timer[thread]==0:
+                        #     retorno_timer[thread]=self.timer[thread].fim()
+                    equacao=contador/len(self.threads) 
+                    if equacao>=self.timeout_percent:
                         contador = len(self.threads)
                         for thread in range(len(self.threads)):
                             try:
-                                self.threads[thread].terminate()
+                                try:
+                                    os.killpg(os.getpgid(self.threads[thread].pid), signal.SIGTERM)
+                                except Exception as e:
+                                    pass
                                 self.threads.remove(self.threads[thread])
-                                if self.time_ == True and retorno_timer[thread]==0:
-                                    retorno_timer[thread]=self.timer[thread].fim()
-                            except:
+                                # if self.time_ == True and retorno_timer[thread]==0:
+                                #     retorno_timer[thread]=self.timer[thread].fim()
+                            except Exception as e:
                                 pass
                         break
+                if self.q.qsize()<1:
+                    break
         else:
-            for thread in self.threads:
-                thread.join()
-            if self.time_ == True:
-                for thread in len(self.timer):
-                    retorno_timer[thread]=self.timer[thread].fim()
+            for i in range(len(self.threads)):
+                if self.time_ == True:
+                    #retorno_timer[i]=
+                    self.threads[i].join()
+                else:
+                    self.threads[i].join()
+            
 
         # for i in self.threads:
         #     i.terminate()
+        if self.time_ == True:
+            retorno_timer=list(self.timer)
         if self.retorno_ == True and self.time_== False:
             return (self.retorno,None)
         elif self.retorno_ == False and self.time_ == True:

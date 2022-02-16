@@ -27,56 +27,18 @@ else:
     quantidade_subprocessos=1
     valores_benchmark["valores_execucao"]={ "valor_inicial":valor_inicial ,"valor_final":valor_final, "valor_max":valor_max,"quantidade_subprocessos":quantidade_subprocessos }
 
-
 with open(retorno, "w") as out_file:
     json.dump(valores_benchmark, out_file,indent=4)
     out_file.close()
 for quantidade_subprocessos in range(quantidade_subprocessos,9):
     if quantidade_subprocessos<2:
         benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6)
-        # for tipo_bd in ["mariadb","postgres"]:
-        #     arm=benchmark.infos_docker["maquina_arm"][tipo_bd+"_connect"]
-        #     arm["compiled_users"]=benchmark.usuarios_bd
-        #     arm["recreate"]=True
-        #     arm["total_users"]=-1
-        #     amd=benchmark.infos_docker["maquina_amd"][tipo_bd+"_connect"]
-        #     amd["compiled_users"]=benchmark.usuarios_bd
-        #     amd["recreate"]=True
-        #     amd["total_users"]=-1
-        #     dados=[arm,amd]
-        #     try:
-        #         for i in dados:
-        #             benchmark.preparacao_pre_teste(**i)
-        #     except:
-        #         pass
-        #     finally:
-        #         del benchmark
-        #         benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6)
     else:
         benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6)
-        # for tipo_bd in ["mariadb","postgres"]:
-        #     arm=benchmark.infos_docker["maquina_arm"][tipo_bd+"_connect"]
-        #     arm["compiled_users"]=benchmark.usuarios_bd
-        #     arm["recreate"]=True
-        #     arm["total_users"]=-1
-        #     amd=benchmark.infos_docker["maquina_amd"][tipo_bd+"_connect"]
-        #     amd["compiled_users"]=benchmark.usuarios_bd
-        #     amd["recreate"]=True
-        #     amd["total_users"]=-1
-        #     dados=[arm,amd]
-        #     try:
-        #         for i in dados:
-        #             benchmark.preparacao_pre_teste(**i)
-        #     except:
-        #         pass
-        #     finally:
-        #         del benchmark
-        #         benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6)
 
     while valor_final<=valor_max:
         #benchmark.reset_bd_full()
         gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_inicial,quantidade_elementos_totais=valor_final)
-        # benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=4)
         resultado_benchmark=benchmark.executar(total_elementos=valor_final,pre_execucao=valor_inicial,pre_exec=True,timer_geral=False)
         # del benchmark
         tmp={"valor_final":valor_final,"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
