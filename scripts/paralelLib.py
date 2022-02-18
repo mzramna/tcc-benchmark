@@ -5,10 +5,10 @@ from queue import Queue,Empty
 from threading import Thread
 from timer import Timer
 import gc
+from func_timeout import func_timeout, FunctionTimedOut
 import time
 import os
 import traceback
-import signal
 
 class Paralel_pool:
     def __init__(self,total_threads:int,max_size:int=0):
@@ -55,9 +55,6 @@ class Worker_subprocess(Process):
         super().__init__(*args, **kwargs)
         self.name=name
 
-    def handler(self,signum, frame):
-        raise Exception("timeout")
-
     def function_treat(self,work:dict):
         """faz com que a iteração seja feita de forma correta entre os multiplos elementos do array de funções caso seja um array ou executa como uma função normal
 
@@ -68,9 +65,6 @@ class Worker_subprocess(Process):
             [type]: retorno da função passada nos parametros da classe
         """        
         try:
-            # if self.special_timeout > 0:
-            #     signal.signal(signal.SIGALRM, self.handler)
-            #     signal.alarm(self.special_timeout)
             retorno=None
             if type(self.function) == type([]):
                 if self.index.value<len(self.function):
@@ -78,43 +72,24 @@ class Worker_subprocess(Process):
                     if self.special_timeout == 0:
                         retorno= self.function[self.index.value-1](**work)
                     else:
-                        p = Process(target=self.function[self.index.value-1],kwargs=work,name=self.name+"_child")
-                        p.start()
-                        retorno=p.join(timeout=self.special_timeout)
-                        while p.is_alive():
-                            p.terminate()
-                        del p
+                        retorno=func_timeout(timeout=self.special_timeout,func=self.function[self.index.value-1],kwargs=work)
                 else:
                     self.index.value=0
                     if self.special_timeout == 0:
                         retorno= self.function[self.index.value](**work)
                     else:
-                        p = Process(target=self.function[self.index.value],kwargs=work,name=self.name+"_child")
-                        p.start()
-                        retorno=p.join(timeout=self.special_timeout)
-                        while p.is_alive():
-                            p.terminate()
-                            
-                        del p
+                        retorno=func_timeout(timeout=self.special_timeout,func=self.function[self.index.value],kwargs=work)
             else:
                 if self.special_timeout == 0:
                     retorno= self.function(**work)
                 else:
-                    p = Process(target=self.function,kwargs=work,name=self.name+"_child")
-                    p.start()
-                    retorno=p.join(timeout=self.special_timeout)
-                    while p.is_alive():
-                        p.terminate()
-                    del p
-            # if self.special_timeout > 0:
-            #     signal.alarm(0)
+                    retorno=func_timeout(timeout=self.special_timeout,func=self.function,kwargs=work)
             gc.collect()
             return retorno
+        except FunctionTimedOut as e:
+            self.elementos.insert(0,work)
+            pass
         except Exception as e:
-            if e.args[0] == "timeout":
-                self.elementos.insert(0,work)
-            # if self.special_timeout>0:
-            #     signal.alarm(0)
             raise
         
     def run(self):
