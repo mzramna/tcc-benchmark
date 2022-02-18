@@ -20,6 +20,13 @@
             "console": "internalConsole"
         },
         {
+            "name": "main_fracionado",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/main_fracionado.py",
+            "console": "internalConsole"
+        },
+        {
             "name": "teste gerador dbbench",
             "type": "python",
             "request": "launch",

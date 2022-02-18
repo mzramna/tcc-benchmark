@@ -3,3 +3,4 @@ python3-logstash
 docker
 psycopg2-binary
 mysql-connector-python
+func-timeout

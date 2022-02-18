@@ -35,8 +35,14 @@ class GerenciadorDeBD:
                 pass
 
     def __del__(self):
-        self.cursor.close()
-        self.mydb.close()
+        try:
+            self.cursor.close()
+        except:
+            pass
+        try:
+            self.mydb.close()
+        except:
+            pass
 
 #relacionado com a geração do sql final
     def generate_SQL_command_from_data(self,data:dict):
@@ -383,7 +389,11 @@ class GerenciadorDeBD:
         except AttributeError as e:
             time.sleep(0.1)
             self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
-            return self.process_connector(connector=connector)
+            chamadas=LoggingSystem.full_inspect_caller() 
+            if chamadas.count(chamadas[0])>self.stack_overflow_max:
+                return None 
+            else:
+                return self.process_connector(connector=connector)
         except BaseException as e:
                 self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
                 try:
@@ -392,7 +402,11 @@ class GerenciadorDeBD:
                     cursor=self.cursor
                     self.logging.exception(e)
                 except AttributeError as e:
-                    return self.process_connector(connector)
+                    chamadas=LoggingSystem.full_inspect_caller() 
+                    if chamadas.count(chamadas[0])>self.stack_overflow_max:
+                        return None 
+                    else:
+                        return self.process_connector(connector)
                 except BaseException as e:
                     #traceback.print_exc()
                     raise
@@ -400,11 +414,19 @@ class GerenciadorDeBD:
             if cursor == None:
             # if type(cursor) != mysql.connector.cursor_cext.CMySQLCursor or type(cursor) != psycopg2.extensions.cursor or type(cursor) != psycopg2.cursor:
                 print(cursor)
-                return self.process_connector(connector)
+                chamadas=LoggingSystem.full_inspect_caller() 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                    return None
+                else:
+                    return self.process_connector(connector)
             else:
                 return (cursor,mydb)
         except UnboundLocalError as e:
-            return self.process_connector(connector)
+            chamadas=LoggingSystem.full_inspect_caller() 
+            if chamadas.count(chamadas[0])>self.stack_overflow_max:
+                return None 
+            else:
+                return self.process_connector(connector)
 
     def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
         try:
@@ -507,6 +529,29 @@ class GerenciadorDeBD:
         except:
             pass
 
+    def delete_user(self,user:str,password:str,database:str,root_pass:str=""):
+        try:
+            if self.tipo==0 or self.tipo=="mysql":
+                operation=[
+                "DROP USER IF EXISTS `{user}`@`%` ;".format(user=user,password=password)
+                ]
+                if root_pass=="":
+                    raise ValorInvalido(campo="root_pass",valor_inserido=root_pass)
+                con,tipo=self.create_connector(tipo=self.tipo, user="root",password=root_pass)
+                self.execute_operation_array_no_return(operation,con)
+                # self.execute_operation_array_no_return(operation,self.mydb)
+            elif self.tipo==1 or self.tipo == "postgres":
+                operation=[
+                "DROP ROLE IF EXISTS {user};".format(user=user)
+                ]
+                # with open("containers_build/postgres user creation.sql","a") as arquivo:
+                #     for i in operation:
+                #         arquivo.write(i)
+                #         arquivo.write("\n")
+                self.execute_operation_array_no_return(operation,self.mydb)
+        except:
+            pass
+
     def execute_operation_array_no_return(self,operations:list,connector=None):
         cursor,mydb=self.process_connector(connector)
         error=0
@@ -576,10 +621,8 @@ class GerenciadorDeBD:
                 except psyErro.OperationalError as e:
                     self.logging.exception(e)
                 except BaseException as e:
-                    try:
-                        self.logging.error("Unexpected error:", e)
-                    except:
-                        pass
+                    # self.logging.error("Unexpected error:", e)
+                    raise
         # try:
         #     cursor.close()
         # except:
