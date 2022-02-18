@@ -4,6 +4,8 @@ from os import DirEntry
 from gerenciadorDeBD import GerenciadorDeBD
 from paralelLib import Paralel_pool,Paralel_subprocess,Paralel_thread
 import traceback
+import gc
+
 #from datetime import datetime
 
 class Executar_benchmark:
@@ -78,7 +80,7 @@ class Executar_benchmark:
         except:
                 self.stop_container(ip=ip,port=port,id_=id_,compiled=compiled,id_key=id_key)
 
-    def start_container(self,ip:str="",port:int=0,id_:str="",compiled:dict={},id_key=""):
+    def start_container(self,ip:str="",port:int=0,id_:str="",compiled:dict={},id_key="",delay:float=10):
         try:
             if compiled != {}:
                 client = docker.DockerClient(base_url=compiled["url"]+":"+str(compiled["port_docker_sock"]),version="auto")
@@ -88,10 +90,12 @@ class Executar_benchmark:
                     return None
                 client = docker.DockerClient(base_url=ip+":"+str(port),version="auto")
                 client.containers.get(id_).start()
+            time.sleep(delay)
         except:
                 self.start_container(ip=ip,port=port,id_=id_,compiled=compiled,id_key=id_key)
 
     def preparacao_pre_teste(self,host,database,port,tipo,sql_file_pattern,total_users=10,user:str="",password:str="",compiled_users:dict={},recreate:bool=False):
+        delay=0
         try:
             if tipo == 0:
                 tipo_bd="mariadb"
@@ -103,30 +107,30 @@ class Executar_benchmark:
                 self.start_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
             if recreate == True:
                     try:
-                        time.sleep(10)
+                        time.sleep(delay)
                         reset=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40)
                         reset.reset_database()
                         if host == self.infos_docker["maquina_arm"]["url"]:
                             self.stop_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
                             self.start_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
-                            time.sleep(10)
+                            time.sleep(delay)
                         elif host == self.infos_docker["maquina_amd"]["url"]:
                             self.stop_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
                             self.start_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
-                            time.sleep(10)
+                            time.sleep(delay)
                         reset=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40)
                         self.deletar_usuarios(connect=reset, usuarios=compiled_users, bd=database, root="SafestRootPassword")
                         if host == self.infos_docker["maquina_arm"]["url"]:
                             self.stop_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
                             self.start_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
-                            time.sleep(10)
+                            time.sleep(delay)
                         elif host == self.infos_docker["maquina_amd"]["url"]:
                             self.stop_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
                             self.start_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
-                            time.sleep(10)
+                            time.sleep(delay)
                         reset=GerenciadorDeBD(host=host, user=user, password=password, database=database, port=port,tipo=tipo,sql_file_pattern=sql_file_pattern,logstash_data=self.logstash_data,level=40)
                         self.cadastrar_usuarios(connect=reset, usuarios=compiled_users, bd=database, root="SafestRootPassword")
-                        time.sleep(10)
+                        time.sleep(delay)
                     except BaseException as e:
                         raise
             if compiled_users !={}:
@@ -160,7 +164,7 @@ class Executar_benchmark:
                 self.start_container(compiled=self.infos_docker["maquina_arm"],id_key=tipo_bd+"_id")
             elif host == self.infos_docker["maquina_amd"]["url"]:
                 self.start_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
-            time.sleep(10)
+            time.sleep(5)
             for _ in range(pre_execucao,total_threads):
                 threads.append([])
             for i in range(pre_execucao,total_elementos):
@@ -179,7 +183,10 @@ class Executar_benchmark:
                         name_paralel="arm"
                     elif host == self.infos_docker["maquina_amd"]["url"]:
                         name_paralel="amd"
-                    p=Paralel_thread(total_threads=total_threads,daemon=False,name=name_paralel,join=True)
+                    if total_threads<=2:
+                        p=Paralel_thread(total_threads=total_threads,daemon=False,name=name_paralel,join=False,special_timeout=self.threads_timeout_lv2)
+                    else:
+                        p=Paralel_subprocess(total_threads=total_threads,daemon=False,name=name_paralel,join=False,special_timeout=self.threads_timeout_lv2)
                     functions=[]
                     for i in gerenciador:
                         functions.append(i.execute_operation_from_sqlite_no_return_with_id)
@@ -261,7 +268,7 @@ class Executar_benchmark:
                 self.reset_bd_full()
             else:
                 self.reset_bd_full(bd=tipo)
-        time.sleep(20)
+        time.sleep(5)
         if timer_geral == True:
             #executar testes no bd postgres
             if tipo == "" or tipo == "postgres":
@@ -309,12 +316,13 @@ class Executar_benchmark:
             dados.append(arm)
             dados.append(amd)
         try:
-            p=Paralel_thread(total_threads=2,daemon=False,join=True,name="resetter")
+            p=Paralel_thread(total_threads=4,daemon=False,join=True,name="resetter")
             p.execute(elementos=dados,function=self.preparacao_pre_teste)
             # for dado in dados:
             #     self.preparacao_pre_teste(**dado)
             del dados
             del p
+            gc.collect()
         except:
             pass
 

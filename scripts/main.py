@@ -1,10 +1,13 @@
 from geração_bd_testes import Gerar_bd_teste
 from executar_benchmark_tcc import Executar_benchmark
 import json
+import gc
+
 threads=0
 recriar=True
 adicao=5000
 bd_teste="scripts/teste_db.db"
+threads_timeout_lv2=0
 gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
 #completo
 retorno="valores_tempo_velocidade_benchmark.json"
@@ -32,9 +35,9 @@ with open(retorno, "w") as out_file:
     out_file.close()
 for quantidade_subprocessos in range(quantidade_subprocessos,9):
     if quantidade_subprocessos<2:
-        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6)
+        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=threads_timeout_lv2)
     else:
-        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6)
+        benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=recriar,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=threads_timeout_lv2)
 
     while valor_final<=valor_max:
         #benchmark.reset_bd_full()
@@ -52,6 +55,7 @@ for quantidade_subprocessos in range(quantidade_subprocessos,9):
         valor_final+=adicao
 
     del benchmark
+    gc.collect()
     valor_final=5000
     valores_benchmark["valores_execucao"]={"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max,"quantidade_subprocessos": quantidade_subprocessos+1}
     with open(retorno, "w") as out_file:
