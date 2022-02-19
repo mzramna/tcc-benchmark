@@ -509,6 +509,7 @@ class GeradorDeSql:
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva)  
  
             elif e.campo=="associacao": 
+<<<<<<< HEAD
                 try:
                     chamadas=LoggingSystem.full_inspect_caller() 
     
@@ -519,6 +520,14 @@ class GeradorDeSql:
                     pass
                 except:
                     raise
+=======
+                
+                chamadas=LoggingSystem.full_inspect_caller() 
+ 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+ 
+                    return None 
+>>>>>>> 53514a3e819d0a53a2bb80cf8b6636cbbbe6b7ee
  
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country) 
  
