@@ -948,12 +948,14 @@ class GeradorDeSql:
  
             self.logging.exception(e) 
  
-            chamadas=LoggingSystem.full_inspect_caller() 
- 
-            if chamadas.count(chamadas[0])>self.stack_overflow_max: 
- 
-                return None 
- 
+            try:
+                chamadas=LoggingSystem.full_inspect_caller() 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                    return None
+            except IndexError as e:
+                pass
+            except:
+                raise
             filtro_pesquisa=self.gerador_filtro(pattern,completo=True)[0] 
  
             dados_gerados=self.create_select(table=table,pattern=pattern,select_country=select_country,id=id,filtro_pesquisa=filtro_pesquisa,values_pesquisa=values_pesquisa,not_define_id=not_define_id) 
@@ -1085,13 +1087,16 @@ class GeradorDeSql:
  
             self.logging.exception(e) 
  
-            chamadas=LoggingSystem.full_inspect_caller() 
+            try:
+                chamadas=LoggingSystem.full_inspect_caller() 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                    return None
+            except IndexError as e:
+                pass
+            except:
+                raise
  
-            if chamadas.count(chamadas[0])>self.stack_overflow_max: 
- 
-                return None 
- 
-            elif e.campo== "pesquisa": 
+            if e.campo== "pesquisa": 
  
                 filtro_pesquisa=self.gerador_filtro(pattern,completo=True,retorno_pre=filtro_update)[0] 
  
@@ -1180,11 +1185,14 @@ class GeradorDeSql:
  
             self.logging.exception(e) 
  
-            chamadas=LoggingSystem.full_inspect_caller() 
- 
-            if chamadas.count(chamadas[0])>self.stack_overflow_max: 
- 
-                return None 
+            try:
+                chamadas=LoggingSystem.full_inspect_caller() 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                    return None
+            except IndexError as e:
+                pass
+            except:
+                raise
  
             filtro=self.gerador_filtro(pattern,completo=True)[0] 
  
