@@ -47,10 +47,10 @@ while (len(loaded["tempos"]))*incremento<maximo_elementos:
     f = open(arquivo+".log", "a")
     print("para ",len(loaded["tempos"])*incremento," dados foram gastos os seguintes dados de tempo")
     print("media geração completa ",str(sum(loaded["tempos"][-1])/len(loaded["tempos"][-1])))
-    print("media por elemento ",str((sum(loaded["tempos"][-1])/len(loaded["tempos"][-1]))/(len(loaded["tempos"]))*incremento))
+    print("media por elemento ",str((sum(loaded["tempos"][-1])/len(loaded["tempos"][-1]))/(len(loaded["tempos"])*incremento)))
     f.write("para "+str((len(loaded["tempos"]))*incremento)+" dados foram gastos os seguintes dados de tempo"+"\n")
     f.write("media geração completa "+str(sum(loaded["tempos"][-1])/len(loaded["tempos"][-1]))+"\n")
-    f.write("media por elemento "+str((sum(loaded["tempos"][-1])/len(loaded["tempos"][-1]))/(len(loaded["tempos"]))*incremento)+"\n")
+    f.write("media por elemento "+str((sum(loaded["tempos"][-1])/len(loaded["tempos"][-1]))/(len(loaded["tempos"])*incremento))+"\n")
     f.close()
 quantidade_elementos=0
 somatorio_total=0

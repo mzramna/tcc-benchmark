@@ -509,7 +509,7 @@ class GeradorDeSql:
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva)  
  
             elif e.campo=="associacao": 
- 
+                
                 chamadas=LoggingSystem.full_inspect_caller() 
  
                 if chamadas.count(chamadas[0])>self.stack_overflow_max: 
@@ -1883,13 +1883,13 @@ class GeradorDeSql:
             quantidade_final (int, optional): se definido os dados serão gerados de forma automática até atingir a quantidade de dados cadastrados ,ignorando o total de ciclos. Defaults to 0. 
         """ 
  
-        from paralelLib import Paralel_subprocess 
+        from paralelLib import Paralel_subprocess,Paralel_thread
         self.logging.info("gerar_todos_dados_por_json",extra=locals()) 
         if quantidade_ciclo == "random": 
             quantidade_ciclo=randint(0, 20) 
         if total_ciclos == "random": 
             total_ciclos=randint(0, 20) 
-        paralel=Paralel_subprocess(total_threads=threads,join=True,name="gerador_sqlite") 
+        paralel=Paralel_thread(total_threads=threads,join=True,name="gerador_sqlite") 
         parametros=[] 
         if quantidade_final==0: 
             for _ in range(0,total_ciclos): 
