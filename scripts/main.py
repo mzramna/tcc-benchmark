@@ -7,7 +7,7 @@ threads=0
 recriar=True
 adicao=5000
 bd_teste="scripts/teste_db.db"
-threads_timeout_lv2=5
+threads_timeout_lv2=0.5
 gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
 #completo
 retorno="valores_tempo_velocidade_benchmark.json"
@@ -24,7 +24,7 @@ if "valores_execucao" in valores_benchmark.keys():
     valor_max=valores_benchmark["valores_execucao"]["valor_max"]
     quantidade_subprocessos=valores_benchmark["valores_execucao"]["quantidade_subprocessos"]
 else:
-    valor_inicial=100
+    valor_inicial=2000
     valor_final=10000
     valor_max=100000
     quantidade_subprocessos=1
