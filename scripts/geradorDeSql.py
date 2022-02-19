@@ -1889,7 +1889,7 @@ class GeradorDeSql:
             quantidade_ciclo=randint(0, 20) 
         if total_ciclos == "random": 
             total_ciclos=randint(0, 20) 
-        paralel=Paralel_subprocess(total_threads=threads,join=True,name_subprocess="gerador_sqlite") 
+        paralel=Paralel_subprocess(total_threads=threads,join=True,name="gerador_sqlite") 
         parametros=[] 
         if quantidade_final==0: 
             for _ in range(0,total_ciclos): 
