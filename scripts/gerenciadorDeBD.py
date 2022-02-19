@@ -389,11 +389,8 @@ class GerenciadorDeBD:
         except AttributeError as e:
             time.sleep(0.1)
             self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
-            chamadas=LoggingSystem.full_inspect_caller() 
-            if chamadas.count(chamadas[0])>self.stack_overflow_max:
-                return None 
-            else:
-                return self.process_connector(connector=connector)
+            
+            return self.process_connector(connector=connector)
         except BaseException as e:
                 self.mydb,tmp=self.create_connector(tipo=self.tipo,user=self.user,password= self.password,database=self.database,autocommit=self.autocommit)
                 try:
@@ -402,11 +399,15 @@ class GerenciadorDeBD:
                     cursor=self.cursor
                     self.logging.exception(e)
                 except AttributeError as e:
-                    chamadas=LoggingSystem.full_inspect_caller() 
-                    if chamadas.count(chamadas[0])>self.stack_overflow_max:
-                        return None 
-                    else:
-                        return self.process_connector(connector)
+                    try:
+                        chamadas=LoggingSystem.full_inspect_caller() 
+                        if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                            return None
+                    except IndexError as e:
+                        pass
+                    except:
+                        raise
+                    self.process_connector(connector)
                 except BaseException as e:
                     #traceback.print_exc()
                     raise
@@ -414,19 +415,27 @@ class GerenciadorDeBD:
             if cursor == None:
             # if type(cursor) != mysql.connector.cursor_cext.CMySQLCursor or type(cursor) != psycopg2.extensions.cursor or type(cursor) != psycopg2.cursor:
                 print(cursor)
-                chamadas=LoggingSystem.full_inspect_caller() 
-                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
-                    return None
-                else:
-                    return self.process_connector(connector)
+                try:
+                    chamadas=LoggingSystem.full_inspect_caller() 
+                    if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                        return None
+                except IndexError as e:
+                    pass
+                except:
+                    raise
+                self.process_connector(connector)
             else:
                 return (cursor,mydb)
         except UnboundLocalError as e:
-            chamadas=LoggingSystem.full_inspect_caller() 
-            if chamadas.count(chamadas[0])>self.stack_overflow_max:
-                return None 
-            else:
-                return self.process_connector(connector)
+            try:
+                chamadas=LoggingSystem.full_inspect_caller() 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                    return None
+            except IndexError as e:
+                pass
+            except:
+                raise
+            self.process_connector(connector)
 
     def create_connector(self,tipo:int,user:str,password:str,database:str=None,autocommit:bool=False):
         try:
@@ -481,13 +490,15 @@ class GerenciadorDeBD:
         except psycopg2.OperationalError as e:
             self.logging.error(e)
             if "Connection refused" in e.args[0]:
-                chamadas=LoggingSystem.full_inspect_caller()
-
-                if chamadas.count(chamadas[0])>self.stack_overflow_max:
-
-                    return (None,tipo)
-                else:
-                    return self.create_connector(tipo=tipo,user=user,password=password,database=database,autocommit=autocommit)
+                try:
+                    chamadas=LoggingSystem.full_inspect_caller() 
+                    if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                        return (None,tipo)
+                except IndexError as e:
+                    pass
+                except:
+                    raise
+                self.create_connector(tipo=tipo,user=user,password=password,database=database,autocommit=autocommit)
             else:
                 return (None,tipo)
         except mysqlErro.DatabaseError as e:

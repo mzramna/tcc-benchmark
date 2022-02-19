@@ -82,9 +82,15 @@ class ProcessamentoSqlite:
             #print("erro operacional no sqlite")
             self.logging.error(e)
             time.sleep(0.001)
-            chamadas=LoggingSystem.full_inspect_caller()
-            if chamadas.count(chamadas[0])<self.stack_overflow_max:
-                self.insert_data_sqlite(data=data,table=table)
+            try:
+                chamadas=LoggingSystem.full_inspect_caller() 
+                if chamadas.count(chamadas[0])>self.stack_overflow_max: 
+                    return None
+            except IndexError as e:
+                pass
+            except:
+                raise
+            self.insert_data_sqlite(data=data,table=table)
         except sqliteError as e:
             #print("erro desconhecido no sqlite")
             self.logging.error(e)
