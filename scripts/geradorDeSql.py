@@ -520,13 +520,8 @@ class GeradorDeSql:
                 self.gerar_dado_insercao(table=pattern[dado][1],pattern=self.json_loaded[pattern[dado][1]],select_country=select_country) 
  
                 return self.create_data(table=table,pattern=pattern,select_country=select_country,id=id,lista_restritiva=lista_restritiva)  
- 
- 
- 
         except : 
- 
             raise 
- 
  
     def gerador_filtro(self,pattern:dict,pesquisa_pre=[],retorno_pre=[],max:int=-1,completo=False) -> list: 
         """  
