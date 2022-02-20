@@ -15,8 +15,8 @@ try:
 except:
     loaded={}
 total_por_ciclo=4
-maximo_elementos=30000
-incremento=1000
+maximo_elementos=3000
+incremento=100
 if "tempos" not in loaded.keys():
     loaded["tempos"]=[]
 while (len(loaded["tempos"]))*incremento<maximo_elementos:
