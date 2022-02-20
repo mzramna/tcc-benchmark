@@ -7,7 +7,7 @@ from timer import Timer
 #logstash_data={"host":"192.168.0.116","port":5000,"username":"elastic","password":"changeme"}
 #logstash_data={"host":"192.168.0.116","port":5000}
 logstash_data={}
-arquivo="teste_tempo_aditional_data_amd64"
+arquivo="teste_tempo_aditional_data_paralel_amd64"
 try:
     f = open(arquivo+".json", "r")
     loaded=json.load(f)
@@ -15,8 +15,8 @@ try:
 except:
     loaded={}
 total_por_ciclo=4
-maximo_elementos=30000
-incremento=1000
+maximo_elementos=3000
+incremento=100
 if "tempos" not in loaded.keys():
     loaded["tempos"]=[]
 while (len(loaded["tempos"]))*incremento<maximo_elementos:
