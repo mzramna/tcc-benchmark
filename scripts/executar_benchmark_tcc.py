@@ -346,6 +346,7 @@ class Executar_benchmark:
             #     self.preparacao_pre_teste(**dado)
             del dados
             del p
+            print("bds zerados")
         except:
             pass
         finally:
