@@ -1,6 +1,7 @@
 from geração_bd_testes import Gerar_bd_teste
 from executar_benchmark_tcc import Executar_benchmark
 import json
+import os
 threads=0
 adicao=5000
 bd_teste="scripts/main_fracionado_insercao_db.db"
@@ -23,7 +24,7 @@ else:
     valor_inicial=0
     valor_final=10000
     valor_max=100000
-    quantidade_subprocessos=10
+    quantidade_subprocessos=os.cpu_count()
     valores_benchmark["valores_execucao"]={ "valor_inicial":valor_inicial ,"valor_final":valor_final, "valor_max":valor_max,"quantidade_subprocessos":quantidade_subprocessos }
 
 if quantidade_subprocessos<2:
@@ -40,7 +41,7 @@ while valor_final<=valor_max:
     #benchmark.reset_bd_full()
     gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_final)
     # benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=4)
-    resultado_benchmark=benchmark.executar(total_elementos=valor_final,pre_exec=False)
+    resultado_benchmark=benchmark.executar(total_elementos=valor_final,pre_exec=False,timer_geral=False)
     # del benchmark
     tmp={"valor_final":valor_final,"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
     valores_benchmark["valor_final_"+str(valor_final)+"_"+str(quantidade_subprocessos)]=tmp
