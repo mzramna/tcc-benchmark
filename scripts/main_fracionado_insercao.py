@@ -2,7 +2,7 @@ from geração_bd_testes import Gerar_bd_teste
 from executar_benchmark_tcc import Executar_benchmark
 import json
 import os
-threads=0
+threads=os.cpu_count()#0
 adicao=5000
 bd_teste="scripts/main_fracionado_insercao_db.db"
 gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
@@ -34,12 +34,12 @@ else:
 
 if valor_inicial == 0:
     benchmark.reset_bd_full()
+    gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_max)
 with open(retorno, "w") as out_file:
     json.dump(valores_benchmark, out_file)
     out_file.close()
 while valor_final<=valor_max:
     #benchmark.reset_bd_full()
-    gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_final)
     # benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=4)
     resultado_benchmark=benchmark.executar(total_elementos=valor_final,pre_exec=False,timer_geral=False)
     # del benchmark
