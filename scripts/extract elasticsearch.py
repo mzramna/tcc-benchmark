@@ -22,9 +22,18 @@ def add_to_csv(value,arquivo):
         
         csvfile.close()
 
-def processamento_elasticsearch_data(arquivo):
+def processamento_elasticsearch_data(arquivo,t0=0,t1=0):
     es = Elasticsearch('http://elastic:changeme@192.168.192.116:9200',http_compress=True,)
-    scanResp= helpers.scan(client=es,index="monitoramento",scroll="1d",query={"query" : { "term" : { "logger_name" : arquivo }}}, request_timeout=3000,raise_on_error=False)
+    if t0 != t1 != 0:
+        t0='2022-02-25T20:30:00.000Z'
+        t1='2022-02-26T12:30:00.000Z'
+    RANGE = '"range":{"@timestamp":{"gte":"%s","lt":"%s"}}'
+    date1 = datetime.strptime(t0, "%Y-%m-%dT%H:%M:%S.%fZ")
+    date2 = datetime.strptime(t1, "%Y-%m-%dT%H:%M:%S.%fZ")
+    time_search = RANGE %(date1,date2)
+    query={"query" : { "term" : { "logger_name" : arquivo },time_search}}
+    # time:(from:'2022-02-25T21:00:00.000Z',to:'2022-02-26T12:00:00.000Z')
+    scanResp= helpers.scan(client=es,index="monitoramento",scroll="1d",query=query, request_timeout=3000,raise_on_error=False)
     try:
         for i in scanResp:
             if i['_index'] == "monitoramento" and i["_source"]["logger_name"]==arquivo:
