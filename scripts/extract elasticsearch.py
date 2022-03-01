@@ -6,44 +6,62 @@ import csv,time
 
 def add_to_csv(value,arquivo):
     with open(arquivo, 'a', newline='\n') as csvfile:
-        fieldnames = list(value.keys())
+        if type(value) == type([]):
+            fieldnames = list(value[0].keys())
+        else:
+            fieldnames = list(value.keys())
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         existingLines = list(csv.reader(open(arquivo, 'r')))
         if len(existingLines)<=0:
             writer.writeheader()
-        linha = list(value.values())
-        for i in range(len(linha)):
-            if linha[i] == None :
-                linha[i]=""
-        if linha in existingLines:
-            pass
+        if type(value) == type([]):
+            for i in range(len(value)):
+                linha = list(value[i].values())
+                for i in range(len(linha)):
+                    if linha[i] == None :
+                        linha[i]=""
+                if linha in existingLines:
+                    
+                    value[i]=[]
+                try:
+                    value.remove([])
+                except:
+                    pass
+                writer.writerows(value)
         else:
-            writer.writerow(value)
-        
+            linha = list(value.values())
+            for i in range(len(linha)):
+                if linha[i] == None :
+                    linha[i]=""
+            if linha in existingLines:
+                pass
+            else:
+                writer.writerow(value)
         csvfile.close()
 
-def processamento_elasticsearch_data(arquivo,t0=0,t1=0):
+def processamento_elasticsearch_data(arquivo,t0=0,t1=0,maxsize=100000):
     es = Elasticsearch('http://elastic:changeme@192.168.192.116:9200',http_compress=True,)
-    if t0 != t1 != 0:
+    if t0 == t1 == 0:
         t0='2022-02-25T20:30:00.000Z'
         t1='2022-02-26T12:30:00.000Z'
-    RANGE = '"range":{"@timestamp":{"gte":"%s","lt":"%s"}}'
     date1 = datetime.strptime(t0, "%Y-%m-%dT%H:%M:%S.%fZ")
     date2 = datetime.strptime(t1, "%Y-%m-%dT%H:%M:%S.%fZ")
-    time_search = RANGE %(date1,date2)
-    query={"query" : { "term" : { "logger_name" : arquivo },time_search}}
+    query={"query" : { "term" : { "logger_name" : arquivo }}}#,"range":{"@timestamp":{"gte":date1,"lt":date2}}}
     # time:(from:'2022-02-25T21:00:00.000Z',to:'2022-02-26T12:00:00.000Z')
     scanResp= helpers.scan(client=es,index="monitoramento",scroll="1d",query=query, request_timeout=3000,raise_on_error=False)
     try:
+        dados=[]
         for i in scanResp:
-            if i['_index'] == "monitoramento" and i["_source"]["logger_name"]==arquivo:
-            # print(i)
-                linha=i["_source"]
-                add_to_csv(linha,arquivo+".csv")
+            dados.append(i["_source"])
+            if len(dados)==maxsize:
+                add_to_csv(dados,arquivo+".csv")
+                del dados
+                dados=[]
+        add_to_csv(dados,arquivo+".csv")
     except ApiError as e:
         pass
     except Exception as e:
-        time.sleep(1)
+        #time.sleep(1)
         pass
 
 
