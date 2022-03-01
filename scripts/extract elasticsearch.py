@@ -35,7 +35,8 @@ for i in scanResp:
             print(i)
             for logger in arquivos:
                 if i["_source"]["logger_name"]==logger:
-                    add_to_csv(i["_source"],logger+".csv")
+                    linha=i["_source"]
+                    add_to_csv(linha,logger+".csv")
             cont+=1
             if str(cont)[-3:]=="000":
                 print(cont)
