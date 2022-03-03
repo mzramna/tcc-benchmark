@@ -2,7 +2,10 @@ from datetime import datetime
 from elasticsearch import Elasticsearch ,ApiError
 from elasticsearch import helpers
 from paralelLib import Paralel_thread
-import csv,time
+from more_itertools import unique_everseen
+import csv,os
+import shutil
+
 
 def add_to_csv(value,arquivo):
     with open(arquivo, 'a', newline='\n') as csvfile:
@@ -15,19 +18,18 @@ def add_to_csv(value,arquivo):
         if len(existingLines)<=0:
             writer.writeheader()
         if type(value) == type([]):
-            for i in range(len(value)):
-                linha = list(value[i].values())
-                for i in range(len(linha)):
-                    if linha[i] == None :
-                        linha[i]=""
-                if linha in existingLines:
-                    
-                    value[i]=[]
-                try:
-                    value.remove([])
-                except:
-                    pass
-                writer.writerows(value)
+            #for i in range(len(value)):
+                #linha = list(value[i].values())
+                #for i in range(len(linha)):
+                #    if linha[i] == None :
+                #        linha[i]=""
+                #if linha in existingLines:
+                #    value[i]=[]
+                #try:
+                #    value.remove([])
+                #except:
+                #    pass
+            writer.writerows(value)
         else:
             linha = list(value.values())
             for i in range(len(linha)):
@@ -53,28 +55,51 @@ def processamento_elasticsearch_data(arquivo,t0=0,t1=0,maxsize=100000):
         dados=[]
         for i in scanResp:
             dados.append(i["_source"])
-            if len(dados)==maxsize:
-                add_to_csv(dados,arquivo+".csv")
-                del dados
-                dados=[]
+            # if len(dados)==maxsize:
+            #     add_to_csv(dados,arquivo+".csv")
+            #     del dados
+            #     dados=[]
+            #if str(len(dados))[-3:] == "000":
+                 #print(len(dados))
+        # if len(dados)==1640376:
+        #     print("completo")
         add_to_csv(dados,arquivo+".csv")
+        del dados
     except ApiError as e:
         pass
     except Exception as e:
         #time.sleep(1)
         pass
+    remove_duplicate_file(arquivo+".csv","/mnt/dados/csvs/"+arquivo+"_limpo.csv")
+    sort_csv("/mnt/dados/csvs/"+arquivo+"_limpo.csv","@timestamp")
+    os.remove(arquivo+".csv")
 
+def remove_duplicate_file(infile,outfile):
+    with open(infile,'r') as f, open(outfile,'w') as out_file:
+        out_file.writelines(unique_everseen(f))
 
+def sort_csv(infile,sort_by):
+    with open(infile,newline='') as csvfile:
+        a=[]
+        for row in csv.DictReader(csvfile, skipinitialspace=True):
+            a.append(row)
+        headers=list(a[0].keys())
+        csvfile.close()
+    sortedlist=sorted(a, key=lambda d: d[sort_by])
 
-# for i in aliases:
-#     print(i)
+    with open("./tmp.csv", 'w') as f:
+        writer = csv.DictWriter(f, fieldnames=headers)
+        writer.writeheader()
+        for row in sortedlist:
+            writer.writerow(row)
+        f.close()
+    shutil.move("./tmp.csv",infile)
+
 arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgres_amd","container_mariadb_amd"]
 
 dados=[]
 for i in arquivos:
-    dados.append({"arquivo":i})
-p=Paralel_thread(total_threads=4,join=True)
-p.execute(elementos=dados,function=processamento_elasticsearch_data)
-# print(cont)
-# if cont == 1640376 or cont == 1640375 or cont == 1640377:
-#     print("completo")
+    processamento_elasticsearch_data(i)
+#p=Paralel_thread(total_threads=4,join=True)
+#p.execute(elementos=dados,function=processamento_elasticsearch_data)
+
