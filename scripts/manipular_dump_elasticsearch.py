@@ -76,6 +76,8 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
     except:
         df['disk_write_speed']=df['sdb_write_bytes'].sub(df['sdb_write_bytes'].shift())
         df['disk_read_speed']=df['sdb_read_bytes'].sub(df['sdb_read_bytes'].shift())
+    df['net_recive']=df['net_bytes_recv'].sub(df['net_bytes_recv'].shift())
+    df['net_sent']=df['net_bytes_sent'].sub(df['net_bytes_sent'].shift())
     df["ram_pctg"]= pd.to_numeric(pctg(df["ram_available"],df["ram_used"]))
     cpus_to_list=[]
     for header in list(df.keys()):
@@ -90,6 +92,8 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
         cpu=df.plot(x="@timestamp",figsize=(40,3),title="uso de cpu container "+nome_tabela,y=cpus_to_list)
         ram=df.plot(x="@timestamp",figsize=(40,3),title="uso de ram container "+nome_tabela,y=["ram_pctg"])
         disco=df.plot(x="@timestamp",figsize=(40,3),title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"])
+        #rede problematico devido a forma que o contador de uso do linux contabiliza quando reiniciado o container
+        # rede=df.plot(x="@timestamp",figsize=(40,3),title="uso de rede container "+nome_tabela,y=["net_recive","net_sent"])
         
         if show==True:
             plt.show(block=True)
@@ -97,11 +101,13 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
             cpu.figure.savefig("uso de cpu container "+nome_tabela+".png")
             ram.figure.savefig("uso de ram container "+nome_tabela+".png")
             disco.figure.savefig("uso de disco container "+nome_tabela+".png")
+            # rede.figure.savefig("uso de rede container "+nome_tabela+".png")
     arquivo_json=nome_tabela+".json"
     df.to_json(arquivo_json, orient='records')
     if html == True:
         linha_cpu=[]
         linha_disco=[]
+        linha_rede=[]
         #dado_altair="file://"+arquivo_processado
         # dado_altair=arquivo_json
         dado_altair=df
@@ -162,7 +168,30 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
                 *linha_disco,
                 data=dado_altair
             ).interactive().add_selection(resize)
-        alt_disco=alt_disco.interactive().add_selection(resize)
+        
+        
+        for rede_ in ["net_recive","net_sent"]:
+            radio_select = alt.selection_multi(
+            fields=["net_recive","net_sent"], name=rede_, 
+            )
+
+            color=random.choice(color_layer)
+            color_layer.remove(color)
+            
+            linha_rede.append(
+                alt.layer(
+                    alt_global.mark_line(color=color).encode(
+                        alt.X("@timestamp:T",axis=alt.Axis(title="tempo")),
+                        alt.Y(rede_+":Q",axis=alt.Axis(title=rede_)),
+                        # color=["disk_write_speed","disk_read_speed"]
+                    )
+                )
+            )
+        #rede problematico devido a forma que o contador de uso do linux contabiliza quando reiniciado o container
+        # alt_rede = alt.layer(
+        #         *linha_rede,
+        #         data=dado_altair
+        #     ).interactive().add_selection(resize)
         alt_resultado =alt.vconcat( alt_cpu, alt_ram,alt_disco)
         if show==True:
             alt_resultado.display(renderer="svg")
@@ -187,7 +216,7 @@ if __name__ == "__main__":
     resultados=[]
     for arquivo in arquivos:
         if arquivo.endswith("_processado.csv"):
-            resultados.append(plot_graphs(os.path.join("/mnt/dados/csvs/",arquivo),jpg=False,html=True,save=True,show=True,resize=resize))
+            resultados.append(plot_graphs(os.path.join("/mnt/dados/csvs/",arquivo),jpg=False,html=True,save=True,show=False,resize=resize))
     
     #alt.hconcat(*resultados).save("dados do container concatenados .html",embed_options={'renderer':'svg'})
 #colocar arquivos que serao acessados,filtrar apenas os dados usaveis,atualizar arquivos pra serem menores,fazer implementação que ja recebe do elasticsearch,limpa e salva os dados ordenados
