@@ -4,10 +4,10 @@ import json
 import os
 threads=os.cpu_count()#0
 adicao=5000
-bd_teste="scripts/main_fracionado_insercao_db.db"
+bd_teste="scripts/main_fracionado_todos_db.db"
 gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
 #fracionado
-retorno="valores_tempo_velocidade_benchmark_fracionado.json"
+retorno="valores_tempo_velocidade_benchmark_fracionado_todos.json"
 try:
     valores_benchmark=json.loads(open(retorno,"r").read())
 except:
@@ -22,8 +22,8 @@ if "valores_execucao" in valores_benchmark.keys():
     quantidade_subprocessos=valores_benchmark["valores_execucao"]["quantidade_subprocessos"]
 else:
     valor_inicial=0
-    valor_final=10000
-    valor_max=100000
+    valor_final=5000
+    valor_max=5000000
     quantidade_subprocessos=os.cpu_count()
     valores_benchmark["valores_execucao"]={ "valor_inicial":valor_inicial ,"valor_final":valor_final, "valor_max":valor_max,"quantidade_subprocessos":quantidade_subprocessos }
 
@@ -34,14 +34,14 @@ else:
 
 if valor_inicial == 0:
     benchmark.reset_bd_full()
+    print("gerando bd para testes")
     gerados_sqlite.executar(quantidade_elementos_iniciais_insercao=valor_max)
 with open(retorno, "w") as out_file:
     json.dump(valores_benchmark, out_file)
     out_file.close()
 while valor_final<=valor_max:
     #benchmark.reset_bd_full()
-    # benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=4)
-    resultado_benchmark=benchmark.executar(pre_execucao=valor_inicial,total_elementos=valor_final,pre_exec=False,timer_geral=False)
+    resultado_benchmark=benchmark.executar(pre_execucao=valor_inicial,total_elementos=valor_final,pre_exec=False,timer_geral=False) 
     # del benchmark
     tmp={"valor_final":valor_final,"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
     valores_benchmark["valor_final_"+str(valor_final)+"_"+str(quantidade_subprocessos)]=tmp

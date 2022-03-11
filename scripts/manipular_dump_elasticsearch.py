@@ -4,7 +4,7 @@ import manipulacao_csv
 import pandas as pd
 import matplotlib.pyplot as plt
 import altair as alt
-
+from altair_saver import save as saver
 
 def filtrar_csv_util(arquivo,saida=0):
     headers=[]
@@ -56,6 +56,7 @@ def filtrar_csv_util(arquivo,saida=0):
 def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize=None):
     #alt.renderers.enable('mimetype')
     alt.renderers.enable('altair_viewer')
+    # alt.renderers.enable('altair_saver', ['vega-lite','svg'])
     #alt.data_transformers.enable('data_server')
     # alt.data_transformers.register('custom', t)
     # alt.data_transformers.enable('custom')
@@ -197,7 +198,7 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
             alt_resultado.display(renderer="svg")
             alt_resultado.show()
         if save==True:
-            alt_resultado.save("dados do container "+nome_tabela+".html",embed_options={'renderer':'svg'})
+            saver(alt_resultado,"dados do container "+nome_tabela+".html")
 
     if jpg == True and html ==False:
         return [cpu,ram,disco]
@@ -218,5 +219,7 @@ if __name__ == "__main__":
         if arquivo.endswith("_processado.csv"):
             resultados.append(plot_graphs(os.path.join("/mnt/dados/csvs/",arquivo),jpg=False,html=True,save=True,show=False,resize=resize))
     
-    #alt.hconcat(*resultados).save("dados do container concatenados .html",embed_options={'renderer':'svg'})
+    final=alt.hconcat(*resultados)
+    final.save("dados do container concatenados.html",embed_options={'renderer':'svg'})
+    saver(final,"dados do container concatenados.svg")
 #colocar arquivos que serao acessados,filtrar apenas os dados usaveis,atualizar arquivos pra serem menores,fazer implementação que ja recebe do elasticsearch,limpa e salva os dados ordenados

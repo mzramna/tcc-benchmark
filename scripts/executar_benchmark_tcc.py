@@ -188,7 +188,7 @@ class Executar_benchmark:
             elif host == self.infos_docker["maquina_amd"]["url"]:
                 self.start_container(compiled=self.infos_docker["maquina_amd"],id_key=tipo_bd+"_id")
             time.sleep(5)
-            for _ in range(pre_execucao,total_threads):
+            for _ in range(0,total_threads):
                 threads.append([])
             for i in range(pre_execucao,total_elementos):
                 array.append({"id":i,"sqlite_file":self.sqlite_db})
