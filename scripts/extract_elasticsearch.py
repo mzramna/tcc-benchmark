@@ -70,8 +70,8 @@ def processamento_elasticsearch_data(arquivo,t0=0,t1=0,maxsize=100000):
     except Exception as e:
         #time.sleep(1)
         pass
-    remove_duplicate_file(arquivo+".csv","/mnt/dados/csvs/"+arquivo+"_limpo.csv")
-    sort_csv("/mnt/dados/csvs/"+arquivo+"_limpo.csv","@timestamp")
+    remove_duplicate_file(arquivo+".csv","./"+arquivo+"_limpo.csv")
+    sort_csv("./"+arquivo+"_limpo.csv","@timestamp")
     os.remove(arquivo+".csv")
 
 def remove_duplicate_file(infile,outfile):
@@ -95,11 +95,13 @@ def sort_csv(infile,sort_by):
         f.close()
     shutil.move("./tmp.csv",infile)
 
-arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgres_amd","container_mariadb_amd"]
 
-dados=[]
-for i in arquivos:
-    processamento_elasticsearch_data(i)
-#p=Paralel_thread(total_threads=4,join=True)
-#p.execute(elementos=dados,function=processamento_elasticsearch_data)
+if __name__ == "__main__":
+    arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgres_amd","container_mariadb_amd"]
+
+    # dados=[]
+    for i in arquivos:
+        processamento_elasticsearch_data(i)
+    #p=Paralel_thread(total_threads=4,join=True)
+    #p.execute(elementos=dados,function=processamento_elasticsearch_data)
 
