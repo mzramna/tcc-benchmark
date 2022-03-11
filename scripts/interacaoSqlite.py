@@ -139,6 +139,7 @@ class ProcessamentoSqlite:
         except sqliteOperationalError as e:
             #print("erro operacional no sqlite")
             self.logging.error(e)
+            time.sleep(0.5)
             return self.read_data_sqlite(table,filtro,query)
         except sqliteError as e:
             #print("erro desconhecido no sqlite")
