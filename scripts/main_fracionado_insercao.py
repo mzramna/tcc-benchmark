@@ -7,6 +7,7 @@ import extract_elasticsearch
 import altair as alt
 
 threads=int(os.cpu_count()/2)
+threads=int(os.cpu_count())/2
 adicao=5000
 bd_teste="scripts/main_fracionado_insercao_db.db"
 gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
