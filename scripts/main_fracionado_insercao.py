@@ -6,6 +6,7 @@ import manipular_dump_elasticsearch
 import extract_elasticsearch
 import altair as alt
 
+logstash={"host":"192.168.0.116","port":5000,"level":40}
 threads=int(os.cpu_count()/2)
 adicao=5000
 bd_teste="scripts/main_fracionado_insercao_db.db"
@@ -32,9 +33,9 @@ else:
     valores_benchmark["valores_execucao"]={ "valor_inicial":valor_inicial ,"valor_final":valor_final, "valor_max":valor_max,"quantidade_subprocessos":quantidade_subprocessos }
 
 if quantidade_subprocessos<2:
-    benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6,logstash_data={"host":"192.168.0.116","port":5000,"level":40})
+    benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=1,threads_timeout_lv2=6,logstash_data=logstash)
 else:
-    benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6,logstash_data={"host":"192.168.0.116","port":5000,"level":40})
+    benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=quantidade_subprocessos,threads_pct_timeout_lv2=0.5,threads_timeout_lv2=6,logstash_data=logstash)
 
 if valor_inicial == 0:
     benchmark.reset_bd_full()
@@ -43,17 +44,14 @@ with open(retorno, "w") as out_file:
     json.dump(valores_benchmark, out_file)
     out_file.close()
 while valor_final<=valor_max:
-    #benchmark.reset_bd_full()
-    # benchmark=Executar_benchmark(sqlite_bd=bd_teste,recreate=False,threads_paralel_lv2=4)
     resultado_benchmark=benchmark.executar(pre_execucao=valor_inicial,total_elementos=valor_final,pre_exec=False,timer_geral=False)
-    # del benchmark
     tmp={"valor_final":valor_final,"postgres":resultado_benchmark[0],"mariadb":resultado_benchmark[1],"subprocessos":quantidade_subprocessos}
     valores_benchmark["valor_final_"+str(valor_final)+"_"+str(quantidade_subprocessos)]=tmp
     print(tmp)
     valores_benchmark["valores_execucao"]={"valor_inicial":valor_inicial,"valor_final":valor_final,"valor_max":valor_max,"quantidade_subprocessos": quantidade_subprocessos}
     with open(retorno, "w") as out_file:
-                json.dump(valores_benchmark, out_file,indent=4)
-                out_file.close()
+        json.dump(valores_benchmark, out_file,indent=4)
+        out_file.close()
     valor_inicial=valor_final
     valor_final+=adicao
 
