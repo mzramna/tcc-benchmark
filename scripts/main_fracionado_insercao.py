@@ -7,6 +7,10 @@ import extract_elasticsearch
 import altair as alt
 
 threads=int(os.cpu_count()/2)
+<<<<<<< HEAD
+=======
+threads=int(os.cpu_count())/2
+>>>>>>> main
 adicao=5000
 bd_teste="scripts/main_fracionado_insercao_db.db"
 gerados_sqlite=Gerar_bd_teste(local_sqlite=bd_teste,total_threads=threads)
@@ -28,7 +32,11 @@ else:
     valor_inicial=0
     valor_final=10000
     valor_max=100000
+<<<<<<< HEAD
     quantidade_subprocessos=threads
+=======
+    quantidade_subprocessos=int(os.cpu_count()/2)
+>>>>>>> main
     valores_benchmark["valores_execucao"]={ "valor_inicial":valor_inicial ,"valor_final":valor_final, "valor_max":valor_max,"quantidade_subprocessos":quantidade_subprocessos }
 
 if quantidade_subprocessos<2:

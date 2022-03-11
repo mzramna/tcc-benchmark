@@ -28,7 +28,11 @@ else:
     valor_inicial=0
     valor_final=5000
     valor_max=5000000
+<<<<<<< HEAD
     quantidade_subprocessos=threads
+=======
+    quantidade_subprocessos=int(os.cpu_count()/2)
+>>>>>>> main
     valores_benchmark["valores_execucao"]={ "valor_inicial":valor_inicial ,"valor_final":valor_final, "valor_max":valor_max,"quantidade_subprocessos":quantidade_subprocessos }
 
 if quantidade_subprocessos<2:
