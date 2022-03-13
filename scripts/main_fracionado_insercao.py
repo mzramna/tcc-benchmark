@@ -61,18 +61,13 @@ arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgr
 
 for i in arquivos:
     extract_elasticsearch.processamento_elasticsearch_data(i)
-
-arquivos=os.listdir("./")
-for arquivo in arquivos:
-    if arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv"):
-        manipular_dump_elasticsearch.filtrar_csv_util(os.path.join("./", arquivo),os.path.join("./", arquivo[:-4]+"_processado.csv"))
-
+resultados=[]
 arquivos=os.listdir("./")
 resize = alt.selection_interval(bind='scales')
-resultados=[]
 for arquivo in arquivos:
-    if arquivo.endswith("_processado.csv"):
-        resultados.append(manipular_dump_elasticsearch.plot_graphs(os.path.join("./",arquivo),jpg=False,html=True,save=True,show=False,resize=resize))
+    if arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv"):
+        manipular_dump_elasticsearch.filtrar_csv_util(os.path.join("./", arquivo),)
+        resultados.append(manipular_dump_elasticsearch.plot_graphs(os.path.join("./", arquivo[:-4]+"_processado.csv"),jpg=False,html=True,save=True,show=False,resize=resize))
 
 final=alt.hconcat(*resultados)
 final.save("dados do container concatenados.html",embed_options={'renderer':'svg'})
