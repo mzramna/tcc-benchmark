@@ -153,12 +153,20 @@ def sort_csv(infile,sort_by):
 if __name__ == "__main__":
     arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgres_amd","container_mariadb_amd"]
     url="http://elastic:changeme@192.168.0.116:9200"
+    remove_duplicate=False
+    remove_old=False
+    sequential=False
     # dados=[]
-    for i in arquivos:
-        print(i)
-        processamento_elasticsearch_data(i,remove_duplicate=False,remove_old=False,url=url)
-    #p=Paralel_thread(total_threads=4,join=True)
-    #p.execute(elementos=dados,function=processamento_elasticsearch_data)
+    if sequential==True:
+        for i in arquivos:
+            print(i)
+            processamento_elasticsearch_data(i,remove_duplicate=remove_duplicate,remove_old=remove_old,url=url)
+    else:
+        dados=[]
+        for i in arquivos:
+            dados.append({"arquivo":i,"url":url,"remove_duplicate":remove_duplicate,"remove_old":remove_old})
+        p=Paralel_thread(total_threads=4,join=True)
+        p.execute(elementos=dados,function=processamento_elasticsearch_data)
     #import manipular_dump_elasticsearch
     #import altair as alt
 
