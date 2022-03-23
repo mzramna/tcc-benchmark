@@ -83,7 +83,7 @@ def processamento_automatico(linha):
         tmp_result["net_bytes_sent"]=tmp_dict_2["bytes_sent"]
         return tmp_result
 
-def processamento_elasticsearch_data(arquivo,t0=0,t1=0,url="http://elastic:changeme@192.168.0.116:9200",remove_duplicate=True,remove_old=True,processar=True):
+def processamento_elasticsearch_data(arquivo,t0=0,t1=0,url="http://elastic:changeme@192.168.0.116:9200",remove_duplicate=True,remove_old=True,processar=True,ram_usage:float=95):
     es = Elasticsearch(url,http_compress=True,)
     if t0 == t1 == 0:
         t0='2022-02-25T20:30:00.000Z'
@@ -107,7 +107,8 @@ def processamento_elasticsearch_data(arquivo,t0=0,t1=0,url="http://elastic:chang
             #     dados=[]
             dados_cont+=1
             #if str(dados_cont)[-6:] in ["500000","000000"]:
-            if psutil.virtual_memory().percent>=95:
+            ram_percent=psutil.virtual_memory().percent
+            if ram_percent>=ram_usage:
                  print(dados_cont)
                  add_to_csv(dados,arquivo+".csv",processar=(not processar))
                  dados=[dados[-1]]
@@ -170,15 +171,16 @@ if __name__ == "__main__":
     remove_duplicate=True
     remove_old=False
     sequential=False
+    ram_usage=95
     # dados=[]
     if sequential==True:
         for i in arquivos:
             print(i)
-            processamento_elasticsearch_data(i,remove_duplicate=remove_duplicate,remove_old=remove_old,url=url)
+            processamento_elasticsearch_data(i,remove_duplicate=remove_duplicate,remove_old=remove_old,url=url,ram_usage=ram_usage)
     else:
         dados=[]
         for i in arquivos:
-            dados.append({"arquivo":i,"url":url,"remove_duplicate":remove_duplicate,"remove_old":remove_old})
+            dados.append({"arquivo":i,"url":url,"remove_duplicate":remove_duplicate,"remove_old":remove_old,"ram_usage":ram_usage})
         p=Paralel_thread(total_threads=2,join=True)
         p.execute(elementos=dados,function=processamento_elasticsearch_data)
     #import manipular_dump_elasticsearch
