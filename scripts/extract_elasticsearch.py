@@ -114,7 +114,7 @@ def processamento_elasticsearch_data(arquivo,t0=0,t1=0,url="http://elastic:chang
                  gc.collect()
         # if len(dados)==1640376:
         #     print("completo")
-        add_to_csv(dados,arquivo+".csv",fieldnames=["host","virtual_memory","type","swap_memory","message","cpu_times","logger_name","disk_io_counters","net_io_counters","port","cpu_percent","disk_usage","@timestamp","level","tags","stack_info","@version","path"])
+        add_to_csv(dados,arquivo+".csv",fieldnames=['@timestamp','cpu_percent_1', 'cpu_percent_3', 'cpu_percent_0', 'ram_available', 'net_bytes_recv', 'sda_read_bytes', 'sda_write_bytes', 'net_bytes_sent', 'cpu_percent_2', 'container_root_usage_percent', 'ram_used'])
         del dados
     except ApiError as e:
         pass
@@ -124,7 +124,9 @@ def processamento_elasticsearch_data(arquivo,t0=0,t1=0,url="http://elastic:chang
     gc.collect()
     if remove_duplicate==True:
         remove_duplicate_file(arquivo+".csv","./"+arquivo+"_limpo.csv")
-    sort_csv("./"+arquivo+"_limpo.csv","@timestamp")
+        sort_csv("./"+arquivo+"_limpo.csv","@timestamp")
+    else:
+        sort_csv("./"+arquivo+".csv","@timestamp")
     if remove_old==True:
         os.remove(arquivo+".csv")
 
@@ -165,7 +167,7 @@ if __name__ == "__main__":
         dados=[]
         for i in arquivos:
             dados.append({"arquivo":i,"url":url,"remove_duplicate":remove_duplicate,"remove_old":remove_old})
-        p=Paralel_thread(total_threads=4,join=True)
+        p=Paralel_thread(total_threads=2,join=True)
         p.execute(elementos=dados,function=processamento_elasticsearch_data)
     #import manipular_dump_elasticsearch
     #import altair as alt
