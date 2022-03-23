@@ -4,7 +4,7 @@ from elasticsearch import helpers
 from paralelLib import Paralel_thread
 from more_itertools import unique_everseen
 import csv,os,ast
-import re
+import re,time
 import shutil
 import gc
 import psutil
@@ -114,10 +114,22 @@ def processamento_elasticsearch_data(arquivo,t0=0,t1=0,url="http://elastic:chang
                  gc.collect()
         # if len(dados)==1640376:
         #     print("completo")
-        add_to_csv(dados,arquivo+".csv",fieldnames=['@timestamp','cpu_percent_1', 'cpu_percent_3', 'cpu_percent_0', 'ram_available', 'net_bytes_recv', 'sda_read_bytes', 'sda_write_bytes', 'net_bytes_sent', 'cpu_percent_2', 'container_root_usage_percent', 'ram_used'])
+        add_to_csv(dados,arquivo+".csv",fieldnames=['@timestamp', 'cpu_percent_0', 'cpu_percent_1',  'cpu_percent_2', 'cpu_percent_3','ram_available', 'net_bytes_recv', 'sda_read_bytes', 'sda_write_bytes', 'net_bytes_sent','container_root_usage_percent', 'ram_used'])
         del dados
+    except ConnectionError as e:
+        time.sleep(30)
+        del dados
+        del es
+        del query
+        gc.collect()
+        processamento_elasticsearch_data(arquivo,t0,t1,url,remove_duplicate,remove_old,processar)
     except ApiError as e:
-        pass
+        time.sleep(60)
+        del dados
+        del es
+        del query
+        gc.collect()
+        processamento_elasticsearch_data(arquivo,t0,t1,url,remove_duplicate,remove_old,processar)
     except Exception as e:
         #time.sleep(1)
         pass
@@ -155,7 +167,7 @@ def sort_csv(infile,sort_by):
 if __name__ == "__main__":
     arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgres_amd","container_mariadb_amd"]
     url="http://elastic:changeme@192.168.0.116:9200"
-    remove_duplicate=False
+    remove_duplicate=True
     remove_old=False
     sequential=False
     # dados=[]
