@@ -9,8 +9,10 @@ from altair_saver import save as saver
 def filtrar_csv_util(arquivo,saida=0):
     headers=[]
     output=[]
+    n_linha=0
     with open(arquivo,"r") as csv_read:
         for linha in csv.DictReader(csv_read):
+            n_linha+=1
             tmp_result={}
             #tmp_result["logger_name"]=linha["logger_name"]
             tmp_result["@timestamp"]=linha["@timestamp"]
@@ -208,16 +210,19 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
         return [cpu,ram],alt_resultado
 
 if __name__ == "__main__":
-    # arquivos=os.listdir("/mnt/dados/csvs/")
-    # for arquivo in arquivos:
-    #     if arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv"):
-    #         filtrar_csv_util(os.path.join("/mnt/dados/csvs/", arquivo),os.path.join("/mnt/dados/csvs/", arquivo[:-4]+"_processado.csv"))
-    arquivos=os.listdir("/mnt/dados/csvs/")
+    path="/media/mzramna/Novo volume/"
+    filtrar=True
+    arquivos=os.listdir(path)
+    for arquivo in arquivos:
+        print(arquivo)
+        if (arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv") )and filtrar==True:
+            filtrar_csv_util(os.path.join(path, arquivo),os.path.join(path, arquivo[:-4]+"_processado.csv"))
+    arquivos=os.listdir(".")
     resize = alt.selection_interval(bind='scales')
     resultados=[]
     for arquivo in arquivos:
         if arquivo.endswith("_processado.csv"):
-            resultados.append(plot_graphs(os.path.join("/mnt/dados/csvs/",arquivo),jpg=False,html=True,save=True,show=False,resize=resize))
+            resultados.append(plot_graphs(os.path.join(path,arquivo),jpg=True,html=True,save=True,show=False,resize=resize))
     
     final=alt.hconcat(*resultados)
     final.save("dados do container concatenados.html",embed_options={'renderer':'svg'})
