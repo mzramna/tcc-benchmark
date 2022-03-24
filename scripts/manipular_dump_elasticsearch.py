@@ -6,6 +6,39 @@ import matplotlib.pyplot as plt
 import altair as alt
 from altair_saver import save as saver
 
+def save_jpg(values,nome_tabela,path="./"):
+    try:
+        if type(values[0]) == list:
+            for i in range(len(values)):
+                save_jpg(values[i],nome_tabela+str(i),path=path)
+        else:
+            values[0].figure.savefig(path+"uso de cpu container "+nome_tabela+".png")
+            values[1].figure.savefig(path+"uso de ram container "+nome_tabela+".png")
+            values[2].figure.savefig(path+"uso de disco container "+nome_tabela+".png")
+    except KeyError as e:
+        values[0].figure.savefig(path+"uso de cpu container "+nome_tabela+".png")
+        values[1].figure.savefig(path+"uso de ram container "+nome_tabela+".png")
+        values[2].figure.savefig(path+"uso de disco container "+nome_tabela+".png")
+        
+def save_html(values,nome_tabela,path="./"):
+    #alt.renderers.enable('mimetype')
+    alt.renderers.enable('altair_viewer')
+    # alt.renderers.enable('altair_saver', ['vega-lite','svg'])
+    #alt.data_transformers.enable('data_server')
+    # alt.data_transformers.register('custom', t)
+    # alt.data_transformers.enable('custom')
+    alt.renderers.enable('altair_viewer', embed_options={'renderer': 'svg'})
+    alt.data_transformers.enable('json')
+    alt.data_transformers.enable('default', max_rows=None)
+    try:
+        if type(values) ==type([]):
+            for i in range(len(values)):
+                save_html(values[i],nome_tabela+str(i),path=path)
+        else:
+            saver(values,path+"dados do container "+nome_tabela+".html")
+    except KeyError as e:
+        saver(values,path+"dados do container "+nome_tabela+".html")
+        
 def filtrar_csv_util(arquivo,saida=0):
     headers=[]
     output=[]
@@ -55,28 +88,18 @@ def filtrar_csv_util(arquivo,saida=0):
         writer.writerows(output)
         csv_write.close()
 
-def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize=None):
-    #alt.renderers.enable('mimetype')
-    alt.renderers.enable('altair_viewer')
-    # alt.renderers.enable('altair_saver', ['vega-lite','svg'])
-    #alt.data_transformers.enable('data_server')
-    # alt.data_transformers.register('custom', t)
-    # alt.data_transformers.enable('custom')
-    alt.renderers.enable('altair_viewer', embed_options={'renderer': 'svg'})
-    alt.data_transformers.enable('json')
-    alt.data_transformers.enable('default', max_rows=None)
-
+def process_dataframe(arquivo_processado,criar_json=True,return_name=False):
     def pctg(total,usada):
         return (usada/total)*100
     
-    df=pd.read_csv(open(arquivo_processado,"r"))#,index_col='@timestamp'
-    nome_tabela=os.path.basename(arquivo_processado)[:-4]
+    df=pd.read_csv(arquivo_processado)#,index_col='@timestamp'
+    nome_tabela=arquivo_processado.name[:-4]
     
     df['@timestamp'] = pd.to_datetime(df['@timestamp'])
     try:
         df['disk_write_speed']=df['sda_write_bytes'].sub(df['sda_write_bytes'].shift())
         df['disk_read_speed']=df['sda_read_bytes'].sub(df['sda_read_bytes'].shift())
-    except:
+    except KeyError as e:
         df['disk_write_speed']=df['sdb_write_bytes'].sub(df['sdb_write_bytes'].shift())
         df['disk_read_speed']=df['sdb_read_bytes'].sub(df['sdb_read_bytes'].shift())
     df['net_recive']=df['net_bytes_recv'].sub(df['net_bytes_recv'].shift())
@@ -87,6 +110,106 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
         if "cpu_percent_" in header:
             df[header] = pd.to_numeric(df[header])
             cpus_to_list.append(header)
+    if criar_json == True:
+        arquivo_json=nome_tabela+".json"
+        df.to_json(arquivo_json, orient='records')
+    if return_name==True:
+        return df,nome_tabela
+    else:
+        return df
+
+def split_csv_files(arquivo_processado,temporary_name_prefix:str="/tmp/tmp",column:str="net_bytes_sent"):
+    csv_reader = list(csv.DictReader(arquivo_processado, delimiter=','))
+    file_lines=[]
+    created_files=[]
+    line_num=0
+    temporary_file_counter=0
+    for row in range(len(csv_reader)):
+        line_num+=1
+        analize_row=csv_reader[row][column]
+        if line_num>1 and int(analize_row)< int(csv_reader[row-1][column]):
+            with open(str(temporary_name_prefix+"_"+str(temporary_file_counter)+".csv"),mode="w") as write_file:
+                csv_writer=csv.DictWriter(write_file,fieldnames=list(csv_reader[row].keys()))
+                csv_writer.writeheader()
+                csv_writer.writerows(file_lines)
+                write_file.close()
+                created_files.append(str(temporary_name_prefix+"_"+str(temporary_file_counter)+".csv"))
+            temporary_file_counter+=1
+            file_lines=[csv_reader[row]]
+        else:
+            file_lines.append(csv_reader[row])
+    with open(str(temporary_name_prefix+"_"+str(temporary_file_counter)+".csv"),mode="w") as write_file:
+        csv_writer=csv.DictWriter(write_file,fieldnames=list(csv_reader[row].keys()))
+        csv_writer.writeheader()
+        csv_writer.writerows(file_lines)
+        write_file.close()
+        created_files.append(str(temporary_name_prefix+"_"+str(temporary_file_counter)+".csv"))
+    print(str(temporary_file_counter)+" files crated")
+    return created_files
+
+def create_interval_dataframes(arquivo_processado,total_testes=20,nome_tabela:str="tmp",temporary_name_prefix_folder:str="/tmp"):
+    csv_files=split_csv_files(arquivo_processado,temporary_name_prefix=str(temporary_name_prefix_folder+"/"+nome_tabela))
+    test_counter=0
+    groups=[]
+    for i in csv_files:
+        if test_counter % total_testes == 0:
+            groups.append([])
+        test_counter+=1
+        file_=open(i,'r')
+        groups[-1].append(process_dataframe(file_,criar_json=False))
+        file_.close()
+    df_groups=[]
+    for group in groups:
+        dfs = pd.DataFrame()
+        for i in group:
+            dfs=pd.concat([dfs,i])
+        df_groups.append(dfs)
+        del dfs
+    # for i in df_groups:
+    #     print(len(i))
+    return df_groups
+    
+def file_to_graph(arquivo_processado,split=0,jpg=True,html=True,show=True,save=True,resize=None,temporary_name_prefix_folder:str="/tmp",path="./"):
+    arquivo=open(arquivo_processado,"r")
+    nome_tabela=os.path.basename(arquivo_processado)[:-4]
+    if split==0:
+        df=process_dataframe(arquivo)
+        result=plot_graphs(df,jpg=jpg,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela)
+    else:
+        dfs=create_interval_dataframes(arquivo,total_testes=split,nome_tabela=nome_tabela,temporary_name_prefix_folder=temporary_name_prefix_folder)
+        result=[[],[]]
+        for df in dfs:
+            tmp=plot_graphs(df,jpg=jpg,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela)
+            result[0].append(tmp[0])
+            result[1].append(tmp[1])
+
+    if save==True:
+        if jpg == True and html == True:
+            save_jpg(result[0],nome_tabela,path=path)
+            save_html(result[1],nome_tabela,path=path)
+        elif html == True and jpg==False:
+            save_html(result,nome_tabela,path=path)
+        elif jpg == True and html==False:
+            save_jpg(result,nome_tabela,path=path)
+    return result
+
+def plot_graphs(df,jpg=True,html=True,show=True,save=True,resize=None,nome_tabela=""):
+    #alt.renderers.enable('mimetype')
+    alt.renderers.enable('altair_viewer')
+    # alt.renderers.enable('altair_saver', ['vega-lite','svg'])
+    #alt.data_transformers.enable('data_server')
+    # alt.data_transformers.register('custom', t)
+    # alt.data_transformers.enable('custom')
+    alt.renderers.enable('altair_viewer', embed_options={'renderer': 'svg'})
+    alt.data_transformers.enable('json')
+    alt.data_transformers.enable('default', max_rows=None)
+    
+    cpus_to_list=[]
+    for header in list(df.keys()):
+        if "cpu_percent_" in header:
+            df[header] = pd.to_numeric(df[header])
+            cpus_to_list.append(header)
+    
     if jpg==True:
         #print(df.head())
         # df.to_json(arquivo_json, orient='records')
@@ -96,17 +219,17 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
         ram=df.plot(x="@timestamp",figsize=(40,3),title="uso de ram container "+nome_tabela,y=["ram_pctg"])
         disco=df.plot(x="@timestamp",figsize=(40,3),title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"])
         #rede problematico devido a forma que o contador de uso do linux contabiliza quando reiniciado o container
-        # rede=df.plot(x="@timestamp",figsize=(40,3),title="uso de rede container "+nome_tabela,y=["net_recive","net_sent"])
+        #rede=df.plot(x="@timestamp",figsize=(40,3),title="uso de rede container "+nome_tabela,y=["net_recive","net_sent"])
         
         if show==True:
             plt.show(block=True)
         if save==True:
-            cpu.figure.savefig("uso de cpu container "+nome_tabela+".png")
-            ram.figure.savefig("uso de ram container "+nome_tabela+".png")
-            disco.figure.savefig("uso de disco container "+nome_tabela+".png")
-            # rede.figure.savefig("uso de rede container "+nome_tabela+".png")
-    arquivo_json=nome_tabela+".json"
-    df.to_json(arquivo_json, orient='records')
+            save_jpg([cpu,ram,disco],nome_tabela)
+            # cpu.figure.savefig("uso de cpu container "+nome_tabela+".png")
+            # ram.figure.savefig("uso de ram container "+nome_tabela+".png")
+            # disco.figure.savefig("uso de disco container "+nome_tabela+".png")
+            #rede.figure.savefig("uso de rede container "+nome_tabela+".png")
+    
     if html == True:
         linha_cpu=[]
         linha_disco=[]
@@ -200,31 +323,55 @@ def plot_graphs(arquivo_processado,jpg=True,html=True,show=True,save=True,resize
             alt_resultado.display(renderer="svg")
             alt_resultado.show()
         if save==True:
-            saver(alt_resultado,"dados do container "+nome_tabela+".html")
+            save_html(alt_resultado,nome_tabela)
+            #saver(alt_resultado,"dados do container "+nome_tabela+".html")
 
     if jpg == True and html ==False:
         return [cpu,ram,disco]
     elif jpg == False and html ==True:
         return alt_resultado
     else:
-        return [cpu,ram],alt_resultado
+        return [cpu,ram,disco],alt_resultado
 
 if __name__ == "__main__":
     path="/media/mzramna/Novo volume/"
-    filtrar=True
+    filtrar=False
+    jpg=True
+    html=True
+    save=True
+    show=False
+    split=20
     arquivos=os.listdir(path)
     for arquivo in arquivos:
-        print(arquivo)
-        if (arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv") )and filtrar==True:
+        #print(arquivo)
+        if (arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv") ) and filtrar==True:
             filtrar_csv_util(os.path.join(path, arquivo),os.path.join(path, arquivo[:-4]+"_processado.csv"))
     arquivos=os.listdir(".")
     resize = alt.selection_interval(bind='scales')
     resultados=[]
     for arquivo in arquivos:
-        if arquivo.endswith("_processado.csv"):
-            resultados.append(plot_graphs(os.path.join(path,arquivo),jpg=True,html=True,save=True,show=False,resize=resize))
-    
-    final=alt.hconcat(*resultados)
-    final.save("dados do container concatenados.html",embed_options={'renderer':'svg'})
-    saver(final,"dados do container concatenados.svg")
+        if arquivo.endswith("_limpo.csv"):
+            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,jpg=jpg,html=html,save=save,show=show,resize=resize,path=path))
+    if split >0 and html == True:
+        if jpg == True:
+            tmp=[]
+            for resultado in resultados:
+                tmp.append(resultado[1])
+            resultados =tmp
+        tmp=[]
+        for i in range(len(resultados[0])):
+            tmp.append([resultados[0][i],resultados[1][i],resultados[2][i],resultados[3][i]])
+        for i in range(len(tmp)):
+            final=alt.hconcat(*tmp[i])
+            final.save(str(path+"dados do container concatenados_"+str(i)+".html"),embed_options={'renderer':'svg'})
+            try:
+                saver(final,path+"dados do container concatenados_"+i+".svg")
+            except:
+                pass
+    elif jpg==False and html == True:
+        final=alt.hconcat(*resultados)
+        final.save(path+"dados do container concatenados.html",embed_options={'renderer':'svg'})
+        saver(final,path+"dados do container concatenados.svg")
+    else:
+        pass
 #colocar arquivos que serao acessados,filtrar apenas os dados usaveis,atualizar arquivos pra serem menores,fazer implementação que ja recebe do elasticsearch,limpa e salva os dados ordenados

@@ -168,7 +168,7 @@ def sort_csv(infile,sort_by):
 if __name__ == "__main__":
     arquivos=["container_postgres_armhf","container_mariadb_armhf","container_postgres_amd","container_mariadb_amd"]
     url="http://elastic:changeme@192.168.0.116:9200"
-    remove_duplicate=True
+    remove_duplicate=False
     remove_old=False
     sequential=False
     ram_usage=95
