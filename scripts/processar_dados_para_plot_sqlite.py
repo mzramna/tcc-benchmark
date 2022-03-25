@@ -45,19 +45,44 @@ if __name__ == "__main__":
     path="/media/mzramna/Novo volume/"
     intervalo=5000
     arquivo_sqlite="/home/mzramna/Downloads/initial_db.db"
-    contadores=[0,0,0,0,0,0]
-    contador_final=[]
-    sqlite=InteracaoSqlite(sqlite_db=arquivo_sqlite,level=50)
-    for i in range(1,5000000,intervalo):
-        contador_final.append({"operacao_1":0,"operacao_2":0,"operacao_3":0,"operacao_4":0,"operacao_5":0,"operacao_6":0})
-        for j in range(i,i+intervalo):
-            operacoes=sqlite.read_operacoes(filtro="tipoOperacao",query={"id":j},tipo_adicional="none_dados")
-            for operacao in operacoes:
-                contadores[operacao["tipoOperacao"]-1]+=1
-                contador_final[-1]["operacao_"+str(operacao["tipoOperacao"])]+=1
-        #print(contadores)
-        #print(sum(contadores))
-    file_=open(path+"quantidades_operacoes.csv","w")
-    csv_save=csv.DictWriter(file_,fieldnames=list(contador_final[-1].keys()))
-    csv_save.writerows(contador_final)
+    arquivo_csv_extraido=path+"quantidades_operacoes.csv"
+    processar_sqlite=False
+    if processar_sqlite ==True:
+        contadores=[0,0,0,0,0,0]
+        contador_final=[]
+        sqlite=InteracaoSqlite(sqlite_db=arquivo_sqlite,level=50)
+        for i in range(1,5000000,intervalo):
+            contador_final.append({"operacao_1":0,"operacao_2":0,"operacao_3":0,"operacao_4":0,"operacao_5":0,"operacao_6":0})
+            for j in range(i,i+intervalo):
+                operacoes=sqlite.read_operacoes(filtro="tipoOperacao",query={"id":j},tipo_adicional="none_dados")
+                for operacao in operacoes:
+                    contadores[operacao["tipoOperacao"]-1]+=1
+                    contador_final[-1]["operacao_"+str(operacao["tipoOperacao"])]+=1
+            #print(contadores)
+            #print(sum(contadores))
+        file_=open(arquivo_csv_extraido,"w")
+        csv_save=csv.DictWriter(file_,fieldnames=list(contador_final[-1].keys()))
+        csv_save.writerows(contador_final)
+        file_.close()
+    file_=open(arquivo_csv_extraido,"r")
+    csv_read=csv.DictReader(file_,fieldnames=["operacao_1","operacao_2","operacao_3","operacao_4","operacao_5","operacao_6"])
+    max_value=0
+    min_value=100
+    for line in csv_read:
+        print(line)
+        elementos=[]
+        labels=[]
+        for i in list(line.items()):
+            elementos.append(int(i[1]))
+            percent=str("%.2f" % ((int(i[1])/5000)*100))
+            if ((int(i[1])/5000)*100)>max_value and i[0] !="operacao_1":
+                max_value=((int(i[1])/5000)*100)
+            if ((int(i[1])/5000)*100)<min_value and i[0] !="operacao_5":
+                min_value=((int(i[1])/5000)*100)
+            labels.append(i[0]+"   "+percent+"%")
+        pie=plt.pie(elementos,labels=labels)
+        plt.show(block=False)
+        plt.pause(0.00000001)
+        plt.clf()
+    print(max_value,min_value)
     file_.close()
