@@ -106,7 +106,7 @@ class ProcessamentoSqlite:
         self.logging.info("lendo sqlite")
         read_command=""
         read_command+="SELECT "
-        if filtro != "*":
+        if type(filtro) != type("*"):
             read_command+="("
             for key in filtro:
                 read_command+=key
@@ -121,13 +121,13 @@ class ProcessamentoSqlite:
         if query != "*":
             read_command+=" WHERE "
             for coluna in query.keys():
-                        read_command+=str(coluna) + " IS "
-                        if type(query[coluna])==type(""):
-                            read_command+="'"+query[coluna]+"'"
-                        else:
-                            read_command+=str(query[coluna])
-                        if coluna !=  list(query.keys())[-1]:
-                            read_command+=" AND "
+                read_command+=str(coluna) + " IS "
+                if type(query[coluna])==type(""):
+                    read_command+="'"+query[coluna]+"'"
+                else:
+                    read_command+=str(query[coluna])
+                if coluna !=  list(query.keys())[-1]:
+                    read_command+=" AND "
         read_command+=";"
         try:
             cursor = self.conn.cursor()
@@ -295,7 +295,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         self.logging.info("read_contadores",extra=locals())
         return self.read_data_sqlite("contadores",filtro=filtro,query=query)
 
-    def read_operacoes(self,filtro:Union[str,dict]="*",query:Union[str,dict]="*")->list:
+    def read_operacoes(self,filtro:Union[str,dict]="*",query:Union[str,dict]="*",tipo_adicional:str="dict")->list:
         """consulta e le um elemento ou varios da tabela de operações
 
         Args:
@@ -310,8 +310,11 @@ class InteracaoSqlite(ProcessamentoSqlite):
         self.logging.debug(tmp)
         retorno=[]
         for i in tmp:
-            tmp2=self.process_data_generated(data=i,with_id=True)
-            tmp2.pop("id")
+            tmp2=self.process_data_generated(data=i,with_id=True,filtro=filtro,tipo_adicional=tipo_adicional)
+            try:
+                tmp2.pop("id")
+            except:
+                pass
             retorno.append(tmp2)
         return retorno
 
@@ -328,7 +331,7 @@ class InteracaoSqlite(ProcessamentoSqlite):
         for i in retornos:
             return i
 
-    def process_data_generated(self,data:list,tipo_adicional:str="dict",with_id:bool=False) -> dict:
+    def process_data_generated(self,data:list,tipo_adicional:str="dict",with_id:bool=False,filtro:Union[str,dict]="*") -> dict:
         """processa o dado lido do sqlite para um formato de dict usavel 
 
         Args:
@@ -341,29 +344,42 @@ class InteracaoSqlite(ProcessamentoSqlite):
         etapa1_operacoes=data
         self.logging.debug(etapa1_operacoes)
         output={}
-        if with_id:
-            output["id"]=etapa1_operacoes[0]
-            output["tipoOperacao"]=etapa1_operacoes[1]
-            output["nomeBD"]=etapa1_operacoes[2]
-            output["idNoBD"]=etapa1_operacoes[3]
-            output["adicionais"]=etapa1_operacoes[4]
-            output["dados"]=etapa1_operacoes[5]
-        else:
-            output["tipoOperacao"]=etapa1_operacoes[0]
-            output["nomeBD"]=etapa1_operacoes[1]
-            output["idNoBD"]=etapa1_operacoes[2]
-            output["adicionais"]=etapa1_operacoes[3]
-            output["dados"]=etapa1_operacoes[4]
+        if filtro == "*":
+            if with_id:
+                output["id"]=etapa1_operacoes[0]
+                output["tipoOperacao"]=etapa1_operacoes[1]
+                output["nomeBD"]=etapa1_operacoes[2]
+                output["idNoBD"]=etapa1_operacoes[3]
+                output["adicionais"]=etapa1_operacoes[4]
+                output["dados"]=etapa1_operacoes[5]
+            else:
+                output["tipoOperacao"]=etapa1_operacoes[0]
+                output["nomeBD"]=etapa1_operacoes[1]
+                output["idNoBD"]=etapa1_operacoes[2]
+                output["adicionais"]=etapa1_operacoes[3]
+                output["dados"]=etapa1_operacoes[4]
+        elif type(filtro)==type(""):
+            output[filtro]=etapa1_operacoes[0]
+        elif type(filtro)==type({}):
+            lista=list(filtro.keys())
+            for i in range(len(lista)):
+                output[lista[i]]=etapa1_operacoes[i][0]
         self.logging.debug(output)
-        if tipo_adicional=="dict":
+        if tipo_adicional == "none_dados":
+            return output
+        elif tipo_adicional == "none":
+            output["dados"]=self.string_to_dict(output["dados"])
+            return output
+        elif tipo_adicional == "dict":
             adicionais=self.string_to_dict(output["adicionais"])
-        elif tipo_adicional=="dict_array":
+        elif tipo_adicional == "dict_array":
             pattern_adicionais=r"\[\{(.*)\}\]"
             adicionais=[]
             for dado in re.findall(pattern_adicionais, output["adicionais"])[0].split("},{"):
                 adicionais.append(self.string_to_dict(dado,patter_externo=r"(.*)"))
         elif tipo_adicional == "array":
             adicionais=self.string_to_dict(output["adicionais"],is_dict=False)
+        
         self.logging.debug(adicionais)
         output["adicionais"]=adicionais
         output["dados"]=self.string_to_dict(output["dados"])

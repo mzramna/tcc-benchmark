@@ -6,20 +6,23 @@ import matplotlib.pyplot as plt
 import altair as alt
 from altair_saver import save as saver
 
-def save_img(values,nome_tabela,path="./"):
+def save_img(values,nome_tabela,path="./",img_unificada:bool=False):
     try:
-        if type(values[0]) == list:
-            for i in range(len(values)):
-                save_img(values[i],nome_tabela+str(i),path=path)
-        else:
+        array_img_separada=(type(values[0]) == type([]) and img_unificada==False)
+    except:
+        array_img_separada=False
+    array_img_junta= (type(values) == type([]) and img_unificada==True)
+    if array_img_separada or array_img_junta:
+        for i in range(len(values)):
+            save_img(values[i],nome_tabela+str(i),path=path,img_unificada=img_unificada)
+    else:
+        if img_unificada == False:
             values[0].figure.savefig(path+"uso de cpu container "+nome_tabela+".svg", format="svg")
             values[1].figure.savefig(path+"uso de ram container "+nome_tabela+".svg", format="svg")
             values[2].figure.savefig(path+"uso de disco container "+nome_tabela+".svg", format="svg")
-    except KeyError as e:
-        values[0].figure.savefig(path+"uso de cpu container "+nome_tabela+".svg", format="svg")
-        values[1].figure.savefig(path+"uso de ram container "+nome_tabela+".svg", format="svg")
-        values[2].figure.savefig(path+"uso de disco container "+nome_tabela+".svg", format="svg")
-        
+        else:
+            values.figure.savefig(path+"uso do container "+nome_tabela+".svg", format="svg")
+   
 def save_html(values,nome_tabela,path="./"):
     #alt.renderers.enable('mimetype')
     alt.renderers.enable('altair_viewer')
@@ -88,7 +91,7 @@ def filtrar_csv_util(arquivo,saida=0):
         writer.writerows(output)
         csv_write.close()
 
-def process_dataframe(arquivo_processado,criar_json=True,return_name=False):
+def process_dataframe(arquivo_processado,criar_json:bool=True,return_name:bool=False):
     def pctg(total,usada):
         return (usada/total)*100
     
@@ -147,7 +150,7 @@ def split_csv_files(arquivo_processado,temporary_name_prefix:str="/tmp/tmp",colu
     print(str(temporary_file_counter)+" files crated")
     return created_files
 
-def create_interval_dataframes(arquivo_processado,total_testes=20,nome_tabela:str="tmp",temporary_name_prefix_folder:str="/tmp"):
+def create_interval_dataframes(arquivo_processado,total_testes:int=20,nome_tabela:str="tmp",temporary_name_prefix_folder:str="/tmp"):
     csv_files=split_csv_files(arquivo_processado,temporary_name_prefix=str(temporary_name_prefix_folder+"/"+nome_tabela))
     test_counter=0
     groups=[]
@@ -169,41 +172,31 @@ def create_interval_dataframes(arquivo_processado,total_testes=20,nome_tabela:st
     #     print(len(i))
     return df_groups
     
-def file_to_graph(arquivo_processado,split=0,img=True,html=True,show=True,save=True,resize=None,temporary_name_prefix_folder:str="/tmp",path="./"):
+def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize:bool=None,temporary_name_prefix_folder:str="/tmp",path:str="./",img_unificada:bool=False):
     arquivo=open(arquivo_processado,"r")
     nome_tabela=os.path.basename(arquivo_processado)[:-4]
     if split==0:
         df=process_dataframe(arquivo)
-        result=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela)
+        result=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada)
     else:
         dfs=create_interval_dataframes(arquivo,total_testes=split,nome_tabela=nome_tabela,temporary_name_prefix_folder=temporary_name_prefix_folder)
         result=[[],[]]
         for df in dfs:
-            tmp=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela)
+            tmp=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada)
             result[0].append(tmp[0])
             result[1].append(tmp[1])
 
     if save==True:
         if img == True and html == True:
-            save_img(result[0],nome_tabela,path=path)
+            save_img(result[0],nome_tabela,path=path,img_unificada=img_unificada)
             save_html(result[1],nome_tabela,path=path)
         elif html == True and img==False:
             save_html(result,nome_tabela,path=path)
         elif img == True and html==False:
-            save_img(result,nome_tabela,path=path)
+            save_img(result,nome_tabela,path=path,img_unificada=img_unificada)
     return result
 
-def plot_graphs(df,img=True,html=True,show=True,save=True,resize=None,nome_tabela=""):
-    #alt.renderers.enable('mimetype')
-    alt.renderers.enable('altair_viewer')
-    # alt.renderers.enable('altair_saver', ['vega-lite','svg'])
-    #alt.data_transformers.enable('data_server')
-    # alt.data_transformers.register('custom', t)
-    # alt.data_transformers.enable('custom')
-    alt.renderers.enable('altair_viewer', embed_options={'renderer': 'svg'})
-    alt.data_transformers.enable('json')
-    alt.data_transformers.enable('default', max_rows=None)
-    
+def plot_graphs(df:pd.DataFrame,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize=None,nome_tabela:str="",img_unificada:bool=False):
     cpus_to_list=[]
     for header in list(df.keys()):
         if "cpu_percent_" in header:
@@ -214,10 +207,18 @@ def plot_graphs(df,img=True,html=True,show=True,save=True,resize=None,nome_tabel
         #print(df.head())
         # df.to_json(arquivo_json, orient='records')
         # df.to_csv(arquivo_processado)
-        
-        cpu=df.plot(x="@timestamp",figsize=(160,4),title="uso de cpu container "+nome_tabela,y=cpus_to_list)
-        ram=df.plot(x="@timestamp",figsize=(160,4),title="uso de ram container "+nome_tabela,y=["ram_pctg"])
-        disco=df.plot(x="@timestamp",figsize=(160,4),title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"])
+    
+        fig, axs = plt.subplots(ncols=1, nrows=5)
+        fig.suptitle(nome_tabela)
+        size=(160,16)
+        cpu=df.plot(x="@timestamp",figsize=size,title="uso de cpu container "+nome_tabela,y=cpus_to_list,ax=axs[0])
+        ram=df.plot(x="@timestamp",figsize=size,title="uso de ram container "+nome_tabela,y=["ram_pctg"],ax=axs[2])
+        disco=df.plot(x="@timestamp",figsize=size,title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"],ax=axs[4])
+        if img_unificada==False:
+            plt_resultado=[cpu,ram,disco]
+        else:
+            plt_resultado=fig
+
         #rede problematico devido a forma que o contador de uso do linux contabiliza quando reiniciado o container
         #rede=df.plot(x="@timestamp",figsize=(40,3),title="uso de rede container "+nome_tabela,y=["net_recive","net_sent"])
         
@@ -323,15 +324,24 @@ def plot_graphs(df,img=True,html=True,show=True,save=True,resize=None,nome_tabel
             alt_resultado.display(renderer="svg")
             alt_resultado.show()
         if save==True:
+            #alt.renderers.enable('mimetype')
+            alt.renderers.enable('altair_viewer')
+            # alt.renderers.enable('altair_saver', ['vega-lite','svg'])
+            #alt.data_transformers.enable('data_server')
+            # alt.data_transformers.register('custom', t)
+            # alt.data_transformers.enable('custom')
+            alt.renderers.enable('altair_viewer', embed_options={'renderer': 'svg'})
+            alt.data_transformers.enable('json')
+            alt.data_transformers.enable('default', max_rows=None)
             save_html(alt_resultado,nome_tabela)
             #saver(alt_resultado,"dados do container "+nome_tabela+".html")
 
-    if img == True and html ==False:
-        return [cpu,ram,disco]
+    if img == True and html == False:
+        return plt_resultado
     elif img == False and html ==True:
         return alt_resultado
     else:
-        return [cpu,ram,disco],alt_resultado
+        return plt_resultado,alt_resultado
 
 if __name__ == "__main__":
     path="/media/mzramna/Novo volume/"
@@ -340,18 +350,19 @@ if __name__ == "__main__":
     html=True
     save=True
     show=False
+    img_unificada=True
     split=50
     arquivos=os.listdir(path)
     for arquivo in arquivos:
         #print(arquivo)
         if (arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv") ) and filtrar==True:
             filtrar_csv_util(os.path.join(path, arquivo),os.path.join(path, arquivo[:-4]+"_processado.csv"))
-    arquivos=os.listdir(".")
+    arquivos=os.listdir(path)
     resize = alt.selection_interval(bind='scales')
     resultados=[]
     for arquivo in arquivos:
         if arquivo.endswith("_limpo.csv"):
-            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path))
+            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada))
     if split >0 and html == True:
         if img == True:
             tmp=[]
@@ -374,4 +385,3 @@ if __name__ == "__main__":
         saver(final,path+"dados do container concatenados.svg")
     else:
         pass
-#colocar arquivos que serao acessados,filtrar apenas os dados usaveis,atualizar arquivos pra serem menores,fazer implementação que ja recebe do elasticsearch,limpa e salva os dados ordenados
