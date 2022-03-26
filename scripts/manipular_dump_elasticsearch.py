@@ -172,20 +172,26 @@ def create_interval_dataframes(arquivo_processado,total_testes:int=20,nome_tabel
     #     print(len(i))
     return df_groups
     
-def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize:bool=None,temporary_name_prefix_folder:str="/tmp",path:str="./",img_unificada:bool=False):
+def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize:bool=None,temporary_name_prefix_folder:str="/tmp",path:str="./",img_unificada:bool=False,img_size=(160,16)):
     arquivo=open(arquivo_processado,"r")
     nome_tabela=os.path.basename(arquivo_processado)[:-4]
+    
     if split==0:
         df=process_dataframe(arquivo)
-        result=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada)
+        result=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada,img_size=img_size)
     else:
         dfs=create_interval_dataframes(arquivo,total_testes=split,nome_tabela=nome_tabela,temporary_name_prefix_folder=temporary_name_prefix_folder)
-        result=[[],[]]
+        if html == True and img == True:
+            result=[[],[]]
+        else:
+            result=[]
         for df in dfs:
-            tmp=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada)
+            tmp=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada,img_size=img_size)
             if html == True and img == True:
                 result[0].append(tmp[0])
                 result[1].append(tmp[1])
+            else:
+                result.append(tmp)
 
     if save==True:
         if img == True and html == True:
@@ -197,7 +203,7 @@ def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,sh
             save_img(result,nome_tabela,path=path,img_unificada=img_unificada)
     return result
 
-def plot_graphs(df:pd.DataFrame,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize=None,nome_tabela:str="",img_unificada:bool=False):
+def plot_graphs(df:pd.DataFrame,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize=None,nome_tabela:str="",img_unificada:bool=False,img_size=(160,16)):
     cpus_to_list=[]
     for header in list(df.keys()):
         if "cpu_percent_" in header:
@@ -209,12 +215,12 @@ def plot_graphs(df:pd.DataFrame,img:bool=True,html:bool=True,show:bool=True,save
         # df.to_json(arquivo_json, orient='records')
         # df.to_csv(arquivo_processado)
     
-        fig, axs = plt.subplots(ncols=1, nrows=5)
+        fig, axs = plt.subplots(ncols=1, nrows=3)
         fig.suptitle(nome_tabela)
-        size=(160,16)
-        cpu=df.plot(x="@timestamp",figsize=size,title="uso de cpu container "+nome_tabela,y=cpus_to_list,ax=axs[0])
-        ram=df.plot(x="@timestamp",figsize=size,title="uso de ram container "+nome_tabela,y=["ram_pctg"],ax=axs[2])
-        disco=df.plot(x="@timestamp",figsize=size,title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"],ax=axs[4])
+        
+        cpu=df.plot(x="@timestamp",figsize=img_size,title="uso de cpu container "+nome_tabela,y=cpus_to_list,ax=axs[0])
+        ram=df.plot(x="@timestamp",figsize=img_size,title="uso de ram container "+nome_tabela,y=["ram_pctg"],ax=axs[1])
+        disco=df.plot(x="@timestamp",figsize=img_size,title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"],ax=axs[2])
         if img_unificada==False:
             plt_resultado=[cpu,ram,disco]
         else:
@@ -352,6 +358,7 @@ if __name__ == "__main__":
     save=True
     show=False
     img_unificada=True
+    img_size=(160,16)
     split=50
     arquivos=os.listdir(path)
     for arquivo in arquivos:
@@ -363,7 +370,7 @@ if __name__ == "__main__":
     resultados=[]
     for arquivo in arquivos:
         if arquivo.endswith("_limpo.csv"):
-            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada))
+            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada,img_size=img_size))
     if split >0 and html == True:
         if img == True:
             tmp=[]
