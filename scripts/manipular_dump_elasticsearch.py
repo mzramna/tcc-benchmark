@@ -183,8 +183,9 @@ def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,sh
         result=[[],[]]
         for df in dfs:
             tmp=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada)
-            result[0].append(tmp[0])
-            result[1].append(tmp[1])
+            if html == True and img == True:
+                result[0].append(tmp[0])
+                result[1].append(tmp[1])
 
     if save==True:
         if img == True and html == True:
