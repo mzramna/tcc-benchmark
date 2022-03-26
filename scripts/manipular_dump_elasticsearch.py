@@ -221,6 +221,7 @@ def plot_graphs(df:pd.DataFrame,img:bool=True,html:bool=True,show:bool=True,save
         cpu=df.plot(x="@timestamp",figsize=img_size,title="uso de cpu container "+nome_tabela,y=cpus_to_list,ax=axs[0])
         ram=df.plot(x="@timestamp",figsize=img_size,title="uso de ram container "+nome_tabela,y=["ram_pctg"],ax=axs[1])
         disco=df.plot(x="@timestamp",figsize=img_size,title="uso de disco container "+nome_tabela,y=["disk_write_speed","disk_read_speed"],ax=axs[2])
+        plt.grid(True)
         if img_unificada==False:
             plt_resultado=[cpu,ram,disco]
         else:
