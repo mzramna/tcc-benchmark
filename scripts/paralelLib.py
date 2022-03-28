@@ -457,7 +457,7 @@ class Worker_thread(Thread):
         raise SystemExit()
 
 class Paralel_thread:
-    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name:str="subprocess",special_timeout:float=0,timeout_percent:float=1,join:bool=False):
+    def __init__(self,total_threads:int=0,retorno=None,timer=False,daemon=False,name:str="thread",special_timeout:float=0,timeout_percent:float=1,join:bool=False):
         """classe de gerenciamento de processos paralelos
 
         Args:

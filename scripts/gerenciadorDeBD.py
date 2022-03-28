@@ -20,7 +20,16 @@ class GerenciadorDeBD:
             self.autocommit=autocommit
             self.logging = LoggingSystem(name="conexao db",arquivo=log_file,level=level,formato=logging_pattern,logstash_data=logstash_data)
             self.tipo= tipo
-            self.mydb,self.tipo=self.create_connector(tipo=tipo,user=self.user,password= self.password,database=self.database,autocommit=autocommit)
+            self.mydb,self.tipo=self.create_connector(tipo=tipo,user=user,password= password,database=database,autocommit=autocommit)
+            retries=0
+            while self.mydb == None and retries<self.stack_overflow_max:
+                try:
+                    self.mydb,self.tipo=self.create_connector(tipo=tipo,user=user,password= password,database=database,autocommit=autocommit)
+                    retries+=1
+                except:
+                    pass
+                if self.mydb == None:
+                    time.sleep(5)
             if self.mydb == None:
                 raise ValorInvalido(valor_inserido=str(locals().values()),campo="algum parametro de conexão é inválido")
             self.cursor=self.mydb.cursor()
