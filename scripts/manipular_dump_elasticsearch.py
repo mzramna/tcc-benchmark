@@ -361,6 +361,7 @@ if __name__ == "__main__":
     show=False
     img_unificada=True
     img_size=(160,16)
+    auto_img_size=True
     split=50
     arquivos=os.listdir(path)
     temporary_name_prefix_folder="./"
