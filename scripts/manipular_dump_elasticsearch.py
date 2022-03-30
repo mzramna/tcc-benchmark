@@ -1,6 +1,6 @@
 import csv,os,ast
 import re,random
-import manipulacao_csv
+from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 import altair as alt
@@ -172,7 +172,7 @@ def create_interval_dataframes(arquivo_processado,total_testes:int=20,nome_tabel
     #     print(len(i))
     return df_groups
     
-def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize:bool=None,temporary_name_prefix_folder:str="/tmp",path:str="./",img_unificada:bool=False,img_size=(160,16)):
+def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,show:bool=True,save:bool=True,resize:bool=None,temporary_name_prefix_folder:str="/tmp",path:str="./",img_unificada:bool=False,img_size=(160,16),auto_img_size=False):
     arquivo=open(arquivo_processado,"r")
     nome_tabela=os.path.basename(arquivo_processado)[:-4]
     
@@ -180,6 +180,8 @@ def file_to_graph(arquivo_processado,split:int=0,img:bool=True,html:bool=True,sh
         df=process_dataframe(arquivo)
         result=plot_graphs(df,img=img,html=html,show=show,save=False,resize=resize,nome_tabela=nome_tabela,img_unificada=img_unificada,img_size=img_size)
     else:
+        if auto_img_size == True:
+            img_size=(int(3*split),16)
         dfs=create_interval_dataframes(arquivo,total_testes=split,nome_tabela=nome_tabela,temporary_name_prefix_folder=temporary_name_prefix_folder)
         if html == True and img == True:
             result=[[],[]]
@@ -371,7 +373,7 @@ if __name__ == "__main__":
     resultados=[]
     for arquivo in arquivos:
         if arquivo.endswith("_limpo.csv"):
-            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada,img_size=img_size,temporary_name_prefix_folder=temporary_name_prefix_folder))
+            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada,img_size=img_size,temporary_name_prefix_folder=temporary_name_prefix_folder,auto_img_size=auto_img_size))
     if split >0 and html == True:
         if img == True:
             tmp=[]
