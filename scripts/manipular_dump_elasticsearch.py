@@ -38,7 +38,7 @@ def save_html(values,nome_tabela,path="./"):
             for i in range(len(values)):
                 save_html(values[i],nome_tabela+str(i),path=path)
         else:
-            saver(values,path+"dados do container "+nome_tabela+".html")
+            saver(values,path+"dados_do_container"+nome_tabela+".html")
     except KeyError as e:
         saver(values,path+"dados do container "+nome_tabela+".html")
         
@@ -361,6 +361,7 @@ if __name__ == "__main__":
     img_size=(160,16)
     split=50
     arquivos=os.listdir(path)
+    temporary_name_prefix_folder="./"
     for arquivo in arquivos:
         #print(arquivo)
         if (arquivo.endswith(".csv") and not arquivo.endswith("_processado.csv") ) and filtrar==True:
@@ -370,7 +371,7 @@ if __name__ == "__main__":
     resultados=[]
     for arquivo in arquivos:
         if arquivo.endswith("_limpo.csv"):
-            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada,img_size=img_size))
+            resultados.append(file_to_graph(os.path.join(path,arquivo),split=split,img=img,html=html,save=save,show=show,resize=resize,path=path,img_unificada=img_unificada,img_size=img_size,temporary_name_prefix_folder=temporary_name_prefix_folder))
     if split >0 and html == True:
         if img == True:
             tmp=[]
